@@ -1,0 +1,60 @@
+Codex Report - LMS logic review
+
+Scope
+- Reviewed routing and core controllers/services for authentication, enrollment, quiz flow, and progress tracking logic.
+
+Findings (ordered by severity)
+1) Critical - Progress can be forged without enrollment
+   Evidence: app/Controllers/LearnController.php:119-156
+   Detail: /learn/track accepts any lesson_id and writes xAPI + completed_lessons, then updates course progress without verifying that the lesson belongs to a course the user is enrolled in. A logged-in user can mark any lesson complete and potentially trigger certificate issuance.
+
+2) High - Quiz access and attempts lack enrollment authorization
+   Evidence: app/Controllers/QuizRunnerController.php:24-129
+   Detail: Quiz intro and start only require a quiz ID and logged-in session. There is no check that the user is enrolled in the owning course or allowed to access that quiz. This enables unauthorized quiz attempts and content exposure.
+
+3) High - Quiz reset approvals are not scoped to course ownership
+   Evidence: app/Controllers/InstructorController.php:258-309
+   Detail: handleRequest approves/rejects any attempt_request by ID without verifying that the request belongs to a course owned by the current instructor/admin. Any instructor can approve or reject requests across courses if they know the request ID.
+
+4) Medium - Enrollments ignore course state and purchase context
+   Evidence: app/Controllers/CourseController.php:122-175
+   Detail: Enroll inserts a row for any course ID without checking that the course exists, is published/upcoming, or requires payment. This allows enrollment into drafts or invalid courses and bypasses checkout logic.
+
+5) Medium - Null course access checks can raise warnings and mask missing records
+   Evidence: app/Controllers/InstructorController.php:320-325 (also similar patterns in edit/settings/etc.)
+   Detail: Access checks read $course['instructor_id'] before validating that $course exists. If a course ID is invalid, this produces warnings and the access logic becomes unreliable. It should short-circuit on missing course records before role checks.
+
+6) Low - Course progress updates can run without an enrollment row
+   Evidence: app/Services/CourseProgressService.php:17-68 used by app/Controllers/LearnController.php:147-155 and app/Controllers/QuizRunnerController.php:193-218
+   Detail: updateProgress updates enrollments without confirming the enrollment exists. Combined with the missing enrollment checks above, progress writes can be triggered for users who are not enrolled, leaving inconsistent state across completed_lessons/xapi_logs vs enrollments.
+
+Comprehensive improvement plan
+1) Centralize access control
+   - Add a consistent authorization layer (middleware or controller helpers) for: requireAuth, requireEnrollment(courseId), requireInstructor(courseId), requireAdmin, requireCoursePublished.
+   - Enforce it in LearnController::show/track, QuizRunnerController::intro/start/saveAnswer/submit/result, and InstructorController::handleRequest.
+
+2) Enforce enrollment and ownership checks in quiz flow
+   - Validate that the quiz belongs to a course the user is enrolled in before showing intro/start or saving answers.
+   - Validate attempt ownership for all attempt operations and prevent cross-user access at the service layer (QuizService).
+
+3) Align enrollment with course state and commerce rules
+   - In CourseController::enroll and CheckoutController::process, validate course existence, published status, and whether it is free/paid.
+   - If paid, block direct enrollment and require a completed order; if free, allow direct enrollment with explicit checks.
+
+4) Fix null-guard patterns and add defensive checks
+   - For all instructor actions, verify the course/lesson exists before dereferencing fields.
+   - Return 404 or redirect with a flash error when records are missing.
+
+5) Data integrity and consistency
+   - Add DB constraints/foreign keys (if not already present) to prevent invalid enrollment or completed_lessons records.
+   - Ensure CourseProgressService::updateProgress verifies enrollment exists (or creates one only through approved paths).
+
+6) Security and request validation improvements
+   - Add CSRF tokens for all POST routes.
+   - Validate IDs against ownership and published status in Cart/Checkout/Learn/Quiz endpoints.
+   - Consider rate limits for quiz attempts and upload endpoints.
+
+7) Test coverage
+   - Add integration tests for: enrollment gating, quiz access control, progress tracking, request approval scoping, and draft-course enrollment rejection.
+   - Add regression tests around quiz attempt limits and reset approvals.
+

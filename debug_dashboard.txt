@@ -1,0 +1,12 @@
+Array
+(
+    [user_id] => 3
+    [roles] => Array
+        (
+            [0] => student
+        )
+
+    [isInstructor] => 
+    [canSwitch_Session] => 0
+    [session_mode] => student
+)

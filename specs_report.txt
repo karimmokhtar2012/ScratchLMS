@@ -1,0 +1,145 @@
+# Technical Specification & Feature Map: El-Koriem LMS
+
+**Date:** January 14, 2026
+**Architect:** System AI
+**Current Version:** 1.3
+
+---
+
+## 1. Project Overview
+
+*   **Name:** El-Koriem Platform (Custom LMS)
+*   **Core Stack:** PHP 8.3, SQLite, Tailwind CSS, Alpine.js.
+*   **Architecture:** Custom MVC (No external frameworks).
+*   **Design Philosophy:** "Dark Bento" - High contrast, modular grid layout, focus on content.
+
+---
+
+## 2. Feature History & Changelog
+
+### Phase 1: Foundation (v1.0)
+*   [x] **Core Framework**: Router, Database Singleton (PDO/SQLite), Abstract Controller/Model.
+*   [x] **Authentication**: Login, Register, Logout, RBAC (Admin/Instructor/Student).
+*   [x] **Database Migration System**: Custom PHP scripts for schema management.
+
+### Phase 2: Course Management (v1.1)
+*   [x] **Instructor Dashboard**: Dashboard with "Create Course" workflow.
+*   [x] **Course Builder**: CRUD for Courses, Modules, and Lessons.
+*   [x] **Media Support**: Video uploads (local), YouTube embeds, Article (Markdown) content.
+*   [x] **File Attachments**: Resource downloads per lesson.
+
+### Phase 3: Student Experience & Commerce (v1.2)
+*   [x] **Public Catalog**: Full-width "Explore" page with search and filtering.
+*   [x] **My Learning**: Personalized dashboard for enrolled students.
+*   [x] **Direct Enrollment**: Streamlined "Enroll Now" flow.
+*   [x] **Learning Player**: Distraction-free video player with sidebar navigation.
+*   [x] **Progress Tracking**: Automatic tracking of started/completed lessons.
+
+### Phase 4: Advanced Features (v1.3 - Current Update)
+*   [x] **Global Analytics (Instructor)**:
+    *   Revenue Overview (Total $).
+    *   Enrollment Metrics.
+    *   Course Performance Table (Revenue per course).
+    *   Recent Activity Feed.
+*   [x] **Question Bank**:
+    *   Centralized repository for questions (`question_banks` table).
+    *   Support for Multiple Choice, True/False, Short Text.
+    *   **Import Workflow**: Copy questions from Bank to Quiz.
+*   [x] **Notes System**:
+    *   Student notebook integrated into the Player.
+    *   Timestamp syncing (Click note to seek video).
+    *   AJAX-based Create/Delete.
+*   [x] **Quiz Engine Enhancements**:
+    *   Quiz Settings: Time limit, Passing score, Max attempts.
+    *   Randomization support.
+
+---
+
+## 3. Detailed Database Schema
+
+The system now consists of **19 Tables**.
+
+### Identity & Access
+1.  **`users`**: `id`, `name`, `email`, `password`, `created_at`.
+2.  **`roles`**: `id`, `name` (admin, instructor, student).
+3.  **`role_user`**: `user_id`, `role_id`.
+
+### Content Management
+4.  **`courses`**: `id`, `instructor_id`, `title`, `slug`, `description`, `price`, `thumbnail`.
+5.  **`modules`**: `id`, `course_id`, `title`, `sort_order`.
+6.  **`lessons`**: `id`, `module_id`, `title`, `type` (video/quiz/article), `content_url`, `content_text`, `attachment_url`, `duration`, `sort_order`.
+
+### Question Bank (New)
+7.  **`question_banks`**: `id`, `instructor_id`, `title`, `description`.
+8.  **`bank_questions`**: `id`, `bank_id`, `type`, `question_text`, `options` (JSON), `correct_answers` (JSON), `explanation`.
+
+### Quiz Engine
+9.  **`quizzes`**: `id`, `lesson_id`, `time_limit`, `passing_score`, `allowed_attempts`, `is_randomized`, `show_correct_answers`.
+10. **`questions`**: `id`, `quiz_id`, `type`, `question_text`, `options`, `correct_answers`, `explanation` (Instance of a question).
+11. **`quiz_attempts`**: `id`, `user_id`, `quiz_id`, `score`, `is_passed`, `started_at`, `completed_at`, `answers`.
+12. **`attempt_requests`**: `id`, `user_id`, `quiz_id`, `status`.
+
+### Student Progress
+13. **`enrollments`**: `id`, `user_id`, `course_id`, `progress_percent`, `is_completed`.
+14. **`completed_lessons`**: `id`, `user_id`, `lesson_id`.
+15. **`notes`**: `id`, `user_id`, `lesson_id`, `content`, `timestamp`.
+16. **`xapi_logs`**: `id`, `user_id`, `verb`, `object_id`, `meta`.
+
+### Commerce
+17. **`orders`**: `id`, `user_id`, `total`, `status`.
+18. **`order_items`**: `id`, `order_id`, `course_id`, `price`.
+19. **`coupons`**: `id`, `code`, `discount_percent`, `valid_until`.
+
+---
+
+## 4. Directory Structure
+
+```text
+/app
+  ├── Controllers/
+  │   ├── AuthController.php
+  │   ├── CourseController.php
+  │   ├── DashboardController.php
+  │   ├── InstructorController.php  (Updated: Analytics)
+  │   ├── LearnController.php
+  │   ├── NoteController.php        (New)
+  │   ├── QuestionBankController.php(New)
+  │   ├── QuizController.php        (Updated: Import)
+  │   └── ...
+  ├── Models/
+  │   ├── QuestionBank.php          (New)
+  │   ├── BankQuestion.php          (New)
+  │   └── ...
+  ├── Core/
+  ├── Middleware/
+  └── Services/
+
+/resources/views
+  ├── courses/                      (Public Catalog)
+  ├── instructor/
+  │   ├── banks/                    (Question Bank UI)
+  │   ├── analytics.php             (Stats Dashboard)
+  │   └── quiz_builder.php          (Import Modal)
+  ├── learn/
+  │   └── player.php                (Tabbed Sidebar + Notes)
+  ├── layouts/
+  │   ├── app.php                   (Sidebar Layout)
+  │   └── public.php                (Full-width Layout)
+  └── notes/                        (Notebook Dashboard)
+```
+
+---
+
+## 5. Upcoming Roadmap (v1.4)
+
+1.  **Certificate Generation**:
+    *   Trigger: 100% Course Completion.
+    *   Action: Generate PDF using TCPDF/DomPDF.
+    *   Storage: Save to `user_certificates` table.
+
+2.  **Coupon Management**:
+    *   Instructor UI to create discount codes.
+    *   Checkout validation logic.
+
+3.  **Live Classes**:
+    *   Integration with Zoom/Jitsi APIs for scheduled modules.

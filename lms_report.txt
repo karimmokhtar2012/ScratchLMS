@@ -1,0 +1,90 @@
+LMS Project Report
+
+1. Overview
+This Learning Management System (LMS) is a PHP-based application designed to facilitate online learning. It supports roles for both students and instructors, enabling course creation, content delivery, progress tracking, quizzes, and certification. The application follows a Model-View-Controller (MVC) architectural pattern, utilizing custom core classes for routing, database interaction, and base controller/model functionalities.
+
+2. Key Features
+
+*   User Management & Authentication:
+    *   User registration and login.
+    *   Role-based access control (Student, Instructor, Admin).
+    *   Password management (hashing, updates).
+    *   Onboarding process for new users to collect profile information.
+    *   User profile management.
+
+*   Course Management (Instructor):
+    *   Course Creation: Instructors can create new courses with titles, descriptions, prices, and thumbnails. SEO-friendly slugs are generated.
+    *   Content Structure: Courses are organized into Modules, and Modules contain Lessons.
+    *   Module & Lesson Management: Instructors can add, edit, delete, and reorder modules and lessons.
+    *   Lesson Types: Supports various lesson types including video, quizzes, documents, and potentially text-based content.
+    *   File Uploads: Supports uploading videos and other attachments for lessons.
+    *   Course Settings: Edit course details, price, and thumbnail.
+
+*   Learning Experience (Student):
+    *   Course Catalog: Browse and view available courses.
+    *   Enrollment: Students can enroll in courses.
+    *   My Courses: Access a list of enrolled courses.
+    *   Lesson Player: View course content sequentially, with progress tracking.
+    *   Resume Learning: Automatically resumes from the last viewed lesson.
+    *   Notes: Take and manage notes per lesson, with timestamping.
+    *   Certificates: Earn and view certificates upon course completion.
+
+*   Assessments (Quizzes):
+    *   Quiz Creation (Instructor): Instructors can build quizzes associated with lessons.
+    *   Quiz Builder: Interface for adding questions (multiple choice, true/false, short answer), setting options, correct answers, points, explanations, time limits, passing scores, and allowed attempts.
+    *   Question Banks: Instructors can create and manage question banks to reuse questions across different quizzes.
+    *   Quiz Runner (Student): Take quizzes, answer questions, save progress, submit for grading.
+    *   Attempt Management: Supports multiple attempts, with options for instructors to reset attempts.
+    *   Results & Review: View quiz scores, pass/fail status, and detailed review of answers (correct/incorrect, with explanations if provided).
+    *   Progress Tracking: Quiz completion contributes to overall course progress.
+
+*   E-commerce:
+    *   Shopping Cart: Add courses to a cart.
+    *   Checkout Process: Simulate payment processing for course purchases.
+    *   Order Management: Records orders, items, and payment status.
+
+*   Instructor Tools:
+    *   Analytics: View course performance, enrollment numbers, revenue, and recent student activity.
+    *   Student Management: Monitor student progress within courses, view activity logs, and handle requests.
+
+*   Other Features:
+    *   Localization: Supports language switching.
+    *   File Uploads: Chunked uploads for large files (e.g., videos).
+    *   XAPI Logging: Tracks user learning activities.
+
+3. UI and User Experience
+*   The application uses a PHP-based templating system (resources/views/) for rendering HTML.
+*   Separate layouts (layouts/app.php for authenticated users, layouts/public.php for public pages) are used.
+*   Views are organized by feature/section (e.g., auth/, courses/, instructor/, learn/).
+*   Interactive elements and AJAX calls are used for features like note-taking, quiz saving, and potentially uploading.
+*   The UI appears to be functional, with distinct interfaces for student learning and instructor management.
+
+4. Technical Stack and Architecture
+*   Language: PHP
+*   Framework/Core: Custom MVC structure with classes in App\Core (Controller, Database, Model, Router, Lang).
+*   Database: SQLite (database/database.sqlite) is present, suggesting its use for data persistence. SQL queries are executed via App\Core\Database.
+*   Routing: A custom App\Core\Router handles URL mapping to controller actions.
+*   Authentication: Session-based authentication.
+*   Middleware: AuthMiddleware is used to protect routes requiring authentication or specific roles.
+*   Dependency Injection: Type hinting and dependency injection patterns are observed in controller constructors.
+*   Templating: Blade-like views (likely rendered via PHP itself).
+*   File Storage: Public uploads stored in public/uploads/. Temporary uploads in storage/temp/.
+
+5. Data Structure (Models & Key Tables)
+*   Users: Stores user credentials, profile info, roles, onboarding status, and tutorial viewing status.
+*   Courses: Core learning content, includes instructor ID, pricing, description, thumbnail, and slug.
+*   Modules: Group lessons within a course.
+*   Lessons: Individual learning units (video, quiz, text, etc.) linked to modules.
+*   Enrollments: Tracks user enrollment in courses, progress, and certificate status.
+*   Quizzes: Stores quiz settings, linked to lessons.
+*   Questions: Stores quiz questions (type, text, options, answers).
+*   Bank Questions / Question Banks: For reusable quiz questions.
+*   Orders / OrderItems: Manages course purchases.
+*   Notes: User-generated notes associated with lessons.
+*   Certificates: Stores certificate information, likely linked via enrollments.
+*   XAPI Logs: Tracks user learning activities.
+*   Attempt Requests: Manages instructor approval for quiz resets.
+*   Quiz Attempts: Records student quiz attempts, answers, scores, and timestamps.
+*   Roles / Role_User: Manages user roles (e.g., 'student', 'instructor').
+
+This report provides a high-level understanding of the LMS's features, structure, and technical implementation based on the provided file system and code snippets.

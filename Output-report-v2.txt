@@ -1,0 +1,202 @@
+# Technical Specification & Feature Map: ScratchLMS
+
+**Date:** January 14, 2026
+**Architect:** System AI
+**Version:** 2.0 (Master Reference)
+
+---
+
+## 1. PROJECT OVERVIEW
+
+*   **Name:** ScratchLMS
+*   **Description:** A high-performance, lightweight Learning Management System built from the ground up without heavy frameworks. It focuses on a modern "Dark Bento" user interface, speed, and a comprehensive feature set for creators and learners.
+*   **Tech Stack:**
+    *   **Backend:** Vanilla PHP 8.3 (Strict MVC Pattern, PSR-4 Autoloading).
+    *   **Database:** SQLite (Relational structure with Foreign Key enforcement).
+    *   **Frontend:** Tailwind CSS (Dark Mode "Bento" Grid Aesthetic).
+    *   **Interactivity:** Alpine.js (Reactive components) + Vanilla JS (Player logic).
+    *   **Server:** PHP Built-in Server (Development).
+
+---
+
+## 2. DATABASE SCHEMA (The Map)
+
+The system utilizes **18 Relational Tables** to manage data integrity and relationships.
+
+### Identity & Access
+*   **`users`**: Central identity (`id`, `name`, `email`, `password`, `created_at`).
+*   **`roles`**: RBAC definitions (`admin`, `instructor`, `student`).
+*   **`role_user`**: Pivot table linking Users to Roles (Many-to-Many).
+*   **`permissions`**: Granular access rights linked to roles.
+
+### Course Content (The Product)
+*   **`courses`**: Main entity (`id`, `instructor_id`, `title`, `slug`, `price`, `thumbnail`).
+    *   *Relationship*: Belongs to an Instructor (User). Has many Modules.
+*   **`modules`**: Grouping unit (`id`, `course_id`, `title`, `sort_order`).
+*   **`lessons`**: Content unit (`id`, `module_id`, `type`, `content_url`, `content_text`, `attachment_url`, `duration`).
+    *   *Types*: 'video', 'article', 'quiz'.
+
+### Learning & Tracking
+*   **`enrollments`**: Records access (`user_id`, `course_id`, `progress_percent`, `is_completed`).
+*   **`completed_lessons`**: Binary tracking (`user_id`, `lesson_id`).
+*   **`xapi_logs`**: Detailed activity stream (`verb`: started, watched_50, completed).
+*   **`notes`**: User annotations (`user_id`, `lesson_id`, `content`, `timestamp`).
+
+### Assessment Engine
+*   **`quizzes`**: Settings (`lesson_id`, `time_limit`, `passing_score`, `allowed_attempts`).
+*   **`questions`**: Quiz content (`quiz_id`, `type`, `question_text`, `options` [JSON], `correct_answers` [JSON]).
+*   **`quiz_attempts`**: Results (`user_id`, `quiz_id`, `score`, `is_passed`, `answers` [JSON]).
+*   **`attempt_requests`**: Workflow for resetting attempts (`user_id`, `quiz_id`, `status`).
+
+### Question Bank (Repository)
+*   **`question_banks`**: Folders (`id`, `instructor_id`, `title`).
+*   **`bank_questions`**: Templates (`id`, `bank_id`, `type`, `question_text`, `options`, `correct_answers`).
+
+### Commerce (Simulated)
+*   **`orders`**: Transaction records (`id`, `user_id`, `total`).
+*   **`order_items`**: Line items linked to courses.
+*   **`coupons`**: Discount logic (`code`, `discount_percent`).
+
+---
+
+## 3. FUNCTIONAL MODULES (The Features)
+
+### A. Authentication & Security
+*   **Logic**: `AuthController`, `AuthMiddleware`.
+*   **Features**:
+    *   Secure Login/Register flows with session management.
+    *   Role-Based Access Control (RBAC) protecting Instructor/Admin routes.
+    *   Password Hashing (Bcrypt).
+
+### B. Instructor Dashboard (The Studio)
+*   **Logic**: `InstructorController`, `QuestionBankController`, `UploadController`.
+*   **Features**:
+    *   **Course Builder**: Interactive, hierarchical tool to create Modules and Lessons.
+    *   **Global Analytics**: Dashboard showing Revenue, Total Students, and recent enrollments.
+    *   **Question Bank**: Centralized repository to manage questions and import them into multiple quizzes.
+    *   **Media Handling**: Support for Video uploads, Attachments, and Rich Text (Markdown).
+
+### C. Public Catalog & Commerce
+*   **Logic**: `CourseController`, `CartController`, `CheckoutController`.
+*   **Features**:
+    *   **Full-Width Catalog**: Distraction-free browsing experience (`/courses`).
+    *   **Direct Enrollment**: "Enroll Now" buttons for immediate access.
+    *   **My Learning**: Student dashboard tracking enrolled courses and progress.
+
+### D. Learning Player (The Experience)
+*   **Logic**: `LearnController`, `NoteController`.
+*   **Features**:
+    *   **Immersive Interface**: Dark mode, sidebar navigation, focus-centric layout.
+    *   **Smart Video Player**: YouTube API integration + HTML5 video with auto-progress tracking (Started -> 50% -> Completed).
+    *   **Tabbed Sidebar**: Switch between "Course Content" playlist and "My Notes".
+    *   **Notes System**: Real-time note taking with timestamp links (click to seek video).
+
+### E. Assessment Engine
+*   **Logic**: `QuizController` (Builder), `QuizRunnerController` (Student).
+*   **Features**:
+    *   **Dynamic Builder**: Create Single/Multi-choice, True/False, and Short Text questions.
+    *   **Import Workflow**: Pull questions directly from the Instructor's Question Bank.
+    *   **Anti-Cheat**: Server-side enforced time limits.
+    *   **Review Mode**: Detailed answer breakdown after submission (configurable visibility).
+    *   **Retake Logic**: Limits on attempts with a "Request Reset" workflow handled by instructors.
+
+### F. Certificates & Notebook
+*   **Logic**: `CertificateController`, `NoteController`.
+*   **Features**:
+    *   **Automated Issuance**: System detects course completion and generates a unique `certificate_id`.
+    *   **Certificate Vault**: Dedicated page (`/certificates`) for students to view and download their credentials.
+    *   **Digital Notebook**: lesson-synced annotations with one-click timestamp seeking.
+
+---
+
+## 4. DIRECTORY STRUCTURE
+
+Mapping the logic to the filesystem:
+
+```text
+/app
+  ├── Controllers/
+  │   ├── AuthController.php       (Login/Register logic)
+  │   ├── CourseController.php     (Public catalog & My Learning)
+  │   ├── DashboardController.php  (Main user hub)
+  │   ├── InstructorController.php (Builder, Analytics, Student mgmt)
+  │   ├── LearnController.php      (Course Player & Tracking)
+  │   ├── NoteController.php       (Notes CRUD & List)
+  │   ├── QuestionBankController.php (Bank CRUD)
+  │   ├── QuizController.php       (Quiz Builder & Settings)
+  │   ├── QuizRunnerController.php (Taking the quiz)
+  │   ├── CertificateController.php(Credential management)
+  │   └── ... (Cart, Checkout, Upload, Profile)
+  ├── Core/
+  │   ├── Database.php             (PDO Singleton)
+  │   ├── Router.php               (Regex-based routing)
+  │   └── Model.php                (Base DB abstraction)
+  ├── Models/
+  │   ├── User.php, Course.php, Module.php, Lesson.php
+  │   ├── QuestionBank.php, BankQuestion.php
+  │   └── ... (Order, Coupon, etc.)
+  └── Middleware/
+      └── AuthMiddleware.php       (Security gatekeeper)
+
+/resources/views
+  ├── auth/                        (Login/Register templates)
+  ├── courses/                     (Index, Show, MyLearning)
+  ├── instructor/
+  │   ├── banks/                   (Bank Index/Show)
+  │   ├── analytics.php            (Stats Dashboard)
+  │   ├── quiz_builder.php         (Quiz UI with Import Modal)
+  │   └── ... (Course builder views)
+  ├── layouts/
+  │   ├── app.php                  (Sidebar Layout - Dashboard)
+  │   └── public.php               (Full Width Layout - Catalog)
+  ├── learn/
+  │   ├── player.php               (Main Learning Interface)
+  │   └── ... (Quiz runner views)
+  └── notes/                       (Notebook Dashboard)
+```
+
+---
+
+## 5. ROUTING TABLE
+
+Key endpoints defining the application flow:
+
+**Public & Auth**
+*   `GET /` - Homepage
+*   `GET /courses` - Public Catalog
+*   `GET /login`, `GET /register` - Auth Pages
+
+**Student Area**
+*   `GET /dashboard` - Main Hub
+*   `GET /my-courses` - Enrolled Library
+*   `GET /learn/{course_id}/lesson/{lesson_id}` - Course Player
+*   `GET /notes` - Notebook
+*   `GET /certificates` - Earned Credentials
+*   `GET /certificate/{id}` - Digital Certificate View
+*   `POST /learn/quiz/submit/{quiz_id}` - Submit Exam
+
+**Instructor Area**
+*   `GET /instructor/analytics` - Global Stats
+*   `GET /instructor/course/new` - Create Course
+*   `GET /instructor/course/{id}/edit` - Course Curriculum Builder
+*   `GET /instructor/question-banks` - Question Bank Manager
+*   `GET /instructor/lesson/{id}/quiz` - Quiz Builder
+*   `POST /instructor/quiz/import` - Import Questions from Bank
+
+---
+
+## 6. CURRENT STATUS
+
+**System Status:** **Operational Prototype (v1.4)**
+
+*   **Database**: Migrated and seeded with core tables, including specialized tables for Notes and Question Banks.
+*   **UI/UX**: Consistent "Dark Bento" theme applied across all modules.
+*   **Critical Paths**:
+    *   Instructor can create courses, upload video, build quizzes, manage a question bank, and track revenue.
+    *   Student can enroll, watch content, take notes, complete quizzes, and earn certificates.
+    *   Tracking system records progress and interactions in real-time.
+
+**Ready for Deployment/Next Steps:**
+*   Payment Gateway Integration (Stripe/PayPal).
+*   Live Streaming Support.
+*   Advanced RBAC (Permission management UI).

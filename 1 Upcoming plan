@@ -1,0 +1,99 @@
+1 Upcoming plan - LMS development roadmap
+
+Overview
+- Goal: stabilize core learning flows, harden security/data integrity, improve architecture, and expand features with a clean, scalable file structure.
+- Approach: phased delivery with clear prompts for Gemini CLI execution.
+
+Phase 1 - Stabilize core flows and security
+Objectives
+- Fix authorization/enrollment gaps, add CSRF protection, and ensure data integrity for learning/quiz/progress flows.
+- Add tests for critical flows.
+
+Gemini CLI prompt
+"""
+You are working in the LMS repo. Prioritize security and correctness. Implement: (1) enrollment verification for /learn/track and all quiz endpoints; (2) instructor ownership checks for approving attempt requests; (3) course state checks for enroll/checkout; (4) CSRF protection for all POST routes; (5) add tests for enrollment gating, quiz access control, and request approval scoping. Keep changes minimal and well-scoped. Provide a brief summary and test results.
+"""
+
+Phase 2 - Architecture and file organization refactor
+Objectives
+- Introduce a modular structure to separate HTTP layer, domain logic, and infrastructure.
+- Reduce controller bloat and standardize middleware usage.
+
+Proposed folder organization
+- app/
+  - Http/
+    - Controllers/
+    - Middleware/
+    - Requests/ (form validation)
+    - Responses/ (view models / API serializers)
+  - Domain/
+    - Courses/
+    - Lessons/
+    - Quizzes/
+    - Users/
+    - Orders/
+    - Notifications/
+  - Services/
+  - Repositories/
+  - Policies/ (authorization checks)
+  - Core/ (router, base controller, database)
+- resources/
+  - views/
+  - assets/
+- database/
+  - migrations/
+  - seeders/
+
+Gemini CLI prompt
+"""
+Refactor the LMS repo to the proposed folder organization without changing external behavior. Introduce thin controllers, move business logic into Domain services or dedicated classes, and add policies for authorization. Update namespaces/autoloading and adjust requires/configs accordingly. Keep a migration mapping document in the repo that lists old paths to new paths.
+"""
+
+Phase 3 - Robust content authoring and media pipeline
+Objectives
+- Improve lesson authoring UX, add versioning, and harden media handling.
+- Implement background processing for video merge/transcode.
+
+Gemini CLI prompt
+"""
+Extend the LMS to support lesson versioning and a safer media pipeline. Add a lesson_versions table and implement version history in instructor editor. Replace the synchronous chunk merge with a queued job (or background worker) and store upload metadata. Keep UI changes minimal but functional.
+"""
+
+Phase 4 - Learning experience enhancements
+Objectives
+- Add learning paths, prerequisites, and adaptive recommendations.
+- Expand analytics for student progress and instructor insights.
+
+Gemini CLI prompt
+"""
+Implement learning paths with prerequisites and progress gating. Add basic recommendation logic (e.g., based on completed courses/tags). Extend dashboards with new metrics and ensure queries are efficient. Add tests for path gating and recommendation eligibility.
+"""
+
+Phase 5 - Commerce and subscription expansion
+Objectives
+- Add coupons, bundles, subscriptions, and invoice history.
+- Strengthen order lifecycle states.
+
+Gemini CLI prompt
+"""
+Enhance commerce by adding subscription plans, course bundles, and coupon constraints (expiry, usage limits). Expand order states to include pending/failed/refunded. Update checkout flow and add tests for discount application and subscription enrollment.
+"""
+
+Phase 6 - Scale, performance, and operations
+Objectives
+- Introduce caching, logging, monitoring hooks, and DB indexing.
+- Prepare for horizontal scaling.
+
+Gemini CLI prompt
+"""
+Add performance and ops improvements: query indexing for high-traffic tables, caching for course/lesson metadata, structured logging, and basic health/metrics endpoints. Document deployment and operational runbooks.
+"""
+
+Phase 7 - QA, documentation, and release hardening
+Objectives
+- Comprehensive test suite, updated docs, and release checklist.
+
+Gemini CLI prompt
+"""
+Expand the test suite with integration and end-to-end tests for all core flows. Update README and add a release checklist. Ensure developer setup is documented and reliable.
+"""

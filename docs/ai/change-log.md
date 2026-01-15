@@ -1,0 +1,110 @@
+# AI Change Log
+
+- 2026-01-15 16:15 (Africa/Cairo)
+    - **Goal**: Implement advanced course builder features, centralized authorization, and lesson library.
+    - **Files Changed**:
+        - `app/Core/Authorization.php`: Created centralized authorization class.
+        - `app/Controllers/InstructorController.php`: Added `reorderModules`, `reorderLessons`, `updateModule`, `lessonLibrary`, `createLibraryLesson`, `importLesson`, `addToCourse`, `enrollStudent`. Centralized instructor checks.
+        - `app/Controllers/LearnController.php`: Secured `show` and `track` with enrollment validation.
+        - `app/Controllers/QuizRunnerController.php`: Secured quiz entry and attempts.
+        - `app/Controllers/CourseController.php`: Added enrollment validation for status and price.
+        - `app/Controllers/CheckoutController.php`: Added publication check before purchase.
+        - `app/Services/QuizService.php`: Integrated enrollment checks in service layer.
+        - `app/Services/CourseProgressService.php`: Respect course certification settings.
+        - `resources/views/instructor/course_builder.php`: Redesigned for Edit Mode, Drag-and-Drop, and Module Renaming.
+        - `resources/views/instructor/edit_course.php`: Full redesign with sidebar and interactive toggles.
+        - `resources/views/instructor/lessons/index.php`: Created lesson library with search/filters.
+        - `resources/views/instructor/course_students.php`: Added manual enrollment form.
+        - `routes/web.php`: Added routes for new features.
+        - `database/migrate_jan15.php`: Migrated lessons and courses tables.
+    - **Rationale**: Improve instructor productivity via Batch Save and Lesson reuse; secure the platform against forged progress.
+    - **Security**: Centralized auth ensures consistent permission enforcement.
+    - **DB Notes**: `lessons` now has `instructor_id` and nullable `module_id`. `courses` has cert toggles.
+    - **Follow-ups**: Implement manual certificate approval UI for instructors.
+
+- 2026-01-15 16:40 (Africa/Cairo)
+    - **Goal**: Fix null-guard gaps and missing exit statements in InstructorController.
+    - **Files Changed**:
+        - `app/Controllers/InstructorController.php`: Added existence checks for courses and students, and ensured script termination after redirects.
+    - **Rationale**: Prevent Uncaught Error exceptions when dereferencing null objects and ensure logic doesn't continue after a redirect.
+    - **Security**: Hardened input handling for course/lesson IDs.
+    - **Tests run + results**: Manual verification of redirect paths.
+
+- 2026-01-15 19:21 (Africa/Cairo)
+    - **Goal**: Improve data integrity for enrollments and progress tracking.
+    - **Files Changed**:
+        - `database/fix_completed_lessons_fk.php`: Recreated `completed_lessons` table to fix broken Foreign Key referencing `lessons_old`.
+        - `app/Services/CourseProgressService.php`: Added explicit enrollment verification in `updateProgress`.
+    - **Rationale**: Ensure `completed_lessons` maintains referential integrity with the `lessons` table and prevent progress calculation for non-enrolled users.
+    - **DB Notes**: `completed_lessons` now correctly references `lessons(id)` with `ON DELETE CASCADE`.
+    - **Security**: Service layer now explicitly guards against phantom progress updates.
+
+- 2026-01-15 19:34 (Africa/Cairo)
+    - **Goal**: Implement CSRF protection and Rate Limiting.
+    - **Files Changed**:
+        - `app/Core/Csrf.php`: Created CSRF token generator and verifier.
+        - `app/Core/RateLimiter.php`: Created session-based rate limiter.
+        - `app/Core/Router.php`: Enforced CSRF verification for all POST requests.
+        - `app/Core/Controller.php`: Auto-injected `csrf_token` into all views.
+        - `app/Controllers/QuizRunnerController.php`: Added rate limiting to `saveAnswer`.
+        - `app/Controllers/UploadController.php`: Added rate limiting to `uploadChunk`.
+        - `resources/views/**/*`: Updated all forms (Login, Register, Profile, Instructor, etc.) to include CSRF hidden input.
+        - `resources/views/learn/quiz_runner.php`: Updated AJAX headers to send CSRF token.
+    - **Rationale**: Prevent Cross-Site Request Forgery attacks and mitigate DoS risks on high-frequency endpoints.
+    - **Security**: All state-changing actions now require a valid token. Quiz saving and uploads are throttled.
+
+- 2026-01-15 19:52 (Africa/Cairo)
+    - **Goal**: Implement Content Flow System (Free vs. Linear).
+    - **Files Changed**:
+        - `database/migrate_content_flow.php`: Added `content_flow` column to `courses`.
+        - `resources/views/instructor/edit_course.php`: Added Content Flow selection UI.
+        - `app/Controllers/InstructorController.php`: Updated update method to handle `content_flow`.
+        - `app/Services/CourseProgressService.php`: (Pending implementation) Logic for locking.
+        - `app/Controllers/LearnController.php`: (Pending implementation) Enforce locking logic.
+    - **Rationale**: Allow instructors to control lesson progression (sequential vs flexible).
+    - **DB Notes**: `courses.content_flow` added (default 'free').
+
+- 2026-01-15 22:01 (Africa/Cairo)
+    - **Goal**: Fix root cause of `/learn/track` failure (`xapi_logs` referencing old table).
+    - **Files Changed**:
+        - `database/fix_xapi_logs_fk.php`: Recreated `xapi_logs` table to fix broken Foreign Key referencing `lessons_old`.
+    - **Rationale**: Ensure data integrity and foreign key constraints point to the active `lessons` table.
+    - **DB Notes**: `xapi_logs` now correctly references `lessons(id)` with `ON DELETE CASCADE`.
+    - **Tests run + results**: Verified FK list via SQLite CLI. Track endpoint now redirects to login (expected behavior for unauthenticated CURL test) instead of 500 error.
+
+- 2026-01-15 19:40 (Africa/Cairo)
+    - **Goal**: Finalize security audit (Rate Limiting, CSRF Audit, Access Control).
+    - **Files Changed**:
+        - `app/Controllers/QuizRunnerController.php`: Added rate limit to `start` method.
+        - `app/Controllers/CartController.php`: Added enrollment/status validation to `add` method.
+        - `app/Controllers/NoteController.php`: Added enrollment/lesson validation to `store` method.
+        - `app/Controllers/QuizController.php`: Added centralized authorization checks to all methods.
+    - **Rationale**: Prevent spamming of quiz attempts, ensure data integrity in cart/notes, and enforce strict ownership for quiz management.
+    - **Security**: Closed gaps where users could interact with resources they don't own or shouldn't access.
+
+- 2026-01-15 20:24 (Africa/Cairo)
+    - **Goal**: Ensure CSRF headers are automatically attached for JS POST requests across layouts and standalone views.
+    - **Files Changed**:
+        - `resources/views/layouts/app.php`: Added global CSRF meta and fetch wrapper to inject `X-CSRF-TOKEN`. (By Codex)
+        - `resources/views/layouts/admin.php`: Added global CSRF meta and fetch wrapper to inject `X-CSRF-TOKEN`. (By Codex)
+        - `resources/views/layouts/public.php`: Added global CSRF meta and fetch wrapper to inject `X-CSRF-TOKEN`. (By Codex)
+        - `resources/views/onboarding/index.php`: Added CSRF meta and fetch wrapper for standalone page. (By Codex)
+        - `resources/views/learn/player.php`: Added CSRF meta and fetch wrapper for standalone page. (By Codex)
+        - `public/assets/js/uploader.js`: Added CSRF header for chunked upload XHR. (By Codex)
+    - **Rationale**: Prevent CSRF failures in JS-driven POST requests (e.g., lesson tracking, notes, admin actions, uploads).
+    - **Security**: Aligns fetch/XHR requests with Router CSRF enforcement.
+
+- 2026-01-15 22:25 (Africa/Cairo)
+    - **Goal**: Persist completion button state on lesson reload.
+    - **Files Changed**:
+        - `resources/views/learn/player.php`: Rendered completed state for current lesson button (disabled + label change). (By Codex)
+    - **Rationale**: Ensure UI reflects completion status after reload instead of resetting to "Mark as Complete".
+
+- 2026-01-16 10:00 (Africa/Cairo)
+    - **Goal**: Update Homepage content for V1.0 Beta release and Horizon roadmap.
+    - **Files Changed**:
+        - `resources/lang/en/messages.php`: Updated hero badge, live capabilities, and future roadmap items.
+    - **Rationale**: Align public-facing messaging with the latest features (Builder, Security, Adaptive Flow) and upcoming roadmap (Manual Certs, Strict Locking).
+    - **Security**: N/A
+    - **DB Notes**: N/A
+    - **Tests run + results**: Manual verification of homepage text rendering.
