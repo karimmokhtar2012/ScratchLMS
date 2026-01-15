@@ -56,9 +56,9 @@
         @font-face { font-family: 'RB'; src: url('/assets/fonts/RB LIGHT.TTF') format('truetype'); font-weight: 300; font-style: normal; }
         
         body { background-color: #09090b; color: #e4e4e7; }
-        body.page-transition { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
-        body.page-ready { opacity: 1; transform: translateY(0); }
-        body.page-exit { opacity: 0; transform: translateY(8px); }
+        body.page-transition > :not(#page-transition) { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
+        body.page-ready > :not(#page-transition) { opacity: 1; transform: translateY(0); }
+        body.page-exit > :not(#page-transition) { opacity: 0; transform: translateY(8px); }
         .page-transition-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(80% 80% at 50% 40%, rgba(88, 28, 135, 0.25), rgba(9, 9, 11, 0.95)); opacity: 0; pointer-events: none; transition: opacity 240ms ease; z-index: 9999; }
         .page-transition-overlay.is-active { opacity: 1; pointer-events: auto; }
         .page-loader { position: relative; width: 64px; height: 64px; }
@@ -87,9 +87,12 @@
                 document.body.classList.add('page-exit');
             };
             document.addEventListener('DOMContentLoaded', () => {
+                document.body.classList.remove('page-exit');
                 document.body.classList.add('page-ready');
+                if (overlay) overlay.classList.remove('is-active');
             });
             window.addEventListener('pageshow', () => {
+                document.body.classList.remove('page-exit');
                 document.body.classList.add('page-ready');
                 if (overlay) overlay.classList.remove('is-active');
             });
