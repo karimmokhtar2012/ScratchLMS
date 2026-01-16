@@ -141,3 +141,14 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
     - **Follow-ups**: Gemini to author their own report at end of session.
+
+- 2026-01-16 03:50 (Africa/Cairo)
+    - **Goal**: Add repository contributor guide and consolidate Codex rules into AGENTS.md.
+    - **Files Changed**:
+        - `AGENTS.md`: Created repository guidelines; merged Codex workflow rules.
+        - `docs/reports/daily/2026-01-16-codex.md`: Updated daily report for this session.
+    - **Rationale**: Centralize contributor guidance and agent rules.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+    - **Follow-ups**: Commit and push changes; Gemini to submit their report.
