@@ -447,7 +447,7 @@ ob_start();
                                         <p class="text-white text-sm font-bold truncate"><?= htmlspecialchars($notif['student_name']) ?> <span class="text-zinc-500 font-normal">requested a retake</span></p>
                                         <p class="text-[10px] text-zinc-500 mt-1"><?= htmlspecialchars($notif['quiz_title']) ?></p>
                                     </div>
-                                    <a href="/instructor/course/<?= $notif['course_id'] ?>/student/<?= $notif['user_id'] ?>" class="px-4 py-2 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white text-xs font-bold rounded-lg transition border border-amber-500/30 whitespace-nowrap">
+                                    <a href="/instructor/requests#attempts" class="px-4 py-2 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white text-xs font-bold rounded-lg transition border border-amber-500/30 whitespace-nowrap">
                                         Handle
                                     </a>
                                 </div>

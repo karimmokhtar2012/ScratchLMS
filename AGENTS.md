@@ -42,9 +42,11 @@
   - Bugs, broken flows, data validation, security: Codex.
   - UI screens, layout, animations: Gemini.
   - Mixed tasks: Gemini designs first, Codex wires logic and validates.
-- Handoff to Gemini: summary of behavior changes and any UI points needing polish.
+- Handoff to Gemini: summary of behavior changes, files changed, tests run, and any UI points needing polish.
+- GitHub ownership: Gemini is the only agent who commits/pushes and comments on GitHub issues/PRs. Codex must not commit/push.
+- Issue comment attribution: When Gemini updates GitHub issues, include a short line stating who handled it (e.g., "Handled by Gemini" or "Handled by Codex; posted by Gemini").
 - Change log: append to `docs/ai/change-log.md` after completing changes (timestamp, goal, files, rationale, security, DB notes, tests, follow-ups).
 - Update `docs/ai/context.md` when flows/paths/conventions change.
 - ADRs: add/update in `docs/adr/` for architectural decisions.
-- End-of-session: submit daily report in `docs/reports/daily/` using `docs/daily-report-template.md` and push changes to GitHub.
+- End-of-session: Codex submits daily report in `docs/reports/daily/` using `docs/daily-report-template.md`; Gemini handles the push.
 - See `docs/workflow.md` and `GEMINI.md` for the full collaboration rules.

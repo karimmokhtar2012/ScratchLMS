@@ -116,6 +116,22 @@
 
             <!-- Right Column: Stats & History -->
             <div class="flex flex-col gap-6">
+        <?php if (isset($_SESSION['flash_success'])): ?>
+            <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-6 py-4 rounded-xl mb-4 text-center font-bold text-sm relative overflow-hidden">
+                <div class="absolute inset-0 pointer-events-none opacity-20"
+                     style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
+                <i class="fa-solid fa-circle-check mr-2"></i> <?= $_SESSION['flash_success'] ?>
+                <?php unset($_SESSION['flash_success']); ?>
+            </div>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['flash_info'])): ?>
+            <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 px-6 py-4 rounded-xl mb-4 text-center font-bold text-sm relative overflow-hidden">
+                <div class="absolute inset-0 pointer-events-none opacity-20"
+                     style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
+                <i class="fa-solid fa-circle-info mr-2"></i> <?= $_SESSION['flash_info'] ?>
+                <?php unset($_SESSION['flash_info']); ?>
+            </div>
+        <?php endif; ?>
         <?php if (isset($_SESSION['flash_error'])): ?>
             <div class="bg-gradient-to-r from-purple-500/20 via-fuchsia-500/20 to-indigo-500/20 border border-purple-400/60 text-purple-100 px-6 py-4 rounded-xl mb-4 text-center font-bold text-sm relative overflow-hidden">
                 <div class="absolute inset-0 pointer-events-none opacity-20"

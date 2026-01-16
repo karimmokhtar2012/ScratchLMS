@@ -202,3 +202,44 @@
     - **Security**: Instructor ownership checks enforced before issuing certificates.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-16 20:47 (Africa/Cairo)
+    - **Goal**: Make Gemini the sole agent for commits/pushes and require issue comment attribution.
+    - **Files Changed**:
+        - `AGENTS.md`: Clarified handoff details, Gemini-only GitHub actions, and attribution rule.
+        - `CODEX.md`: Removed Codex push requirement; added handoff-only rule.
+        - `GEMINI.md`: Added attribution rule and Gemini-only Git ownership.
+    - **Rationale**: Align workflow with Gemini's GitHub access and improve transparency on issue handling.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-16 21:26 (Africa/Cairo)
+    - **Goal**: Stabilize page transitions, unify instructor pending approvals, and improve onboarding/quiz request UX.
+    - **Files Changed**:
+        - `resources/views/layouts/app.php`: Added submit transition handling and readiness fallback.
+        - `resources/views/layouts/admin.php`: Added submit transition handling, readiness fallback, and removed ready-state transform.
+        - `resources/views/layouts/public.php`: Added submit transition handling, readiness fallback, and removed ready-state transform.
+        - `resources/views/learn/player.php`: Added submit transition handling, readiness fallback, and removed ready-state transform.
+        - `routes/web.php`: Added instructor pending requests route.
+        - `app/Http/Controllers/InstructorController.php`: Added pending requests view, unified certificate approvals, and return-safe redirects for approvals.
+        - `resources/views/instructor/pending_requests.php`: New unified approvals UI.
+        - `resources/views/layouts/app.php`: Updated sidebar links to pending requests.
+        - `resources/views/dashboard.php`: Updated instructor notification action link.
+        - `app/Http/Controllers/QuizRunnerController.php`: Validated retake requests and updated notification link.
+        - `resources/views/learn/quiz_intro.php`: Added flash success/info messaging.
+        - `resources/views/onboarding/index.php`: Added inline validation messaging for DOB/country/phone inputs.
+        - `docs/ai/context.md`: Noted unified instructor approvals route.
+    - **Rationale**: Reduce blank/hidden states on navigation, make approvals discoverable, and provide clearer UX feedback.
+    - **Security**: Enrollment check added to quiz retake request flow.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`, `php -l app/Http/Controllers/QuizRunnerController.php`.
+
+- 2026-01-16 21:38 (Africa/Cairo)
+    - **Goal**: Fix certificate view path resolution.
+    - **Files Changed**:
+        - `app/Http/Controllers/CertificateController.php`: Corrected view include path for certificate display.
+    - **Rationale**: Prevent missing file error when students open certificate view.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.

@@ -57,6 +57,6 @@ class CertificateController extends Controller
         }
 
         // Layout: none (Full page print view)
-        require_once __DIR__ . '/../../resources/views/certificates/view.php';
+        require_once __DIR__ . '/../../../resources/views/certificates/view.php';
     }
 }

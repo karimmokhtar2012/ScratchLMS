@@ -308,12 +308,21 @@ class InstructorController extends Controller
 
         $courseId = $courseRes[0]['course_id'];
         $quizTitle = $courseRes[0]['lesson_title'] ?? 'Quiz';
+        $returnPath = $_POST['return'] ?? '';
+        $defaultReturn = "/instructor/course/$courseId/student/" . $request['user_id'];
+        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : $defaultReturn;
 
         // Security: Ensure Instructor Owns Course
         try {
             Authorization::requireInstructor($_SESSION['user_id'], (int)$courseId);
         } catch (\Exception $e) {
             header('Location: /dashboard');
+            exit;
+        }
+
+        if (($request['status'] ?? 'pending') !== 'pending') {
+            $_SESSION['flash_info'] = 'This request has already been processed.';
+            header('Location: ' . $returnPath);
             exit;
         }
 
@@ -349,9 +358,11 @@ class InstructorController extends Controller
             ]);
 
             $_SESSION['flash_success'] = 'Request rejected.';
+        } else {
+            $_SESSION['flash_error'] = 'Invalid request action.';
         }
 
-        header("Location: /instructor/course/$courseId/student/" . $request['user_id']);
+        header('Location: ' . $returnPath);
         exit;
     }
 
@@ -707,7 +718,7 @@ class InstructorController extends Controller
         exit;
     }
 
-    public function certificateApprovals(): void
+    public function pendingRequests(): void
     {
         $userId = $_SESSION['user_id'] ?? null;
         if (!$userId) {
@@ -716,42 +727,72 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
-        $sql = "SELECT e.id as enrollment_id,
-                       e.progress_percent,
-                       e.is_completed,
-                       e.created_at as enrolled_at,
-                       u.id as user_id,
-                       u.name,
-                       u.email,
-                       c.id as course_id,
-                       c.title as course_title
-                FROM enrollments e
-                JOIN users u ON e.user_id = u.id
-                JOIN courses c ON e.course_id = c.id
-                WHERE c.instructor_id = :uid
-                  AND c.has_certificate = 1
-                  AND c.certificate_auto_issue = 0
-                  AND e.is_completed = 1
-                  AND e.certificate_id IS NULL
-                ORDER BY e.created_at DESC";
-        $approvals = $db->fetchAll($sql, [':uid' => $userId]);
+        $sqlAttempts = "SELECT ar.id,
+                               ar.created_at,
+                               u.id as user_id,
+                               u.name,
+                               u.email,
+                               c.id as course_id,
+                               c.title as course_title,
+                               l.title as quiz_title
+                        FROM attempt_requests ar
+                        JOIN users u ON ar.user_id = u.id
+                        JOIN quizzes q ON ar.quiz_id = q.id
+                        JOIN lessons l ON q.lesson_id = l.id
+                        JOIN modules m ON l.module_id = m.id
+                        JOIN courses c ON m.course_id = c.id
+                        WHERE c.instructor_id = :uid
+                          AND ar.status = 'pending'
+                        ORDER BY ar.created_at DESC";
+        $attemptRequests = $db->fetchAll($sqlAttempts, [':uid' => $userId]);
 
-        $this->view('instructor.certificate_approvals', ['approvals' => $approvals]);
+        $sqlCerts = "SELECT e.id as enrollment_id,
+                            e.progress_percent,
+                            e.is_completed,
+                            e.created_at as enrolled_at,
+                            u.id as user_id,
+                            u.name,
+                            u.email,
+                            c.id as course_id,
+                            c.title as course_title
+                     FROM enrollments e
+                     JOIN users u ON e.user_id = u.id
+                     JOIN courses c ON e.course_id = c.id
+                     WHERE c.instructor_id = :uid
+                       AND c.has_certificate = 1
+                       AND c.certificate_auto_issue = 0
+                       AND e.is_completed = 1
+                       AND e.certificate_id IS NULL
+                     ORDER BY e.created_at DESC";
+        $certificateApprovals = $db->fetchAll($sqlCerts, [':uid' => $userId]);
+
+        $this->view('instructor.pending_requests', [
+            'attemptRequests' => $attemptRequests,
+            'certificateApprovals' => $certificateApprovals
+        ]);
+    }
+
+    public function certificateApprovals(): void
+    {
+        header('Location: /instructor/requests#certificates');
+        exit;
     }
 
     public function issueCertificate(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /instructor/certificates/approvals');
+            header('Location: /instructor/requests#certificates');
             exit;
         }
 
         $enrollmentId = (int) ($_POST['enrollment_id'] ?? 0);
         $userId = $_SESSION['user_id'] ?? null;
+        $returnPath = $_POST['return'] ?? '';
+        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : '/instructor/requests#certificates';
 
         if (!$enrollmentId || !$userId) {
             $_SESSION['flash_error'] = 'Invalid certificate approval request.';
-            header('Location: /instructor/certificates/approvals');
+            header('Location: ' . $returnPath);
             exit;
         }
 
@@ -771,19 +812,19 @@ class InstructorController extends Controller
 
         if (!$row) {
             $_SESSION['flash_error'] = 'Enrollment not found or access denied.';
-            header('Location: /instructor/certificates/approvals');
+            header('Location: ' . $returnPath);
             exit;
         }
 
         if (!empty($row['certificate_id'])) {
             $_SESSION['flash_info'] = 'Certificate already issued for this enrollment.';
-            header('Location: /instructor/certificates/approvals');
+            header('Location: ' . $returnPath);
             exit;
         }
 
         if (!$row['is_completed'] || !$row['has_certificate'] || $row['certificate_auto_issue']) {
             $_SESSION['flash_error'] = 'Certificate cannot be issued for this enrollment.';
-            header('Location: /instructor/certificates/approvals');
+            header('Location: ' . $returnPath);
             exit;
         }
 
@@ -794,7 +835,7 @@ class InstructorController extends Controller
         ]);
 
         $_SESSION['flash_success'] = 'Certificate issued successfully.';
-        header('Location: /instructor/certificates/approvals');
+        header('Location: ' . $returnPath);
         exit;
     }
 

@@ -94,6 +94,58 @@ class QuizRunnerController extends Controller
         $userId = $_SESSION['user_id'];
         $db = \App\Core\Database::getInstance();
 
+        if (!$quizId) {
+            $_SESSION['flash_error'] = 'Invalid quiz request.';
+            header('Location: /dashboard');
+            exit;
+        }
+
+        $sqlQuiz = "SELECT q.allowed_attempts,
+                           c.id as course_id,
+                           c.title as course_title,
+                           c.instructor_id
+                    FROM quizzes q
+                    JOIN lessons l ON q.lesson_id = l.id
+                    JOIN modules m ON l.module_id = m.id
+                    JOIN courses c ON m.course_id = c.id
+                    WHERE q.id = :qid";
+        $quizInfo = $db->fetchAll($sqlQuiz, [':qid' => $quizId])[0] ?? null;
+
+        if (!$quizInfo) {
+            $_SESSION['flash_error'] = 'Quiz not found.';
+            header('Location: /dashboard');
+            exit;
+        }
+
+        try {
+            \App\Policies\Authorization::requireEnrollment($userId, (int) $quizInfo['course_id']);
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = 'You are not enrolled in this course.';
+            header('Location: /dashboard');
+            exit;
+        }
+
+        $attempts = $db->fetchAll("SELECT completed_at FROM quiz_attempts WHERE quiz_id = :qid AND user_id = :uid", [
+            ':qid' => $quizId,
+            ':uid' => $userId
+        ]);
+        $attemptsUsed = count($attempts);
+        $hasIncomplete = false;
+        foreach ($attempts as $attempt) {
+            if (empty($attempt['completed_at'])) {
+                $hasIncomplete = true;
+                break;
+            }
+        }
+        $maxAttempts = (int) ($quizInfo['allowed_attempts'] ?? 0);
+        $canStart = $hasIncomplete || $maxAttempts === 0 || $attemptsUsed < $maxAttempts;
+
+        if ($canStart) {
+            $_SESSION['flash_info'] = 'You still have attempts available for this quiz.';
+            header('Location: /learn/quiz/intro/' . $quizId);
+            exit;
+        }
+
         // Prevent duplicate
         $exists = $db->fetchAll("SELECT id FROM attempt_requests WHERE quiz_id = :qid AND user_id = :uid AND status = 'pending'", [
             ':qid' => $quizId, 
@@ -108,24 +160,18 @@ class QuizRunnerController extends Controller
             $_SESSION['flash_success'] = 'Reset request sent to instructor.';
 
             // Notify Instructor
-            $sqlInfo = "SELECT c.instructor_id, c.title as course_title, l.title as lesson_title 
-                        FROM quizzes q 
-                        JOIN lessons l ON q.lesson_id = l.id 
-                        JOIN modules m ON l.module_id = m.id 
-                        JOIN courses c ON m.course_id = c.id 
-                        WHERE q.id = :qid";
-            $info = $db->fetchAll($sqlInfo, [':qid' => $quizId])[0] ?? null;
-
-            if ($info) {
+            if ($quizInfo) {
                 $studentName = $_SESSION['user_name'] ?? 'Student';
                 (new \App\Domain\Notifications\Notification())->create([
-                    'user_id' => $info['instructor_id'],
+                    'user_id' => $quizInfo['instructor_id'],
                     'type' => 'quiz_request',
                     'title' => 'Quiz Reset Request',
-                    'message' => "$studentName requested a reset for quiz in '{$info['course_title']}'",
-                    'link' => '/dashboard' // or requests page
+                    'message' => "$studentName requested a reset for quiz in '{$quizInfo['course_title']}'",
+                    'link' => '/instructor/requests#attempts'
                 ]);
             }
+        } else {
+            $_SESSION['flash_info'] = 'You already have a pending reset request.';
         }
 
         header('Location: /learn/quiz/intro/' . $quizId);

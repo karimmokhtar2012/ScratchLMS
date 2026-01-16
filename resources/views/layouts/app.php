@@ -88,16 +88,16 @@
                 if (overlay) overlay.classList.add('is-active');
                 document.body.classList.add('page-exit');
             };
-            document.addEventListener('DOMContentLoaded', () => {
+            const markReady = () => {
                 document.body.classList.remove('page-exit');
                 document.body.classList.add('page-ready');
                 if (overlay) overlay.classList.remove('is-active');
-            });
+            };
+            document.addEventListener('DOMContentLoaded', markReady);
             window.addEventListener('pageshow', () => {
-                document.body.classList.remove('page-exit');
-                document.body.classList.add('page-ready');
-                if (overlay) overlay.classList.remove('is-active');
+                markReady();
             });
+            setTimeout(markReady, 1200);
             document.addEventListener('click', (e) => {
                 const link = e.target.closest('a');
                 if (!link) return;
@@ -108,6 +108,11 @@
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 const url = new URL(href, window.location.href);
                 if (url.origin !== window.location.origin) return;
+                showOverlay();
+            }, true);
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (!form || form.dataset.noTransition !== undefined) return;
                 showOverlay();
             }, true);
         })();
@@ -285,7 +290,7 @@
                         </div>
                         <p class="px-4 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2" x-show="!sidebarCollapsed">Bending Requests</p>
                         <div class="space-y-1">
-                            <a href="/instructor/certificates/approvals" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/requests#attempts" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
                                     <i class="fa-solid fa-clipboard-check w-5 text-center group-hover:text-amber-400 transition"></i>
@@ -295,7 +300,7 @@
                                 <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
                                       :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingAttemptCount ?></span>
                             </a>
-                            <a href="/dashboard" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/requests#certificates" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
                                     <i class="fa-solid fa-award w-5 text-center group-hover:text-amber-400 transition"></i>

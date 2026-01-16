@@ -19,6 +19,6 @@ If the change includes an architectural decision, add/update an ADR under docs/a
 End-of-session report:
 - Codex must submit a daily professional report at the end of each session detailing accomplishments and problems resolved.
 - Use docs/daily-report-template.md and include mutual monitoring notes.
-- At end of session, Codex must push changes to GitHub.
+- Codex must not commit or push. Provide a handoff summary to Gemini for commit/push and GitHub updates.
 
 Keep entries concise and actionable.
