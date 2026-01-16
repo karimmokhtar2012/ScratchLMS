@@ -12,6 +12,7 @@ Hard rule (GitHub issues):
 
 End-of-session report:
 - Gemini must submit a daily professional report at the end of each session detailing accomplishments and problems resolved.
+- Save report to docs/reports/YYYY-MM-DD-Gemini.md.
 - Use docs/daily-report-template.md and include mutual monitoring notes.
 - At end of session, Gemini must push changes to GitHub.
 
