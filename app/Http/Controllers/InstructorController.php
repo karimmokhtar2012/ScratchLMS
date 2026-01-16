@@ -816,7 +816,8 @@ class InstructorController extends Controller
                               qz.id as quiz_id,
                               l.title as lesson_title,
                               qu.question_text,
-                              qu.points
+                              qu.points,
+                              qa.answers as attempt_answers
                        FROM grading_queue g
                        JOIN quiz_attempts qa ON g.attempt_id = qa.id
                        JOIN questions qu ON g.question_id = qu.id
@@ -829,6 +830,11 @@ class InstructorController extends Controller
                          AND g.status IN ('pending_review','ai_scored')
                        ORDER BY g.created_at DESC";
         $gradingQueue = $db->fetchAll($sqlGrading, [':uid' => $userId]);
+
+        foreach ($gradingQueue as &$item) {
+            $answers = json_decode($item['attempt_answers'] ?? '{}', true);
+            $item['submission_text'] = $answers[$item['question_id']] ?? 'No submission found';
+        }
 
         $this->view('instructor.pending_requests', [
             'attemptRequests' => $attemptRequests,
@@ -922,7 +928,7 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
-        $row = $db->fetchAll("SELECT g.id, g.attempt_id, g.question_id, c.id as course_id, qu.points
+        $row = $db->fetchAll("SELECT g.id, g.attempt_id, g.question_id, c.id as course_id, l.id as lesson_id, qu.points, qa.user_id as student_id
                               FROM grading_queue g
                               JOIN quiz_attempts qa ON g.attempt_id = qa.id
                               JOIN quizzes qz ON qa.quiz_id = qz.id
@@ -949,7 +955,26 @@ class InstructorController extends Controller
         ]);
 
         $quizService = new \App\Services\QuizService();
-        $quizService->recalculateAttemptScore((int) $row['attempt_id']);
+        $result = $quizService->recalculateAttemptScore((int) $row['attempt_id']);
+
+        if (($result['grading_status'] ?? '') === 'final' && !empty($result['is_passed'])) {
+            $lessonId = (int) $row['lesson_id'];
+            $studentId = (int) $row['student_id'];
+            
+            $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
+                ':uid' => $studentId,
+                ':lid' => $lessonId
+            ]);
+
+            $progressService = new \App\Services\CourseProgressService();
+            $progressService->updateProgress($studentId, (int) $row['course_id']);
+            
+            $db->query("INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, 'completed', :meta)", [
+                ':uid' => $studentId,
+                ':lid' => $lessonId,
+                ':meta' => json_encode(['score' => $result['score'], 'grader' => 'instructor'])
+            ]);
+        }
 
         $_SESSION['flash_success'] = 'Grade saved.';
         header('Location: /instructor/requests#grading');

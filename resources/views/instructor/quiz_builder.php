@@ -362,11 +362,9 @@
                             </button>
                             <div>
                                 <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Grading Match</label>
-                                <select name="grading_policy" :disabled="type !== 'matching'" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3">
-                                    <option value="both" selected>Strict + Fuzzy</option>
-                                    <option value="strict">Strict Only</option>
-                                    <option value="fuzzy">Fuzzy Only</option>
-                                </select>
+                                <div class="w-full bg-zinc-900 border border-zinc-700 text-zinc-400 rounded-xl px-4 py-3 text-sm">
+                                    Strict Only
+                                </div>
                             </div>
                         </div>
 

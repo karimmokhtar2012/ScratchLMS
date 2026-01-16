@@ -277,14 +277,32 @@
     - **DB Notes**: Run `php database/fix_quiz_lesson_fk.php` on the active DB.
     - **Tests run + results**: N/A.
 
-- 2026-01-17 00:05 (Africa/Cairo)
-    - **Goal**: Fix UX bug where loader stuck on anchor nav and inconsistent UI states.
+- 2026-01-16 23:59 (Africa/Cairo)
+    - **Goal**: Fix quiz builder POSTs failing CSRF validation.
     - **Files Changed**:
-        - `resources/views/layouts/app.php`: Prevent transition overlay for same-page hash navigation.
-        - `resources/views/instructor/pending_requests.php`: Polished empty state for Grading Queue.
-        - `resources/views/instructor/quiz_builder.php`: Added missing CSRF tokens to forms.
+        - `resources/views/instructor/quiz_builder.php`: Added CSRF tokens to quiz builder forms.
+    - **Rationale**: Prevent 403 Access Denied on add/import/update/delete question actions.
+    - **Security**: Ensures CSRF protection is correctly applied.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 00:02 (Africa/Cairo)
+    - **Goal**: Fix questions foreign key pointing at quizzes_old.
+    - **Files Changed**:
         - `database/fix_questions_quiz_fk.php`: Rebuilds questions table to reference quizzes(id).
-    - **Rationale**: Resolve Issue #13 and #15, and ensure data integrity/security.
-    - **Security**: CSRF protection added to quiz builder.
+    - **Rationale**: Prevent runtime errors when adding quiz questions after migrations.
+    - **Security**: N/A.
     - **DB Notes**: Run `php database/fix_questions_quiz_fk.php` on the active DB.
-    - **Tests run + results**: Verified syntax.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 00:30 (Africa/Cairo)
+    - **Goal**: Enhance manual grading UI and workflow, enforce strict matching, and complete backend grading logic.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Updated `pendingRequests` to fetch submission text. Updated `gradeEssay` to handle lesson completion/xAPI logging upon passing.
+        - `resources/views/instructor/pending_requests.php`: Display submission text and added "Accept AI Score" workflow.
+        - `app/Http/Controllers/QuizController.php`: Enforced 'strict' grading policy for matching questions.
+        - `resources/views/instructor/quiz_builder.php`: Removed fuzzy options for matching questions.
+    - **Rationale**: Improve instructor efficiency for manual grading and ensure data consistency for matching questions.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` checks passed.

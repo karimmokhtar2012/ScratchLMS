@@ -211,11 +211,28 @@
                                     <?= htmlspecialchars($item['course_title']) ?>
                                     <div class="text-xs text-zinc-500"><?= htmlspecialchars($item['lesson_title']) ?></div>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-zinc-400 max-w-sm truncate" title="<?= htmlspecialchars($item['question_text']) ?>">
-                                    <?= htmlspecialchars($item['question_text']) ?>
+                                <td class="px-6 py-4 text-sm max-w-sm">
+                                    <div class="text-zinc-300 font-medium truncate" title="<?= htmlspecialchars($item['question_text']) ?>">
+                                        <?= htmlspecialchars($item['question_text']) ?>
+                                    </div>
+                                    <div class="mt-2 text-xs text-zinc-400 bg-zinc-900/50 p-2 rounded border border-zinc-800 break-words font-mono">
+                                        <?= htmlspecialchars($item['submission_text'] ?? '') ?>
+                                    </div>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-zinc-400">
-                                    <?= $item['ai_score'] !== null ? $item['ai_score'] : '—' ?>
+                                <td class="px-6 py-4 text-sm">
+                                    <div class="flex flex-col gap-1 items-start">
+                                        <span class="text-zinc-400"><?= $item['ai_score'] !== null ? $item['ai_score'] : '—' ?></span>
+                                        <?php if ($item['ai_score'] !== null): ?>
+                                            <form action="/instructor/grading/score" method="post">
+                                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                                <input type="hidden" name="grading_id" value="<?= $item['grading_id'] ?>">
+                                                <input type="hidden" name="final_score" value="<?= $item['ai_score'] ?>">
+                                                <button type="submit" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider">
+                                                    Accept
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <form action="/instructor/grading/score" method="post" class="inline-flex items-center gap-2">

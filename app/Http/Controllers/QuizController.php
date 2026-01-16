@@ -153,8 +153,10 @@ class QuizController extends Controller
         $options = [];
         $correctAnswers = [];
         $gradingPolicy = $_POST['grading_policy'] ?? null;
-        if (in_array($type, ['fill_blank', 'matching'], true)) {
+        if ($type === 'fill_blank') {
             $gradingPolicy = $gradingPolicy ?: 'both';
+        } elseif ($type === 'matching') {
+            $gradingPolicy = 'strict';
         } elseif ($type === 'essay') {
             $gradingPolicy = $gradingPolicy ?: 'ai';
         } elseif ($type === 'video_submission') {
@@ -300,8 +302,10 @@ class QuizController extends Controller
             if ($bq) {
                 // Copy to questions table
                 $gradingPolicy = 'auto';
-                if (in_array($bq['type'], ['fill_blank', 'matching'], true)) {
+                if ($bq['type'] === 'fill_blank') {
                     $gradingPolicy = 'both';
+                } elseif ($bq['type'] === 'matching') {
+                    $gradingPolicy = 'strict';
                 } elseif ($bq['type'] === 'essay') {
                     $gradingPolicy = 'ai';
                 } elseif ($bq['type'] === 'video_submission') {
