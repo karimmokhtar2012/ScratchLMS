@@ -131,7 +131,13 @@
                         <p class="text-zinc-400 text-sm">What should we call you?</p>
                     </div>
                 </div>
-                <input type="text" x-model="form.preferred_name" class="w-full bg-zinc-900 border border-zinc-700 text-white text-xl rounded-xl px-6 py-4 focus:outline-none focus:border-indigo-500 transition placeholder-zinc-600" placeholder="e.g. Alex">
+                <input type="text" x-model="form.preferred_name" @input="clearError('preferred_name')" 
+                       :class="errors.preferred_name ? 'border-red-500 focus:border-red-400' : ''"
+                       class="w-full bg-zinc-900 border border-zinc-700 text-white text-xl rounded-xl px-6 py-4 focus:outline-none focus:border-indigo-500 transition placeholder-zinc-600" placeholder="e.g. Alex">
+                <div x-show="errors.preferred_name" x-transition class="flex items-center gap-2 mt-2 text-red-400">
+                    <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                    <p class="text-xs font-medium" x-text="errors.preferred_name"></p>
+                </div>
             </div>
 
             <!-- Step 3: Gender & DOB -->
@@ -154,22 +160,28 @@
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
-                    <button @click="form.gender = 'male'" :class="form.gender === 'male' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'" class="p-4 rounded-xl border flex flex-col items-center gap-2 hover:bg-zinc-800 transition">
+                    <button @click="form.gender = 'male'; clearError('gender')" :class="form.gender === 'male' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'" class="p-4 rounded-xl border flex flex-col items-center gap-2 hover:bg-zinc-800 transition">
                         <i class="fa-solid fa-mars text-2xl"></i>
                         <span>Male</span>
                     </button>
-                    <button @click="form.gender = 'female'" :class="form.gender === 'female' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'" class="p-4 rounded-xl border flex flex-col items-center gap-2 hover:bg-zinc-800 transition">
+                    <button @click="form.gender = 'female'; clearError('gender')" :class="form.gender === 'female' ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'" class="p-4 rounded-xl border flex flex-col items-center gap-2 hover:bg-zinc-800 transition">
                         <i class="fa-solid fa-venus text-2xl"></i>
                         <span>Female</span>
                     </button>
+                </div>
+                <div x-show="errors.gender" x-transition class="flex items-center gap-2 mt-2 text-red-400">
+                    <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                    <p class="text-xs font-medium" x-text="errors.gender"></p>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Date of Birth</label>
                     <div class="grid grid-cols-3 gap-3">
-                        <input type="number" min="1" max="31" placeholder="Day" x-model="form.dob_day"
+                        <input type="number" min="1" max="31" placeholder="Day" x-model="form.dob_day" @input="clearError('dob')"
+                               :class="errors.dob ? 'border-red-500 focus:border-red-400' : ''"
                                class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition placeholder-zinc-600">
-                        <select x-model="form.dob_month"
+                        <select x-model="form.dob_month" @change="clearError('dob')"
+                                :class="errors.dob ? 'border-red-500 focus:border-red-400' : ''"
                                 class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition">
                             <option value="" disabled>Month</option>
                             <option value="1">January</option>
@@ -185,10 +197,15 @@
                             <option value="11">November</option>
                             <option value="12">December</option>
                         </select>
-                        <input type="number" min="1900" max="2100" placeholder="Year" x-model="form.dob_year"
+                        <input type="number" min="1900" max="2100" placeholder="Year" x-model="form.dob_year" @input="clearError('dob')"
+                               :class="errors.dob ? 'border-red-500 focus:border-red-400' : ''"
                                class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition placeholder-zinc-600">
                     </div>
                     <p class="text-xs text-zinc-500 mt-2">We use your birth date to personalize your learning journey.</p>
+                    <div x-show="errors.dob" x-transition class="flex items-center gap-2 mt-2 text-red-400">
+                        <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                        <p class="text-xs font-medium" x-text="errors.dob"></p>
+                    </div>
                 </div>
             </div>
 
@@ -213,28 +230,39 @@
                 
                 <div>
                     <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Country</label>
-                    <select x-model="form.country" @change="form.country_code = countryCodes[form.country] || ''"
+                    <select x-model="form.country" @change="form.country_code = countryCodes[form.country] || ''; clearError('country')"
+                            :class="errors.country ? 'border-red-500 focus:border-red-400' : ''"
                             class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition mb-4">
                         <option value="" disabled>Select your country</option>
                         <template x-for="(code, name) in countryCodes" :key="name">
                             <option :value="name" x-text="name"></option>
                         </template>
                     </select>
+                    <div x-show="errors.country" x-transition class="flex items-center gap-2 mt-2 text-red-400">
+                        <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                        <p class="text-xs font-medium" x-text="errors.country"></p>
+                    </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Phone Number (Optional)</label>
                     <div class="grid grid-cols-3 gap-3">
-                        <select x-model="form.country_code"
+                        <select x-model="form.country_code" @change="clearError('phone')"
+                                :class="errors.phone ? 'border-red-500 focus:border-red-400' : ''"
                                 class="bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition">
                             <option value="" disabled>Code</option>
                             <template x-for="(code, name) in countryCodes" :key="name">
                                 <option :value="code" x-text="code + ' ' + name"></option>
                             </template>
                         </select>
-                        <input type="tel" x-model="form.phone"
+                        <input type="tel" x-model="form.phone" @input="clearError('phone')"
+                               :class="errors.phone ? 'border-red-500 focus:border-red-400' : ''"
                                class="col-span-2 bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition placeholder-zinc-600"
                                placeholder="Phone number">
+                    </div>
+                    <div x-show="errors.phone" x-transition class="flex items-center gap-2 mt-2 text-red-400">
+                        <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                        <p class="text-xs font-medium" x-text="errors.phone"></p>
                     </div>
                 </div>
             </div>
@@ -355,6 +383,13 @@
                     field_of_work: '',
                     usage_intent: ''
                 },
+                errors: {
+                    preferred_name: '',
+                    gender: '',
+                    dob: '',
+                    country: '',
+                    phone: ''
+                },
                 countryCodes: {
                     'Egypt': '+20',
                     'United States': '+1',
@@ -399,13 +434,77 @@
                     { value: 'company', label: 'For my own company', icon: 'fa-solid fa-rocket' },
                     { value: 'collaboration', label: 'To collaborate with other users', icon: 'fa-solid fa-users' }
                 ],
+                clearError(field) {
+                    if (this.errors[field]) this.errors[field] = '';
+                },
+                validateStep(step, setErrors = false) {
+                    const nextErrors = {
+                        preferred_name: '',
+                        gender: '',
+                        dob: '',
+                        country: '',
+                        phone: ''
+                    };
+                    let valid = true;
+
+                    if (step === 2) {
+                        if (!this.form.preferred_name.trim()) {
+                            nextErrors.preferred_name = 'Please enter your preferred name.';
+                            valid = false;
+                        }
+                    }
+
+                    if (step === 3) {
+                        if (!this.form.gender) {
+                            nextErrors.gender = 'Please select a gender.';
+                            valid = false;
+                        }
+                        const day = parseInt(this.form.dob_day, 10);
+                        const month = parseInt(this.form.dob_month, 10);
+                        const year = parseInt(this.form.dob_year, 10);
+                        const now = new Date();
+                        if (!day || !month || !year) {
+                            nextErrors.dob = 'Please enter a valid date of birth.';
+                            valid = false;
+                        } else {
+                            const dob = new Date(year, month - 1, day);
+                            const matches = dob.getFullYear() === year && (dob.getMonth() + 1) === month && dob.getDate() === day;
+                            if (!matches || year < 1900 || year > now.getFullYear()) {
+                                nextErrors.dob = 'Please enter a valid date of birth.';
+                                valid = false;
+                            } else if (dob > now) {
+                                nextErrors.dob = 'Date of birth cannot be in the future.';
+                                valid = false;
+                            }
+                        }
+                    }
+
+                    if (step === 4) {
+                        if (!this.form.country) {
+                            nextErrors.country = 'Please select your country.';
+                            valid = false;
+                        }
+                        if (this.form.phone && this.form.phone.trim()) {
+                            const digits = this.form.phone.replace(/\\D/g, '');
+                            if (!this.form.country_code) {
+                                nextErrors.phone = 'Please select a country code.';
+                                valid = false;
+                            } else if (digits.length < 7) {
+                                nextErrors.phone = 'Please enter a valid phone number.';
+                                valid = false;
+                            }
+                        }
+                    }
+
+                    if (setErrors) {
+                        this.errors = nextErrors;
+                    }
+                    return valid;
+                },
                 canProceed() {
-                    if (this.step === 2) return this.form.preferred_name.length > 0;
-                    if (this.step === 3) return this.form.gender && this.form.dob_day && this.form.dob_month && this.form.dob_year;
-                    if (this.step === 4) return this.form.country.length > 0;
                     if (this.step === 5) return this.form.field_of_work.length > 0;
                     if (this.step === 6) return this.form.usage_intent.length > 0;
-                    return true;
+                    return this.validateStep(this.step);
                 },
                 formatDob() {
                     if (!this.form.dob_day || !this.form.dob_month || !this.form.dob_year) return '';
@@ -414,6 +513,7 @@
                     return `${this.form.dob_year}-${month}-${day}`;
                 },
                 next() {
+                    if (!this.validateStep(this.step, true)) return;
                     if (this.step < 6) {
                         this.step++;
                     } else if (this.step === 6) {
