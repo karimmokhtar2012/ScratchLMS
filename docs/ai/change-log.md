@@ -117,3 +117,17 @@
     - **Security**: N/A
     - **DB Notes**: N/A
     - **Tests run + results**: Manual code inspection.
+
+- 2026-01-16 03:41 (Africa/Cairo)
+    - **Goal**: Add end-of-session reporting workflow and publish daily reports.
+    - **Files Changed**:
+        - `docs/daily-report-template.md`: Added standard report template with cross-monitoring section.
+        - `GEMINI.md`: Added reporting and push requirements, plus monitoring inclusion.
+        - `CODEX.md`: Added reporting and push requirements, plus monitoring inclusion.
+        - `docs/reports/daily/2026-01-16-codex.md`: Added Codex daily report.
+        - `docs/reports/daily/2026-01-16-gemini.md`: Added Gemini daily report.
+    - **Rationale**: Formalize daily accountability and shared visibility.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+    - **Follow-ups**: Keep daily reports updated per session.
