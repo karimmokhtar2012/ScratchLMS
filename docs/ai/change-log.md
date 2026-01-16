@@ -267,3 +267,12 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-16 22:48 (Africa/Cairo)
+    - **Goal**: Fix quizzes foreign key pointing at lessons_old.
+    - **Files Changed**:
+        - `database/fix_quiz_lesson_fk.php`: Rebuilds quizzes table to reference lessons(id).
+    - **Rationale**: Prevent runtime errors when creating quizzes due to stale foreign key.
+    - **Security**: N/A.
+    - **DB Notes**: Run `php database/fix_quiz_lesson_fk.php` on the active DB.
+    - **Tests run + results**: N/A.
