@@ -5,32 +5,45 @@ A high-performance, lightweight Learning Management System (LMS) built from scra
 ## 🚀 Features
 
 ### 🎓 For Students
-- **Immersive Learning Player**: Distraction-free video playback with lesson navigation.
-- **Progress Tracking**: Real-time course progress calculation.
-- **Quizzes & Assessments**: Interactive quizzes with instant feedback, retry limits, and result review.
+- **Immersive Learning Player**: Distraction-free video playback with lesson navigation and auto-resume.
+- **Adaptive Quizzes**: Interactive assessments supporting multiple choice, true/false, fill-in-the-blank, matching, essay, and video submissions.
+- **Progress Tracking**: Real-time course progress calculation with visual indicators.
 - **Notes System**: Take private notes timestamped to specific lessons.
-- **Certificates**: Auto-generated certificates upon course completion.
-- **Dashboard**: Centralized hub for enrolled courses, notifications, and achievements.
+- **Certificates**: Auto-generated certificates upon completion, with support for manual instructor issuance.
+- **Dashboard**: Centralized hub for enrolled courses, pending retakes, notifications, and achievements.
 
 ### 👨‍🏫 For Instructors
-- **Course Builder**: Drag-and-drop curriculum management (Modules & Lessons).
-- **Question Bank**: reusable repository of questions for building dynamic quizzes.
-- **Rich Media Support**: Upload and manage video lessons and resources.
+- **Course Builder**: Drag-and-drop curriculum management (Modules & Lessons) with bulk reordering.
+- **Advanced Quiz Engine**: 
+    - **Grading Policies**: Configure Strict (exact match), Fuzzy (typo-tolerant), or Manual (instructor review) grading per question.
+    - **Question Bank**: Reusable repository of questions for rapid quiz assembly.
+    - **Manual Grading Queue**: Dedicated workflow for reviewing essays and video submissions with AI score acceptance.
+- **Unified Approvals**: streamlined dashboard for managing quiz retake requests and certificate issuance.
+- **Rich Media Support**: Upload and manage video lessons, resources, and attachments.
 - **Analytics**: Track student enrollment, progress, and quiz performance.
-- **Student Management**: Monitor activity and handle enrollment requests.
 
 ### 🛡️ For Administrators
 - **User Management**: Bulk actions for enrolling, unenrolling, and managing user roles.
 - **Course Governance**: Review, publish, or unpublish courses.
 - **System Health**: Monitor application logs and system integrity.
+- **Security Core**: Built-in CSRF protection, Rate Limiting, and Role-Based Access Control (RBAC).
+
+## 🧠 Smart Grading Engine
+
+ScratchLMS introduces a flexible grading system designed for modern learning needs:
+
+- **Strict Mode**: Requires exact matches (case-insensitive). Ideal for coding terms or precise answers.
+- **Fuzzy Match**: Uses similarity algorithms (e.g., Levenshtein distance) to accept answers with minor typos (85%+ match).
+- **AI-Assisted Grading**: (Experimental) Pre-scores essay responses to assist instructors, who can then "Accept" or modify the score.
+- **Manual Review**: Flags subjective answers (Essays, Video URLs) for instructor approval before finalizing the quiz attempt.
 
 ## 🗺️ Adaptive Learning Paths
 
-ScratchLMS allows instructors to define the student journey through flexible "Content Flow" settings:
+Instructors can define the student journey through flexible "Content Flow" settings:
 
-- **Linear Sequencing**: Enforce a step-by-step progression. Students must complete the current lesson before unlocking the next one, ensuring foundational knowledge is mastered.
-- **Free Exploration**: Allow students to jump between lessons and modules freely. Ideal for reference-based courses or advanced workshops.
-- **Prerequisite Locking**: (In Progress) System-level course prerequisites to guide students through complex curricula.
+- **Linear Sequencing**: Enforce a step-by-step progression. Students must complete the current lesson before unlocking the next.
+- **Free Exploration**: Allow students to jump between lessons and modules freely.
+- **Drip Content**: (Coming Soon) Schedule content release based on enrollment duration or specific dates.
 
 ### 🛒 E-Commerce
 - **Shopping Cart**: Fully functional cart system.
@@ -42,7 +55,7 @@ ScratchLMS allows instructors to define the student journey through flexible "Co
 - **Language**: PHP 8.1+
 - **Database**: SQLite (Zero-config, file-based database)
 - **Architecture**: Custom Model-View-Controller (MVC)
-- **Frontend**: Vanilla JS, HTML5, CSS3 (No heavy frontend framework dependencies)
+- **Frontend**: Vanilla JS, HTML5, Tailwind CSS (Dark Mode Native)
 - **Dependencies**: Managed via Composer (Minimal external dependencies)
 
 ## 📋 Prerequisites
@@ -89,9 +102,6 @@ php -S localhost:8000 -t public
 
 Visit `http://localhost:8000` in your browser.
 
-### Default Accounts (if seeded)
-*Check `database/seeds` or `setup_db.php` logic for initial credentials if applicable. Otherwise, use the Register page to create a new account.*
-
 ## 📂 Project Structure
 
 ```
@@ -100,7 +110,7 @@ LMS/
 │   ├── Core/           # Framework core (Router, Database, Model, Controller)
 │   ├── Domain/         # Domain entities (Courses, Users, Orders, etc.)
 │   ├── Http/           # Controllers, Middleware, Requests
-│   └── Services/       # Business logic services
+│   └── Services/       # Business logic services (QuizService, CourseProgressService)
 ├── config/             # Application configuration
 ├── database/           # SQLite DB, migrations, and seeders
 ├── public/             # Web entry point (index.php), assets, uploads
