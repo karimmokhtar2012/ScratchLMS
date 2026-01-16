@@ -131,3 +131,13 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
     - **Follow-ups**: Keep daily reports updated per session.
+
+- 2026-01-16 03:44 (Africa/Cairo)
+    - **Goal**: Remove Gemini daily report created by Codex (Gemini must author their own report).
+    - **Files Changed**:
+        - `docs/reports/daily/2026-01-16-gemini.md`: Removed.
+    - **Rationale**: Ensure report authorship rules are respected.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+    - **Follow-ups**: Gemini to author their own report at end of session.
