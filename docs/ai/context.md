@@ -17,6 +17,6 @@
     - Free courses: Direct enrollment via `CourseController::enroll`.
     - Paid courses: Redirects to cart; enrollment happens after `CheckoutController::process`.
 - **Quizzes**: Treated as separate units from Video/Article lessons in the UI. Access is secured by `Authorization` and `RateLimiter`.
-- **Quiz Grading**: Fill-blank and matching can use strict/fuzzy/both matching via `grading_policy`. Essay/video submissions enter the manual grading queue; essays can receive AI pre-scores.
+- **Quiz Grading**: Fill-blank and matching can use strict/fuzzy/both matching via `grading_policy`. Essay/video submissions enter the manual grading queue; essays can receive AI pre-scores. Short-text and fill-blank can use AI grading when `ai_rubric` is set and `GROQ_API_KEY` is configured.
 - **Instructor Approvals**: Unified pending approvals view at `/instructor/requests` for quiz retake requests and manual certificate issuance.
 - **Content Flow**: Supports Free, Linear, and drip (time/progress/combined) rules. Enforced in `LearnController` and calculated via `CourseProgressService` with `lesson_drip_rules`.

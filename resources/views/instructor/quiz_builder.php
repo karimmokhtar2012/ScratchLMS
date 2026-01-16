@@ -346,6 +346,10 @@
                                     <option value="fuzzy">Fuzzy Only</option>
                                 </select>
                             </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">AI Rubric (Optional)</label>
+                                <textarea name="ai_rubric" rows="3" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Describe what makes an answer correct (used for AI grading)."></textarea>
+                            </div>
                         </div>
 
                         <!-- Matching -->
@@ -369,6 +373,11 @@
                         </div>
 
                         <!-- Essay / Video -->
+                        <div x-show="type === 'short_text'" class="space-y-3">
+                            <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">AI Rubric (Optional)</label>
+                            <textarea name="ai_rubric" rows="3" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Describe what makes an answer correct (used for AI grading)."></textarea>
+                        </div>
+
                         <div x-show="type === 'essay' || type === 'video_submission'" class="space-y-3">
                             <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Grading Policy</label>
                             <select name="grading_policy" :disabled="type !== 'essay' && type !== 'video_submission'" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3">

@@ -104,6 +104,8 @@ class InstructorController extends Controller
 
         // Fetch lessons for import library (all lessons owned by instructor)
         $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
         $libraryLessons = $db->fetchAll("SELECT id, title, type FROM lessons WHERE instructor_id = :uid ORDER BY id DESC", [':uid' => $_SESSION['user_id']]);
 
         $this->view('instructor.course_builder', ['course' => $course, 'modules' => $modules, 'libraryLessons' => $libraryLessons]);
@@ -762,6 +764,8 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
         $sqlAttempts = "SELECT ar.id,
                                ar.created_at,
                                u.id as user_id,
@@ -776,10 +780,12 @@ class InstructorController extends Controller
                         JOIN lessons l ON q.lesson_id = l.id
                         JOIN modules m ON l.module_id = m.id
                         JOIN courses c ON m.course_id = c.id
-                        WHERE c.instructor_id = :uid
-                          AND ar.status = 'pending'
-                        ORDER BY ar.created_at DESC";
-        $attemptRequests = $db->fetchAll($sqlAttempts, [':uid' => $userId]);
+                        WHERE ar.status = 'pending'";
+        if (!$isPrivileged) {
+            $sqlAttempts .= " AND c.instructor_id = :uid";
+        }
+        $sqlAttempts .= " ORDER BY ar.created_at DESC";
+        $attemptRequests = $db->fetchAll($sqlAttempts, $isPrivileged ? [] : [':uid' => $userId]);
 
         $sqlCerts = "SELECT e.id as enrollment_id,
                             e.progress_percent,
@@ -793,13 +799,15 @@ class InstructorController extends Controller
                      FROM enrollments e
                      JOIN users u ON e.user_id = u.id
                      JOIN courses c ON e.course_id = c.id
-                     WHERE c.instructor_id = :uid
-                       AND c.has_certificate = 1
+                     WHERE c.has_certificate = 1
                        AND c.certificate_auto_issue = 0
                        AND e.is_completed = 1
                        AND e.certificate_id IS NULL
                      ORDER BY e.created_at DESC";
-        $certificateApprovals = $db->fetchAll($sqlCerts, [':uid' => $userId]);
+        if (!$isPrivileged) {
+            $sqlCerts = str_replace("WHERE c.has_certificate = 1", "WHERE c.instructor_id = :uid AND c.has_certificate = 1", $sqlCerts);
+        }
+        $certificateApprovals = $db->fetchAll($sqlCerts, $isPrivileged ? [] : [':uid' => $userId]);
 
         $sqlGrading = "SELECT g.id as grading_id,
                               g.attempt_id,
@@ -826,10 +834,12 @@ class InstructorController extends Controller
                        JOIN modules m ON l.module_id = m.id
                        JOIN courses c ON m.course_id = c.id
                        JOIN users u ON qa.user_id = u.id
-                       WHERE c.instructor_id = :uid
-                         AND g.status IN ('pending_review','ai_scored')
-                       ORDER BY g.created_at DESC";
-        $gradingQueue = $db->fetchAll($sqlGrading, [':uid' => $userId]);
+                       WHERE g.status IN ('pending_review','ai_scored')";
+        if (!$isPrivileged) {
+            $sqlGrading .= " AND c.instructor_id = :uid";
+        }
+        $sqlGrading .= " ORDER BY g.created_at DESC";
+        $gradingQueue = $db->fetchAll($sqlGrading, $isPrivileged ? [] : [':uid' => $userId]);
 
         foreach ($gradingQueue as &$item) {
             $answers = json_decode($item['attempt_answers'] ?? '{}', true);

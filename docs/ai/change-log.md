@@ -342,3 +342,49 @@
     - **Security**: N/A.
     - **DB Notes**: Re-run `php database/backfill_grading_queue.php`.
     - **Tests run + results**: N/A.
+
+- 2026-01-17 01:24 (Africa/Cairo)
+    - **Goal**: Add Groq AI grading for essay, short text, and fill-blank.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Added Groq API scoring and AI fallback for short_text/fill_blank; improved essay AI pre-score.
+        - `resources/views/instructor/quiz_builder.php`: Added optional AI rubric fields for short_text and fill_blank.
+    - **Rationale**: Enable AI-assisted correction where requested, using rubric-driven scoring.
+    - **Security**: API key read from `GROQ_API_KEY` environment variable.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`.
+
+- 2026-01-17 01:27 (Africa/Cairo)
+    - **Goal**: Allow admins to see all pending requests and grading queue items.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Loosened instructor-only filtering for privileged roles.
+    - **Rationale**: Admins and master instructors should see manual grading results even if they are not course owners.
+    - **Security**: Admin/master instructor access only.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`.
+
+- 2026-01-17 01:36 (Africa/Cairo)
+    - **Goal**: Fix admin visibility warnings in pending requests.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Added missing privileged role detection in pending requests.
+    - **Rationale**: Prevent undefined variable warnings and ensure role scoping works.
+    - **Security**: Admin/master instructor access only.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 01:40 (Africa/Cairo)
+    - **Goal**: Fix missing privileged role scope in pending requests.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Defined `$isPrivileged` before query filters.
+    - **Rationale**: Remove undefined variable warnings and ensure admin visibility logic runs.
+    - **Security**: Admin/master instructor access only.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`.
+
+- 2026-01-17 01:45 (Africa/Cairo)
+    - **Goal**: Ensure pending requests defines privileged role scope.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Added `$isPrivileged` in pending requests and removed duplicate definitions elsewhere.
+    - **Rationale**: Fix undefined variable warnings and reduce duplicate role checks.
+    - **Security**: Admin/master instructor access only.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`.
