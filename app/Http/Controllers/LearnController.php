@@ -138,8 +138,6 @@ class LearnController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
         $input = json_decode(file_get_contents('php://input'), true);
-
-        $input = json_decode(file_get_contents('php://input'), true);
         $lessonId = (int) ($input['lesson_id'] ?? 0);
         $verb = $input['verb'] ?? '';
         $userId = $_SESSION['user_id'];

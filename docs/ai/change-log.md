@@ -108,3 +108,12 @@
     - **Security**: N/A
     - **DB Notes**: N/A
     - **Tests run + results**: Manual verification of homepage text rendering.
+
+- 2026-01-16 10:15 (Africa/Cairo)
+    - **Goal**: Fix duplicate code execution in tracking endpoint.
+    - **Files Changed**:
+        - `app/Http/Controllers/LearnController.php`: Removed redundant `json_decode` call in `track` method.
+    - **Rationale**: Eliminate unnecessary processing overhead and clean up code.
+    - **Security**: N/A
+    - **DB Notes**: N/A
+    - **Tests run + results**: Manual code inspection.
