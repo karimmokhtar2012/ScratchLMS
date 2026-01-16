@@ -150,23 +150,25 @@ ob_start();
                     if (!step) return;
                     const el = document.querySelector(step.selector);
                     if (!el) return;
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    const rect = el.getBoundingClientRect();
-                    const pad = 6;
-                    const top = Math.max(rect.top - pad, 12);
-                    const left = Math.max(rect.left - pad, 12);
-                    const width = Math.max(rect.width + pad * 2, 80);
-                    const height = Math.max(rect.height + pad * 2, 40);
-                    this.spotlightStyle = `top:${top}px; left:${left}px; width:${width}px; height:${height}px;`;
+                    el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    requestAnimationFrame(() => {
+                        const rect = el.getBoundingClientRect();
+                        const pad = 6;
+                        const top = Math.max(rect.top - pad, 12);
+                        const left = Math.max(rect.left - pad, 12);
+                        const width = Math.max(rect.width + pad * 2, 80);
+                        const height = Math.max(rect.height + pad * 2, 40);
+                        this.spotlightStyle = `top:${top}px; left:${left}px; width:${width}px; height:${height}px;`;
 
-                    const cardWidth = Math.min(520, window.innerWidth - 24);
-                    const preferBelow = rect.bottom + 16 + 220 < window.innerHeight;
-                    const cardTop = preferBelow ? (rect.bottom + 16) : Math.max(rect.top - 16 - 200, 16);
-                    let cardLeft = Math.min(Math.max(rect.left, 12), window.innerWidth - cardWidth - 12);
-                    if (step.selector === '[data-tour=\"sidebar\"]') {
-                        cardLeft = Math.min(rect.right + 16, window.innerWidth - cardWidth - 12);
-                    }
-                    this.tourCardStyle = `top:${cardTop}px; left:${cardLeft}px; width:${cardWidth}px;`;
+                        const cardWidth = Math.min(520, window.innerWidth - 24);
+                        const preferBelow = rect.bottom + 16 + 220 < window.innerHeight;
+                        const cardTop = preferBelow ? (rect.bottom + 16) : Math.max(rect.top - 16 - 200, 16);
+                        let cardLeft = Math.min(Math.max(rect.left, 12), window.innerWidth - cardWidth - 12);
+                        if (step.selector === '[data-tour=\"sidebar\"]') {
+                            cardLeft = Math.min(rect.right + 16, window.innerWidth - cardWidth - 12);
+                        }
+                        this.tourCardStyle = `top:${cardTop}px; left:${cardLeft}px; width:${cardWidth}px;`;
+                    });
                 },
                 next() {
                     if (this.isLast) {

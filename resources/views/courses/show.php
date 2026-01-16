@@ -318,13 +318,19 @@ $releaseDate = $course['published_at'] ? date('M d, Y', strtotime($course['publi
                                 </a>
                             <?php else: ?>
                                 <?php if ($isFree): ?>
-                                    <a href="/course/<?= $course['id'] ?>/enroll" class="block w-full bg-indigo-600 text-white text-center font-bold py-4 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20">
-                                        Enroll Now
-                                    </a>
+                                    <form action="/course/<?= $course['id'] ?>/enroll" method="post" class="block">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                        <button type="submit" class="w-full bg-indigo-600 text-white text-center font-bold py-4 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20">
+                                            Enroll Now
+                                        </button>
+                                    </form>
                                 <?php else: ?>
-                                    <a href="/course/<?= $course['id'] ?>/enroll" class="block w-full bg-indigo-600 text-white text-center font-bold py-4 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20">
-                                        Add to Cart
-                                    </a>
+                                    <form action="/course/<?= $course['id'] ?>/enroll" method="post" class="block">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                        <button type="submit" class="w-full bg-indigo-600 text-white text-center font-bold py-4 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20">
+                                            Add to Cart
+                                        </button>
+                                    </form>
                                     <button class="w-full bg-transparent border border-zinc-700 text-white font-bold py-3 rounded-xl hover:bg-zinc-800 transition">
                                         Buy Now
                                     </button>

@@ -222,13 +222,19 @@
                                         Details
                                     </a>
                                     <?php if ($isFree): ?>
-                                        <a href="/course/<?= $course['id'] ?>/enroll" class="flex-1 bg-white text-black text-center font-bold py-3 rounded-xl hover:bg-zinc-200 transition text-sm flex items-center justify-center shadow-lg shadow-white/5">
-                                            Enroll Now
-                                        </a>
+                                        <form action="/course/<?= $course['id'] ?>/enroll" method="post" class="flex-1">
+                                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                            <button type="submit" class="w-full bg-white text-black text-center font-bold py-3 rounded-xl hover:bg-zinc-200 transition text-sm flex items-center justify-center shadow-lg shadow-white/5">
+                                                Enroll Now
+                                            </button>
+                                        </form>
                                     <?php else: ?>
-                                        <a href="/course/<?= $course['id'] ?>/enroll" class="flex-1 bg-indigo-600 text-white text-center font-bold py-3 rounded-xl hover:bg-indigo-500 transition text-sm flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                                            Buy Now
-                                        </a>
+                                        <form action="/course/<?= $course['id'] ?>/enroll" method="post" class="flex-1">
+                                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                            <button type="submit" class="w-full bg-indigo-600 text-white text-center font-bold py-3 rounded-xl hover:bg-indigo-500 transition text-sm flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                                Buy Now
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>

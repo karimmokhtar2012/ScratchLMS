@@ -162,3 +162,31 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
     - **Follow-ups**: Commit and push changes; Gemini to submit their report.
+
+- 2026-01-16 18:49 (Africa/Cairo)
+    - **Goal**: Fix free/paid course enrollment 404 by aligning CTA with POST enroll route.
+    - **Files Changed**:
+        - `resources/views/courses/show.php`: Converted enroll/add-to-cart CTA to POST form with CSRF token.
+        - `resources/views/courses/index.php`: Converted enroll/buy CTA to POST form with CSRF token.
+    - **Rationale**: `/course/{id}/enroll` is POST-only; GET links returned 404 for new users.
+    - **Security**: Preserves CSRF enforcement by sending `csrf_token`.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-16 18:53 (Africa/Cairo)
+    - **Goal**: Fix dashboard guided tour spotlight/card positioning drift.
+    - **Files Changed**:
+        - `resources/views/dashboard.php`: Measure target positions after scroll with requestAnimationFrame.
+    - **Rationale**: Prevent stale bounding boxes when the tour scrolls to steps.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-16 18:59 (Africa/Cairo)
+    - **Goal**: Fix guided tour overlay positioning under transformed layout.
+    - **Files Changed**:
+        - `resources/views/layouts/app.php`: Remove transform on page-ready state to keep fixed overlays aligned to viewport.
+    - **Rationale**: `transform` on layout containers shifts `position: fixed` coordinate space, misplacing tour spotlights.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
