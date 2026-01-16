@@ -918,10 +918,11 @@ class InstructorController extends Controller
         }
 
         $gradingId = (int) ($_POST['grading_id'] ?? 0);
-        $finalScore = isset($_POST['final_score']) ? (float) $_POST['final_score'] : null;
+        $rawScore = $_POST['final_score'] ?? null;
+        $finalScore = is_string($rawScore) ? trim($rawScore) : $rawScore;
         $userId = $_SESSION['user_id'] ?? null;
 
-        if (!$gradingId || $finalScore === null || $userId === null) {
+        if (!$gradingId || $finalScore === null || $finalScore === '' || $userId === null || !is_numeric($finalScore)) {
             $_SESSION['flash_error'] = 'Invalid grading submission.';
             header('Location: /instructor/requests#grading');
             exit;
@@ -960,20 +961,31 @@ class InstructorController extends Controller
         if (($result['grading_status'] ?? '') === 'final' && !empty($result['is_passed'])) {
             $lessonId = (int) $row['lesson_id'];
             $studentId = (int) $row['student_id'];
-            
-            $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
+            $alreadyCompleted = $db->fetchAll("SELECT 1 FROM completed_lessons WHERE user_id = :uid AND lesson_id = :lid LIMIT 1", [
                 ':uid' => $studentId,
                 ':lid' => $lessonId
             ]);
+            if (empty($alreadyCompleted)) {
+                $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
+                    ':uid' => $studentId,
+                    ':lid' => $lessonId
+                ]);
+            }
 
             $progressService = new \App\Services\CourseProgressService();
             $progressService->updateProgress($studentId, (int) $row['course_id']);
-            
-            $db->query("INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, 'completed', :meta)", [
+
+            $existingLog = $db->fetchAll("SELECT 1 FROM xapi_logs WHERE user_id = :uid AND lesson_id = :lid AND verb = 'completed' LIMIT 1", [
                 ':uid' => $studentId,
-                ':lid' => $lessonId,
-                ':meta' => json_encode(['score' => $result['score'], 'grader' => 'instructor'])
+                ':lid' => $lessonId
             ]);
+            if (empty($existingLog)) {
+                $db->query("INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, 'completed', :meta)", [
+                    ':uid' => $studentId,
+                    ':lid' => $lessonId,
+                    ':meta' => json_encode(['score' => $result['score'], 'grader' => 'instructor'])
+                ]);
+            }
         }
 
         $_SESSION['flash_success'] = 'Grade saved.';

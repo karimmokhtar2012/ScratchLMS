@@ -139,7 +139,7 @@
     - **Rationale**: Ensure report authorship rules are respected.
     - **Security**: N/A.
     - **DB Notes**: N/A.
-    - **Tests run + results**: N/A.
+    - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`.
     - **Follow-ups**: Gemini to author their own report at end of session.
 
 - 2026-01-16 12:45 (Africa/Cairo)
@@ -306,3 +306,12 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` checks passed.
+- 2026-01-17 00:44 (Africa/Cairo)
+    - **Goal**: Prevent duplicate manual grading effects and add attempt review access.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Validate final score input and avoid duplicate xAPI logs on regrade.
+        - `resources/views/instructor/pending_requests.php`: Added "View Attempt" link for graders.
+    - **Rationale**: Avoid accidental zero scores and duplicate completion logs while making reviews easier.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.

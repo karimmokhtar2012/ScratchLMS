@@ -218,6 +218,9 @@
                                     <div class="mt-2 text-xs text-zinc-400 bg-zinc-900/50 p-2 rounded border border-zinc-800 break-words font-mono">
                                         <?= htmlspecialchars($item['submission_text'] ?? '') ?>
                                     </div>
+                                    <a href="/learn/quiz/review/<?= $item['attempt_id'] ?>" class="inline-flex mt-2 text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider">
+                                        View Attempt
+                                    </a>
                                 </td>
                                 <td class="px-6 py-4 text-sm">
                                     <div class="flex flex-col gap-1 items-start">
