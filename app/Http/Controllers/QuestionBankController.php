@@ -125,8 +125,35 @@ class QuestionBankController extends Controller
                 }
             }
         } elseif ($type === 'short_text') {
-             // For short text, correct answer is the text itself (or keywords)
-             $correctAnswers[] = trim($_POST['correct_text'] ?? '');
+            // For short text, correct answer is the text itself (or keywords)
+            $correctAnswers[] = trim($_POST['correct_text'] ?? '');
+        } elseif ($type === 'fill_blank') {
+            $raw = $_POST['fill_blank_answers'] ?? '';
+            $answers = array_filter(array_map('trim', explode(',', $raw)));
+            $correctAnswers = array_values($answers);
+        } elseif ($type === 'matching') {
+            $left = $_POST['match_left'] ?? [];
+            $right = $_POST['match_right'] ?? [];
+            $pairs = [];
+            $correct = [];
+            foreach ($left as $index => $leftText) {
+                $leftText = trim($leftText);
+                $rightText = trim($right[$index] ?? '');
+                if ($leftText === '' || $rightText === '') continue;
+                $leftId = $index + 1;
+                $rightId = $index + 1;
+                $pairs[] = [
+                    'left_id' => $leftId,
+                    'left_text' => $leftText,
+                    'right_id' => $rightId,
+                    'right_text' => $rightText
+                ];
+                $correct[] = ['left_id' => $leftId, 'right_id' => $rightId];
+            }
+            $options = $pairs;
+            $correctAnswers = $correct;
+        } elseif (in_array($type, ['essay', 'video_submission'], true)) {
+            $correctAnswers = [];
         }
 
         $questionModel = new BankQuestion();

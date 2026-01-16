@@ -503,9 +503,21 @@ class InstructorController extends Controller
             exit;
         }
 
+        $courseFlow = null;
+        $courseLessons = [];
+        $dripRule = null;
+        if (!empty($lesson['course_id'])) {
+            $courseFlow = $db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $lesson['course_id']])[0]['content_flow'] ?? null;
+            $courseLessons = $db->fetchAll("SELECT l.id, l.title FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid ORDER BY m.sort_order ASC, l.sort_order ASC", [':cid' => $lesson['course_id']]);
+            $dripRule = $db->fetchAll("SELECT * FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lesson['id']])[0] ?? null;
+        }
+
         $this->view('instructor.edit_lesson', [
             'lesson' => $lesson, 
-            'course_id' => $lesson['course_id'] ?? null // Pass null if library lesson
+            'course_id' => $lesson['course_id'] ?? null, // Pass null if library lesson
+            'course_flow' => $courseFlow,
+            'course_lessons' => $courseLessons,
+            'drip_rule' => $dripRule
         ]);
     }
 
@@ -566,6 +578,29 @@ class InstructorController extends Controller
             ':att' => $attachmentUrl,
             ':id' => $lessonId
         ]);
+
+        if ($courseId) {
+            $flow = $db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $courseId])[0]['content_flow'] ?? 'free';
+            if (in_array($flow, ['drip_time', 'drip_progress', 'drip_combined'], true)) {
+                $unlockDays = isset($_POST['unlock_after_days']) ? (int) $_POST['unlock_after_days'] : null;
+                $unlockLesson = isset($_POST['unlock_after_lesson_id']) ? (int) $_POST['unlock_after_lesson_id'] : null;
+                $unlockPercent = isset($_POST['unlock_after_percent']) ? (int) $_POST['unlock_after_percent'] : null;
+                $hasRule = ($unlockDays || $unlockLesson || $unlockPercent);
+
+                if ($hasRule) {
+                    $db->query("INSERT INTO lesson_drip_rules (lesson_id, unlock_after_days, unlock_after_lesson_id, unlock_after_percent)
+                                VALUES (:lid, :days, :prev, :pct)
+                                ON CONFLICT(lesson_id) DO UPDATE SET unlock_after_days = :days, unlock_after_lesson_id = :prev, unlock_after_percent = :pct", [
+                        ':lid' => $lessonId,
+                        ':days' => $unlockDays,
+                        ':prev' => $unlockLesson ?: null,
+                        ':pct' => $unlockPercent
+                    ]);
+                } else {
+                    $db->query("DELETE FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lessonId]);
+                }
+            }
+        }
 
         $_SESSION['flash_success'] = 'Lesson updated successfully.';
         
@@ -766,9 +801,39 @@ class InstructorController extends Controller
                      ORDER BY e.created_at DESC";
         $certificateApprovals = $db->fetchAll($sqlCerts, [':uid' => $userId]);
 
+        $sqlGrading = "SELECT g.id as grading_id,
+                              g.attempt_id,
+                              g.question_id,
+                              g.status,
+                              g.ai_score,
+                              g.ai_feedback,
+                              g.final_score,
+                              u.id as user_id,
+                              u.name,
+                              u.email,
+                              c.id as course_id,
+                              c.title as course_title,
+                              qz.id as quiz_id,
+                              l.title as lesson_title,
+                              qu.question_text,
+                              qu.points
+                       FROM grading_queue g
+                       JOIN quiz_attempts qa ON g.attempt_id = qa.id
+                       JOIN questions qu ON g.question_id = qu.id
+                       JOIN quizzes qz ON qa.quiz_id = qz.id
+                       JOIN lessons l ON qz.lesson_id = l.id
+                       JOIN modules m ON l.module_id = m.id
+                       JOIN courses c ON m.course_id = c.id
+                       JOIN users u ON qa.user_id = u.id
+                       WHERE c.instructor_id = :uid
+                         AND g.status IN ('pending_review','ai_scored')
+                       ORDER BY g.created_at DESC";
+        $gradingQueue = $db->fetchAll($sqlGrading, [':uid' => $userId]);
+
         $this->view('instructor.pending_requests', [
             'attemptRequests' => $attemptRequests,
-            'certificateApprovals' => $certificateApprovals
+            'certificateApprovals' => $certificateApprovals,
+            'gradingQueue' => $gradingQueue
         ]);
     }
 
@@ -836,6 +901,58 @@ class InstructorController extends Controller
 
         $_SESSION['flash_success'] = 'Certificate issued successfully.';
         header('Location: ' . $returnPath);
+        exit;
+    }
+
+    public function gradeEssay(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /instructor/requests#grading');
+            exit;
+        }
+
+        $gradingId = (int) ($_POST['grading_id'] ?? 0);
+        $finalScore = isset($_POST['final_score']) ? (float) $_POST['final_score'] : null;
+        $userId = $_SESSION['user_id'] ?? null;
+
+        if (!$gradingId || $finalScore === null || $userId === null) {
+            $_SESSION['flash_error'] = 'Invalid grading submission.';
+            header('Location: /instructor/requests#grading');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $row = $db->fetchAll("SELECT g.id, g.attempt_id, g.question_id, c.id as course_id, qu.points
+                              FROM grading_queue g
+                              JOIN quiz_attempts qa ON g.attempt_id = qa.id
+                              JOIN quizzes qz ON qa.quiz_id = qz.id
+                              JOIN lessons l ON qz.lesson_id = l.id
+                              JOIN modules m ON l.module_id = m.id
+                              JOIN courses c ON m.course_id = c.id
+                              JOIN questions qu ON g.question_id = qu.id
+                              WHERE g.id = :gid AND c.instructor_id = :uid", [
+            ':gid' => $gradingId,
+            ':uid' => $userId
+        ])[0] ?? null;
+
+        if (!$row) {
+            $_SESSION['flash_error'] = 'Grading item not found or access denied.';
+            header('Location: /instructor/requests#grading');
+            exit;
+        }
+
+        $finalScore = max(0, min((float) $row['points'], $finalScore));
+        $db->query("UPDATE grading_queue SET status = 'approved', final_score = :score, reviewer_id = :uid, updated_at = CURRENT_TIMESTAMP WHERE id = :gid", [
+            ':score' => $finalScore,
+            ':uid' => $userId,
+            ':gid' => $gradingId
+        ]);
+
+        $quizService = new \App\Services\QuizService();
+        $quizService->recalculateAttemptScore((int) $row['attempt_id']);
+
+        $_SESSION['flash_success'] = 'Grade saved.';
+        header('Location: /instructor/requests#grading');
         exit;
     }
 

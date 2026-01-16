@@ -1,30 +1,5 @@
 <?php 
-    // Pre-calculate locked status for Linear Flow
-    $isLinear = ($course['content_flow'] ?? 'free') === 'linear';
-    $lockedLessonIds = [];
-    
-    if ($isLinear) {
-        $allLessonIds = [];
-        foreach ($modules as $module) {
-            foreach ($module['lessons'] as $lesson) {
-                $allLessonIds[] = $lesson['id'];
-            }
-        }
-        
-        foreach ($allLessonIds as $index => $id) {
-            if ($index === 0) continue; // First lesson always unlocked
-            
-            $prevId = $allLessonIds[$index - 1];
-            // If previous is NOT completed, this one is locked
-            // Also if previous itself is locked, this one is locked (transitive, but covered by the loop order if we check completion)
-            // Wait, if prev is completed, this is unlocked. 
-            // If prev is NOT completed, this is locked.
-            
-            if (!in_array($prevId, $completedLessonIds)) {
-                $lockedLessonIds[] = $id;
-            }
-        }
-    }
+    $lockedLessonIds = $lockedLessonIds ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en" class="dark">
@@ -294,7 +269,13 @@
             <!-- Quiz Result -->
             <?php elseif (isset($quizResult)): ?>
                 <div class="w-full max-w-2xl mx-auto p-8 text-center flex flex-col justify-center h-full">
-                    <?php if ($quizResult['is_passed']): ?>
+                    <?php if (($quizResult['grading_status'] ?? 'final') === 'pending'): ?>
+                        <div class="w-24 h-24 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl border-4 border-amber-500/30">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold text-white mb-2">Pending Review</h1>
+                        <p class="text-zinc-400 mb-8">Your submission is being reviewed. Scores will update soon.</p>
+                    <?php elseif ($quizResult['is_passed']): ?>
                         <div class="w-24 h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl border-4 border-green-500/30 shadow-lg shadow-green-500/20 animate-bounce">
                             <i class="fa-solid fa-trophy"></i>
                         </div>
@@ -310,11 +291,13 @@
 
                     <div class="mb-10 bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800">
                         <div class="text-6xl font-black text-white tracking-tighter"><?= $quizResult['score'] ?>%</div>
-                        <div class="text-sm text-zinc-500 uppercase tracking-widest mt-2 font-bold">Total Score</div>
+                        <div class="text-sm text-zinc-500 uppercase tracking-widest mt-2 font-bold">
+                            <?= ($quizResult['grading_status'] ?? 'final') === 'pending' ? 'Provisional Score' : 'Total Score' ?>
+                        </div>
                     </div>
 
                     <!-- Review Section -->
-                    <?php if (!empty($reviewData)): ?>
+                    <?php if (!empty($reviewData) && ($quizResult['grading_status'] ?? 'final') !== 'pending'): ?>
                         <div class="mt-12 w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-left" 
                              x-data="{ reviewIndex: 0, total: <?= count($reviewData) ?> }">
                             

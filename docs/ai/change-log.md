@@ -129,7 +129,7 @@
     - **Rationale**: Formalize daily accountability and shared visibility.
     - **Security**: N/A.
     - **DB Notes**: N/A.
-    - **Tests run + results**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`, `php -l app/Http/Controllers/QuizController.php`, `php -l app/Http/Controllers/QuizRunnerController.php`.
     - **Follow-ups**: Keep daily reports updated per session.
 
 - 2026-01-16 03:44 (Africa/Cairo)
@@ -240,6 +240,30 @@
     - **Files Changed**:
         - `app/Http/Controllers/CertificateController.php`: Corrected view include path for certificate display.
     - **Rationale**: Prevent missing file error when students open certificate view.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-16 22:38 (Africa/Cairo)
+    - **Goal**: Add strict/fuzzy grading controls, enforce video URL validation, and document the upcoming features plan.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Added strict/fuzzy grading helpers, policy defaults, and video URL validation.
+        - `app/Http/Controllers/QuizRunnerController.php`: Redirects back with error on invalid video URLs.
+        - `app/Http/Controllers/QuizController.php`: Default grading policy for new/imported questions.
+        - `resources/views/instructor/quiz_builder.php`: Added grading policy controls for fill-blank/matching and scoped inputs.
+        - `resources/views/learn/quiz_runner.php`: Client-side video URL validation before submit.
+        - `docs/ai/upcoming-features-plan.md`: Documented the feature rollout plan and test checklist.
+        - `docs/ai/context.md`: Captured grading policy and drip flow conventions.
+    - **Rationale**: Support strict + fuzzy matching where requested, prevent invalid video submissions, and capture a delivery plan for upcoming features.
+    - **Security**: Added server-side URL validation for video submissions.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-16 22:42 (Africa/Cairo)
+    - **Goal**: Fix migration script parse error.
+    - **Files Changed**:
+        - `database/migrate_quiz_extensions.php`: Removed stray escaped quotes in echo statements.
+    - **Rationale**: Allow migration to run without PHP parse error.
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.

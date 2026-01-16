@@ -152,6 +152,17 @@ class QuizController extends Controller
         // Process Options & Answers based on Type
         $options = [];
         $correctAnswers = [];
+        $gradingPolicy = $_POST['grading_policy'] ?? null;
+        if (in_array($type, ['fill_blank', 'matching'], true)) {
+            $gradingPolicy = $gradingPolicy ?: 'both';
+        } elseif ($type === 'essay') {
+            $gradingPolicy = $gradingPolicy ?: 'ai';
+        } elseif ($type === 'video_submission') {
+            $gradingPolicy = 'manual';
+        } else {
+            $gradingPolicy = $gradingPolicy ?: 'auto';
+        }
+        $aiRubric = $_POST['ai_rubric'] ?? null;
 
         if (in_array($type, ['single_choice', 'multi_choice'])) {
             // Expecting arrays from form: option_text[], is_correct[] OR correct_option (radio)
@@ -181,10 +192,37 @@ class QuizController extends Controller
                 ['id' => 0, 'text' => 'False']
             ];
             $correctAnswers[] = (int) ($_POST['tf_correct'] ?? 1);
+        } elseif ($type === 'fill_blank') {
+            $raw = $_POST['fill_blank_answers'] ?? '';
+            $answers = array_filter(array_map('trim', explode(',', $raw)));
+            $correctAnswers = array_values($answers);
+        } elseif ($type === 'matching') {
+            $left = $_POST['match_left'] ?? [];
+            $right = $_POST['match_right'] ?? [];
+            $pairs = [];
+            $correct = [];
+            foreach ($left as $index => $leftText) {
+                $leftText = trim($leftText);
+                $rightText = trim($right[$index] ?? '');
+                if ($leftText === '' || $rightText === '') continue;
+                $leftId = $index + 1;
+                $rightId = $index + 1;
+                $pairs[] = [
+                    'left_id' => $leftId,
+                    'left_text' => $leftText,
+                    'right_id' => $rightId,
+                    'right_text' => $rightText
+                ];
+                $correct[] = ['left_id' => $leftId, 'right_id' => $rightId];
+            }
+            $options = $pairs;
+            $correctAnswers = $correct;
+        } elseif (in_array($type, ['essay', 'video_submission'], true)) {
+            $correctAnswers = [];
         }
 
-        $sql = "INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers, explanation) 
-                VALUES (:qid, :type, :text, :points, :opts, :ans, :exp)";
+        $sql = "INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers, explanation, grading_policy, ai_rubric) 
+                VALUES (:qid, :type, :text, :points, :opts, :ans, :exp, :policy, :rubric)";
         
         $this->db->query($sql, [
             ':qid' => $quizId,
@@ -193,7 +231,9 @@ class QuizController extends Controller
             ':points' => $points,
             ':opts' => json_encode($options),
             ':ans' => json_encode($correctAnswers),
-            ':exp' => $explanation
+            ':exp' => $explanation,
+            ':policy' => $gradingPolicy,
+            ':rubric' => $aiRubric
         ]);
 
         $_SESSION['flash_success'] = 'Question added.';
@@ -259,8 +299,16 @@ class QuizController extends Controller
             $bq = $bankQuestionModel->find((int)$bqId);
             if ($bq) {
                 // Copy to questions table
-                $sql = "INSERT INTO questions (quiz_id, type, question_text, options, correct_answers, explanation) 
-                        VALUES (:qid, :type, :text, :opts, :correct, :exp)";
+                $gradingPolicy = 'auto';
+                if (in_array($bq['type'], ['fill_blank', 'matching'], true)) {
+                    $gradingPolicy = 'both';
+                } elseif ($bq['type'] === 'essay') {
+                    $gradingPolicy = 'ai';
+                } elseif ($bq['type'] === 'video_submission') {
+                    $gradingPolicy = 'manual';
+                }
+                $sql = "INSERT INTO questions (quiz_id, type, question_text, options, correct_answers, explanation, grading_policy) 
+                        VALUES (:qid, :type, :text, :opts, :correct, :exp, :policy)";
                 
                 $this->db->query($sql, [
                     ':qid' => $quizId,
@@ -268,7 +316,8 @@ class QuizController extends Controller
                     ':text' => $bq['question_text'],
                     ':opts' => $bq['options'],
                     ':correct' => $bq['correct_answers'],
-                    ':exp' => $bq['explanation']
+                    ':exp' => $bq['explanation'],
+                    ':policy' => $gradingPolicy
                 ]);
             }
         }

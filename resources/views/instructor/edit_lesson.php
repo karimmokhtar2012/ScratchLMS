@@ -105,6 +105,39 @@
                     class="w-full md:w-1/3 bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
             </div>
 
+            <?php if (!empty($course_id) && in_array($course_flow ?? 'free', ['drip_time', 'drip_progress', 'drip_combined'], true)): ?>
+            <div class="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
+                <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4">Drip Rules</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Unlock After Days</label>
+                        <input type="number" name="unlock_after_days" min="0" value="<?= (int) ($drip_rule['unlock_after_days'] ?? 0) ?>"
+                            class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
+                        <p class="text-[10px] text-zinc-500 mt-2">Days after enrollment to unlock.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Unlock After Lesson</label>
+                        <select name="unlock_after_lesson_id" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
+                            <option value="">None</option>
+                            <?php foreach ($course_lessons ?? [] as $cLesson): ?>
+                                <option value="<?= $cLesson['id'] ?>" <?= !empty($drip_rule['unlock_after_lesson_id']) && (int)$drip_rule['unlock_after_lesson_id'] === (int)$cLesson['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cLesson['title']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-[10px] text-zinc-500 mt-2">Require completion of a specific lesson.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Unlock After %</label>
+                        <input type="number" name="unlock_after_percent" min="0" max="100" value="<?= (int) ($drip_rule['unlock_after_percent'] ?? 0) ?>"
+                            class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
+                        <p class="text-[10px] text-zinc-500 mt-2">Course completion percentage required.</p>
+                    </div>
+                </div>
+                <p class="text-xs text-zinc-500 mt-4">For combined drip, all rules must be satisfied.</p>
+            </div>
+            <?php endif; ?>
+
             <!-- Attachment -->
             <div>
                 <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Attachment</label>

@@ -80,6 +80,7 @@ $router->get('/instructor/lesson/([^/]+)/edit', [InstructorController::class, 'e
 $router->post('/instructor/lesson/([^/]+)/update', [InstructorController::class, 'updateLesson']);
 $router->get('/instructor/certificates/approvals', [InstructorController::class, 'certificateApprovals']);
 $router->post('/instructor/certificates/issue', [InstructorController::class, 'issueCertificate']);
+$router->post('/instructor/grading/score', [InstructorController::class, 'gradeEssay']);
 
 // Quiz Routes
 $router->get('/instructor/lesson/([^/]+)/quiz', [QuizController::class, 'build']);

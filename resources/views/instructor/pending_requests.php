@@ -166,6 +166,73 @@
             </table>
         </div>
     </section>
+
+    <section id="grading" class="bg-surface rounded-2xl border border-zinc-700/50 overflow-hidden shadow-xl">
+        <div class="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-indigo-400 uppercase tracking-wider">Manual Grading Queue</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-zinc-800/50 border-b border-zinc-700/50">
+                        <th class="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Student</th>
+                        <th class="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Course</th>
+                        <th class="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">Prompt</th>
+                        <th class="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-wider">AI Score</th>
+                        <th class="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-wider text-right">Final Score</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800">
+                    <?php if (empty($gradingQueue)): ?>
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-zinc-500">
+                                <i class="fa-solid fa-pen-to-square text-4xl mb-4 block opacity-20"></i>
+                                No submissions waiting for grading.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($gradingQueue as $item): ?>
+                            <tr class="hover:bg-zinc-800/30 transition group">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white font-bold text-sm border border-zinc-600">
+                                            <?= strtoupper(substr($item['name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-bold text-white"><?= htmlspecialchars($item['name']) ?></div>
+                                            <div class="text-xs text-zinc-500 group-hover:text-zinc-400 transition"><?= htmlspecialchars($item['email']) ?></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-zinc-300 font-semibold">
+                                    <?= htmlspecialchars($item['course_title']) ?>
+                                    <div class="text-xs text-zinc-500"><?= htmlspecialchars($item['lesson_title']) ?></div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-zinc-400 max-w-sm truncate" title="<?= htmlspecialchars($item['question_text']) ?>">
+                                    <?= htmlspecialchars($item['question_text']) ?>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-zinc-400">
+                                    <?= $item['ai_score'] !== null ? $item['ai_score'] : '—' ?>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <form action="/instructor/grading/score" method="post" class="inline-flex items-center gap-2">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                        <input type="hidden" name="grading_id" value="<?= $item['grading_id'] ?>">
+                                        <input type="number" name="final_score" min="0" max="<?= (int) $item['points'] ?>" step="0.1"
+                                               class="w-24 bg-zinc-900 border border-zinc-700 text-white rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+                                               placeholder="<?= (int) $item['points'] ?>">
+                                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg shadow-indigo-500/20">
+                                            Save
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 <?php 

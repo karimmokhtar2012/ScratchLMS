@@ -99,6 +99,45 @@
                                         </span>
                                     </div>
                                 <?php endforeach; ?>
+                            <?php elseif ($q['type'] === 'fill_blank'): ?>
+                                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-zinc-300">
+                                    <div class="text-xs text-zinc-500 uppercase tracking-wider mb-2">Your Answer</div>
+                                    <div class="text-lg text-white"><?= htmlspecialchars((string)($q['user_answer'] ?? '')) ?></div>
+                                    <?php if (!empty($q['correct_answers'])): ?>
+                                        <div class="text-xs text-zinc-500 uppercase tracking-wider mt-4 mb-2">Accepted Answers</div>
+                                        <div class="flex flex-wrap gap-2">
+                                            <?php foreach ($q['correct_answers'] as $ans): ?>
+                                                <span class="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs"><?= htmlspecialchars((string)$ans) ?></span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif ($q['type'] === 'matching'): ?>
+                                <?php 
+                                    $userMap = is_array($q['user_answer']) ? $q['user_answer'] : [];
+                                    $rightMap = [];
+                                    foreach ($q['options'] as $pair) {
+                                        $rightMap[$pair['right_id']] = $pair['right_text'];
+                                    }
+                                ?>
+                                <div class="space-y-3">
+                                    <?php foreach ($q['options'] as $pair): ?>
+                                        <div class="grid grid-cols-2 gap-4 items-center">
+                                            <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200"><?= htmlspecialchars($pair['left_text']) ?></div>
+                                            <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-300">
+                                                <?= htmlspecialchars($rightMap[$userMap[$pair['left_id']] ?? ''] ?? '—') ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php elseif (in_array($q['type'], ['essay', 'video_submission'], true)): ?>
+                                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-zinc-300">
+                                    <div class="text-xs text-zinc-500 uppercase tracking-wider mb-2">Submission</div>
+                                    <div class="text-sm text-zinc-300">
+                                        <?= htmlspecialchars((string)($q['user_answer'] ?? '')) ?>
+                                    </div>
+                                    <div class="text-xs text-amber-400 mt-4">Manual review required.</div>
+                                </div>
                             <?php endif; ?>
                         </div>
                         

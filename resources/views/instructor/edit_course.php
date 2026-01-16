@@ -202,6 +202,51 @@
                             <span class="block text-xs text-zinc-400 mt-0.5">Students must complete lessons in sequential order.</span>
                         </div>
                     </label>
+
+                    <label class="flex items-start p-3 rounded-xl border cursor-pointer transition"
+                           :class="flow === 'drip_time' ? 'border-purple-500 bg-purple-500/10' : 'border-zinc-700 bg-zinc-900 hover:border-zinc-600'">
+                        <input type="radio" name="content_flow" value="drip_time" class="hidden" x-model="flow">
+                        <div class="mt-0.5 mr-3">
+                            <div class="w-4 h-4 rounded-full border flex items-center justify-center"
+                                 :class="flow === 'drip_time' ? 'border-purple-500' : 'border-zinc-500'">
+                                <div class="w-2 h-2 rounded-full bg-purple-500" x-show="flow === 'drip_time'"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">Drip (Time-Based)</span>
+                            <span class="block text-xs text-zinc-400 mt-0.5">Unlock lessons after a set number of days from enrollment.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start p-3 rounded-xl border cursor-pointer transition"
+                           :class="flow === 'drip_progress' ? 'border-purple-500 bg-purple-500/10' : 'border-zinc-700 bg-zinc-900 hover:border-zinc-600'">
+                        <input type="radio" name="content_flow" value="drip_progress" class="hidden" x-model="flow">
+                        <div class="mt-0.5 mr-3">
+                            <div class="w-4 h-4 rounded-full border flex items-center justify-center"
+                                 :class="flow === 'drip_progress' ? 'border-purple-500' : 'border-zinc-500'">
+                                <div class="w-2 h-2 rounded-full bg-purple-500" x-show="flow === 'drip_progress'"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">Drip (Progress-Based)</span>
+                            <span class="block text-xs text-zinc-400 mt-0.5">Unlock lessons after required completion conditions.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start p-3 rounded-xl border cursor-pointer transition"
+                           :class="flow === 'drip_combined' ? 'border-purple-500 bg-purple-500/10' : 'border-zinc-700 bg-zinc-900 hover:border-zinc-600'">
+                        <input type="radio" name="content_flow" value="drip_combined" class="hidden" x-model="flow">
+                        <div class="mt-0.5 mr-3">
+                            <div class="w-4 h-4 rounded-full border flex items-center justify-center"
+                                 :class="flow === 'drip_combined' ? 'border-purple-500' : 'border-zinc-500'">
+                                <div class="w-2 h-2 rounded-full bg-purple-500" x-show="flow === 'drip_combined'"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">Drip (Time + Progress)</span>
+                            <span class="block text-xs text-zinc-400 mt-0.5">Require both time delay and progress rules.</span>
+                        </div>
+                    </label>
                 </div>
             </div>
 

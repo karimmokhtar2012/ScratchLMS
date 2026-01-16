@@ -212,6 +212,20 @@
                                                     <?= htmlspecialchars($opt['text']) ?>
                                                 </div>
                                             <?php endforeach; ?>
+                                        <?php elseif ($q['type'] === 'fill_blank'): ?>
+                                            <div class="text-xs text-zinc-500 uppercase tracking-wider mb-2">Accepted Answers</div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <?php foreach ($q['correct_answers'] as $ans): ?>
+                                                    <span class="px-2 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs"><?= htmlspecialchars((string)$ans) ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php elseif ($q['type'] === 'matching'): ?>
+                                            <div class="text-xs text-zinc-500 uppercase tracking-wider mb-2">Matching Pairs</div>
+                                            <?php foreach ($q['options'] as $pair): ?>
+                                                <div class="text-xs text-zinc-400"><?= htmlspecialchars($pair['left_text']) ?> → <?= htmlspecialchars($pair['right_text']) ?></div>
+                                            <?php endforeach; ?>
+                                        <?php elseif (in_array($q['type'], ['essay', 'video_submission'], true)): ?>
+                                            <div class="text-xs text-amber-400">Manual review required.</div>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -245,6 +259,10 @@
                                 <option value="single_choice">Single Choice</option>
                                 <option value="multi_choice">Multiple Choice</option>
                                 <option value="true_false">True / False</option>
+                                <option value="fill_blank">Fill in the Blank</option>
+                                <option value="matching">Matching</option>
+                                <option value="essay">Essay</option>
+                                <option value="video_submission">Video Submission (URL)</option>
                             </select>
                         </div>
                         
@@ -311,6 +329,56 @@
                                 <i class="fa-solid fa-plus mr-2"></i> Add Another Option
                             </button>
                         </div>
+
+                        <!-- Fill in the Blank -->
+                        <div x-show="type === 'fill_blank'" class="space-y-2">
+                            <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Accepted Answers (comma separated)</label>
+                            <input type="text" name="fill_blank_answers" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 focus:border-blue-500" placeholder="e.g., hypertext, hyper text">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Grading Match</label>
+                                <select name="grading_policy" :disabled="type !== 'fill_blank'" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3">
+                                    <option value="both" selected>Strict + Fuzzy</option>
+                                    <option value="strict">Strict Only</option>
+                                    <option value="fuzzy">Fuzzy Only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Matching -->
+                        <div x-show="type === 'matching'" class="space-y-3">
+                            <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Pairs (Left → Right)</label>
+                            <template x-for="(pair, idx) in matchingPairs" :key="idx">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <input type="text" :name="`match_left[${idx}]`" class="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 focus:border-blue-500" placeholder="Left item">
+                                    <input type="text" :name="`match_right[${idx}]`" class="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 focus:border-blue-500" placeholder="Right item">
+                                </div>
+                            </template>
+                            <button type="button" @click="addMatchPair()" class="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center">
+                                <i class="fa-solid fa-plus mr-2"></i> Add Pair
+                            </button>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Grading Match</label>
+                                <select name="grading_policy" :disabled="type !== 'matching'" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3">
+                                    <option value="both" selected>Strict + Fuzzy</option>
+                                    <option value="strict">Strict Only</option>
+                                    <option value="fuzzy">Fuzzy Only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Essay / Video -->
+                        <div x-show="type === 'essay' || type === 'video_submission'" class="space-y-3">
+                            <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Grading Policy</label>
+                            <select name="grading_policy" :disabled="type !== 'essay' && type !== 'video_submission'" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3">
+                                <option value="ai">AI Pre-Score + Manual Review</option>
+                                <option value="manual">Manual Review Only</option>
+                            </select>
+                            <div x-show="type === 'essay'">
+                                <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">AI Rubric (Optional)</label>
+                                <textarea name="ai_rubric" rows="3" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="What should the AI look for?"></textarea>
+                            </div>
+                            <p class="text-xs text-zinc-500">Responses are reviewed in the grading queue.</p>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -346,11 +414,19 @@
                 { text: '' },
                 { text: '' }
             ],
+            matchingPairs: [
+                {},
+                {},
+                {}
+            ],
             addOption() {
                 this.options.push({ text: '' });
             },
             removeOption(index) {
                 this.options.splice(index, 1);
+            },
+            addMatchPair() {
+                this.matchingPairs.push({});
             }
         }
     }

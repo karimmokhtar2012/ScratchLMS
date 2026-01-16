@@ -113,6 +113,12 @@ class LearnController extends Controller
 
         // 5. Get Completed Status for Playlist UI
         $completedLessonIds = $this->getCompletedLessonIds($userId);
+        $lockedLessonIds = [];
+        foreach ($flatLessons as $lesson) {
+            if ($progressService->isLessonLocked($userId, $courseId, (int) $lesson['id'])) {
+                $lockedLessonIds[] = (int) $lesson['id'];
+            }
+        }
 
         // 6. If it's a quiz, fetch the Quiz ID
         $quizId = null;
@@ -129,7 +135,8 @@ class LearnController extends Controller
             'quizId' => $quizId,
             'prevLesson' => $prevLesson,
             'nextLesson' => $nextLesson,
-            'completedLessonIds' => $completedLessonIds
+            'completedLessonIds' => $completedLessonIds,
+            'lockedLessonIds' => $lockedLessonIds
         ]);
     }
 

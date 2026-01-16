@@ -182,16 +182,18 @@ class QuizService
         $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
 
         // 2. Fetch Questions & Correct Answers
-        $sqlQ = "SELECT id, type, correct_answers, points FROM questions WHERE quiz_id = :qid";
+        $sqlQ = "SELECT id, type, correct_answers, points, grading_policy, options FROM questions WHERE quiz_id = :qid";
         $questions = $this->db->fetchAll($sqlQ, [':qid' => $attempt['quiz_id']]);
 
         $totalPoints = 0;
         $earnedPoints = 0;
+        $manualQueue = [];
 
         foreach ($questions as $q) {
             $totalPoints += $q['points'];
             $correctKey = json_decode($q['correct_answers'] ?? '[]', true);
             $userAns = $userAnswers[$q['id']] ?? null;
+            $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
 
             // Grading Logic
             $isCorrect = false;
@@ -211,6 +213,16 @@ class QuizService
                         $isCorrect = true;
                     }
                 }
+            } elseif ($q['type'] === 'fill_blank') {
+                $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
+            } elseif ($q['type'] === 'matching') {
+                $options = json_decode($q['options'] ?? '[]', true);
+                $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
+            } elseif (in_array($q['type'], ['essay', 'video_submission'], true)) {
+                if ($q['type'] === 'video_submission' && is_string($userAns) && $userAns !== '' && !$this->isValidUrl($userAns)) {
+                    throw new \Exception('INVALID_VIDEO_URL');
+                }
+                $manualQueue[] = $q;
             }
 
             if ($isCorrect) {
@@ -220,20 +232,277 @@ class QuizService
 
         // 3. Calculate Result
         $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) * 100 : 0;
-        $isPassed = $percentage >= $attempt['passing_score'] ? 1 : 0;
+        $hasManual = !empty($manualQueue);
+        $gradingStatus = $hasManual ? 'pending' : 'final';
+        $isPassed = (!$hasManual && $percentage >= $attempt['passing_score']) ? 1 : 0;
 
         // 4. Update Database
-        $update = "UPDATE quiz_attempts SET score = :score, is_passed = :passed, completed_at = CURRENT_TIMESTAMP WHERE id = :id";
+        $update = "UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status, completed_at = CURRENT_TIMESTAMP WHERE id = :id";
         $this->db->query($update, [
             ':score' => round($percentage), 
             ':passed' => $isPassed, 
+            ':status' => $gradingStatus,
+            ':id' => $attemptId
+        ]);
+
+        if ($hasManual) {
+            foreach ($manualQueue as $q) {
+                $aiScore = null;
+                $aiFeedback = null;
+                $status = 'pending_review';
+                $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
+                if ($q['type'] === 'essay' && $policy === 'ai') {
+                    $aiScore = round($q['points'] * 0.6, 2);
+                    $aiFeedback = 'AI pre-score placeholder. Manual review required.';
+                    $status = 'ai_scored';
+                }
+                $this->db->query("INSERT INTO grading_queue (attempt_id, question_id, status, ai_score, ai_feedback) VALUES (:aid, :qid, :status, :ai_score, :ai_feedback)", [
+                    ':aid' => $attemptId,
+                    ':qid' => $q['id'],
+                    ':status' => $status,
+                    ':ai_score' => $aiScore,
+                    ':ai_feedback' => $aiFeedback
+                ]);
+            }
+        }
+
+        return [
+            'score' => round($percentage),
+            'is_passed' => (bool)$isPassed,
+            'grading_status' => $gradingStatus,
+            'quiz_id' => $attempt['quiz_id']
+        ];
+    }
+
+    public function recalculateAttemptScore(int $attemptId): array
+    {
+        $attempt = $this->db->fetchAll("SELECT qa.*, q.passing_score FROM quiz_attempts qa JOIN quizzes q ON qa.quiz_id = q.id WHERE qa.id = :id", [':id' => $attemptId])[0] ?? null;
+        if (!$attempt) {
+            throw new \Exception('Attempt not found');
+        }
+
+        $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
+        $questions = $this->db->fetchAll("SELECT id, type, correct_answers, points, grading_policy, options FROM questions WHERE quiz_id = :qid", [':qid' => $attempt['quiz_id']]);
+        $manualScores = $this->db->fetchAll("SELECT question_id, final_score, status FROM grading_queue WHERE attempt_id = :aid", [':aid' => $attemptId]);
+        $manualMap = [];
+        $manualComplete = true;
+        foreach ($manualScores as $row) {
+            $manualMap[(int)$row['question_id']] = $row;
+            if ($row['status'] === 'pending_review' || $row['status'] === 'ai_scored') {
+                $manualComplete = false;
+            }
+        }
+
+        $totalPoints = 0;
+        $earnedPoints = 0;
+
+        foreach ($questions as $q) {
+            $totalPoints += $q['points'];
+            $userAns = $userAnswers[$q['id']] ?? null;
+            $correctKey = json_decode($q['correct_answers'] ?? '[]', true);
+            $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
+            $isCorrect = false;
+
+            if (in_array($q['type'], ['essay', 'video_submission'], true)) {
+                if (isset($manualMap[$q['id']]) && $manualMap[$q['id']]['final_score'] !== null) {
+                    $earnedPoints += (float) $manualMap[$q['id']]['final_score'];
+                }
+                continue;
+            }
+
+            if ($q['type'] === 'single_choice' || $q['type'] === 'true_false') {
+                if (!empty($correctKey) && $userAns == $correctKey[0]) {
+                    $isCorrect = true;
+                }
+            } elseif ($q['type'] === 'multi_choice') {
+                if (is_array($userAns) && is_array($correctKey)) {
+                    sort($userAns);
+                    sort($correctKey);
+                    if ($userAns == $correctKey) {
+                        $isCorrect = true;
+                    }
+                }
+            } elseif ($q['type'] === 'fill_blank') {
+                $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
+            } elseif ($q['type'] === 'matching') {
+                $options = json_decode($q['options'] ?? '[]', true);
+                $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
+            }
+
+            if ($isCorrect) {
+                $earnedPoints += $q['points'];
+            }
+        }
+
+        $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) * 100 : 0;
+        $gradingStatus = $manualComplete ? 'final' : 'pending';
+        $isPassed = ($gradingStatus === 'final' && $percentage >= $attempt['passing_score']) ? 1 : 0;
+
+        $this->db->query("UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status WHERE id = :id", [
+            ':score' => round($percentage),
+            ':passed' => $isPassed,
+            ':status' => $gradingStatus,
             ':id' => $attemptId
         ]);
 
         return [
             'score' => round($percentage),
-            'is_passed' => (bool)$isPassed,
-            'quiz_id' => $attempt['quiz_id']
+            'is_passed' => (bool) $isPassed,
+            'grading_status' => $gradingStatus
         ];
+    }
+
+    private function resolveGradingPolicy(?string $policy, string $type): string
+    {
+        if (in_array($type, ['fill_blank', 'matching'], true)) {
+            if (in_array($policy, ['strict', 'fuzzy', 'both'], true)) {
+                return $policy;
+            }
+            return 'both';
+        }
+
+        if ($type === 'essay') {
+            return $policy === 'manual' ? 'manual' : 'ai';
+        }
+
+        if ($type === 'video_submission') {
+            return 'manual';
+        }
+
+        return $policy ?: 'auto';
+    }
+
+    private function gradeFillBlank(mixed $userAns, array $correctKey, string $policy): bool
+    {
+        if (!is_string($userAns)) {
+            return false;
+        }
+
+        foreach ($correctKey as $candidate) {
+            $candidate = (string) $candidate;
+            if ($policy === 'strict') {
+                if ($this->isStrictTextMatch($userAns, $candidate)) {
+                    return true;
+                }
+            } elseif ($policy === 'fuzzy') {
+                if ($this->isFuzzyTextMatch($userAns, $candidate)) {
+                    return true;
+                }
+            } else {
+                if ($this->isStrictTextMatch($userAns, $candidate) || $this->isFuzzyTextMatch($userAns, $candidate)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function gradeMatching(mixed $userAns, array $correctKey, array $options, string $policy): bool
+    {
+        if (!is_array($userAns) || !is_array($correctKey)) {
+            return false;
+        }
+
+        if ($this->isMatchingStrict($userAns, $correctKey)) {
+            return true;
+        }
+
+        if ($policy === 'strict') {
+            return false;
+        }
+
+        return $this->isMatchingFuzzy($userAns, $correctKey, $options);
+    }
+
+    private function isMatchingStrict(array $userAns, array $correctKey): bool
+    {
+        foreach ($correctKey as $pair) {
+            $leftId = $pair['left_id'] ?? null;
+            $rightId = $pair['right_id'] ?? null;
+            if ($leftId === null || $rightId === null) {
+                return false;
+            }
+            if (!isset($userAns[$leftId]) || (int)$userAns[$leftId] !== (int)$rightId) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isMatchingFuzzy(array $userAns, array $correctKey, array $options): bool
+    {
+        $rightTextById = [];
+        foreach ($options as $pair) {
+            if (isset($pair['right_id'])) {
+                $rightTextById[(int) $pair['right_id']] = (string) ($pair['right_text'] ?? '');
+            }
+        }
+
+        foreach ($correctKey as $pair) {
+            $leftId = $pair['left_id'] ?? null;
+            $rightId = $pair['right_id'] ?? null;
+            if ($leftId === null || $rightId === null) {
+                return false;
+            }
+            if (!isset($userAns[$leftId])) {
+                return false;
+            }
+            $userValue = $userAns[$leftId];
+            if (is_numeric($userValue)) {
+                return false;
+            }
+            $correctText = $rightTextById[(int) $rightId] ?? '';
+            if (!$this->isFuzzyTextMatch((string) $userValue, $correctText)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isStrictTextMatch(string $userAns, string $candidate): bool
+    {
+        return strtolower(trim($userAns)) === strtolower(trim($candidate));
+    }
+
+    private function isFuzzyTextMatch(string $userAns, string $candidate): bool
+    {
+        $normalizedUser = $this->normalizeForFuzzy($userAns);
+        $normalizedCandidate = $this->normalizeForFuzzy($candidate);
+
+        if ($normalizedUser === '' || $normalizedCandidate === '') {
+            return false;
+        }
+
+        if ($normalizedUser === $normalizedCandidate) {
+            return true;
+        }
+
+        if (str_replace(' ', '', $normalizedUser) === str_replace(' ', '', $normalizedCandidate)) {
+            return true;
+        }
+
+        similar_text($normalizedUser, $normalizedCandidate, $percent);
+        return $percent >= 85;
+    }
+
+    private function normalizeForFuzzy(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9]+/i', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+        return trim($value);
+    }
+
+    private function isValidUrl(string $url): bool
+    {
+        $url = trim($url);
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        return in_array($scheme, ['http', 'https'], true);
     }
 }

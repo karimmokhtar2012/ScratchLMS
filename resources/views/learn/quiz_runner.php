@@ -72,22 +72,27 @@
 
                     <!-- Options -->
                     <div class="space-y-3 flex-grow">
-                        <template x-for="(option, idx) in currentQuestion.options" :key="option.id">
-                            <div @click="selectOption(option.id)"
-                                 class="flex items-center p-4 rounded-xl border border-zinc-700 bg-zinc-800/50 cursor-pointer transition select-none hover:border-indigo-500/50"
-                                 :class="{ 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500': isSelected(option.id) }">
-                                
-                                <!-- Visual Indicator -->
-                                <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition flex-shrink-0"
-                                     :class="isSelected(option.id) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-600 text-transparent'">
-                                    <i class="fa-solid fa-check text-[8px]"></i>
-                                </div>
+                        <!-- Single/Multi Choice -->
+                        <template x-if="currentQuestion.type === 'single_choice' || currentQuestion.type === 'multi_choice'">
+                            <div class="space-y-3">
+                                <template x-for="(option, idx) in currentQuestion.options" :key="option.id">
+                                    <div @click="selectOption(option.id)"
+                                         class="flex items-center p-4 rounded-xl border border-zinc-700 bg-zinc-800/50 cursor-pointer transition select-none hover:border-indigo-500/50"
+                                         :class="{ 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500': isSelected(option.id) }">
+                                        
+                                        <!-- Visual Indicator -->
+                                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition flex-shrink-0"
+                                             :class="isSelected(option.id) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-600 text-transparent'">
+                                            <i class="fa-solid fa-check text-[8px]"></i>
+                                        </div>
 
-                                <span class="text-md md:text-lg text-zinc-200 leading-tight" x-text="option.text"></span>
+                                        <span class="text-md md:text-lg text-zinc-200 leading-tight" x-text="option.text"></span>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                         
-                        <!-- True/False Override -->
+                        <!-- True/False -->
                         <template x-if="currentQuestion.type === 'true_false'">
                              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div @click="selectOption(1)" 
@@ -101,6 +106,46 @@
                                     <span class="text-xl font-bold text-white uppercase tracking-wider">False</span>
                                 </div>
                              </div>
+                        </template>
+
+                        <!-- Fill in the Blank -->
+                        <template x-if="currentQuestion.type === 'fill_blank'">
+                            <input type="text" x-model="answers[currentQuestion.id]" @input="saveToServer(currentQuestion.id, answers[currentQuestion.id])"
+                                   class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition"
+                                   placeholder="Type your answer">
+                        </template>
+
+                        <!-- Matching -->
+                        <template x-if="currentQuestion.type === 'matching'">
+                            <div class="space-y-3">
+                                <template x-for="pair in currentQuestion.options" :key="pair.left_id">
+                                    <div class="grid grid-cols-2 gap-4 items-center">
+                                        <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-200" x-text="pair.left_text"></div>
+                                        <select class="bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500"
+                                                @change="setMatching(pair.left_id, $event.target.value)">
+                                            <option value="">Match...</option>
+                                            <template x-for="right in matchingRights(currentQuestion.options)" :key="right.right_id">
+                                                <option :value="right.right_id" x-text="right.right_text"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Essay -->
+                        <template x-if="currentQuestion.type === 'essay'">
+                            <textarea x-model="answers[currentQuestion.id]" @input="saveToServer(currentQuestion.id, answers[currentQuestion.id])"
+                                      rows="6"
+                                      class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition"
+                                      placeholder="Write your response..."></textarea>
+                        </template>
+
+                        <!-- Video Submission -->
+                        <template x-if="currentQuestion.type === 'video_submission'">
+                            <input type="url" x-model="answers[currentQuestion.id]" @input="saveToServer(currentQuestion.id, answers[currentQuestion.id])"
+                                   class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition"
+                                   placeholder="Paste video URL">
                         </template>
                     </div>
 
@@ -220,9 +265,28 @@
                     return ans == optionId; // Single/TrueFalse
                 },
 
+                matchingRights(options) {
+                    return (options || []).map(pair => ({ right_id: pair.right_id, right_text: pair.right_text }));
+                },
+
+                setMatching(leftId, rightId) {
+                    const qId = this.currentQuestion.id;
+                    const current = this.answers[qId] || {};
+                    current[leftId] = parseInt(rightId, 10) || null;
+                    this.answers[qId] = current;
+                    this.saveToServer(qId, this.answers[qId]);
+                },
+
                 hasAnswered(questionId) {
                     const ans = this.answers[questionId];
-                    return ans !== undefined && ans !== null && (Array.isArray(ans) ? ans.length > 0 : true);
+                    const question = this.getQuestionById(questionId);
+                    if (ans === undefined || ans === null) return false;
+                    if (question && question.type === 'video_submission') {
+                        return this.isValidUrl(String(ans || ''));
+                    }
+                    if (Array.isArray(ans)) return ans.length > 0;
+                    if (typeof ans === 'object') return Object.keys(ans).length > 0;
+                    return String(ans).length > 0;
                 },
 
                 selectOption(optionId) {
@@ -273,9 +337,34 @@
                 },
 
                 submitQuiz() {
-                    if(confirm('Are you sure you want to finish the exam?')) {
+                    const invalidVideo = this.questions.some((q) => {
+                        if (q.type !== 'video_submission') return false;
+                        const ans = this.answers[q.id];
+                        if (ans === undefined || ans === null || String(ans).trim() === '') return false;
+                        return !this.isValidUrl(String(ans));
+                    });
+
+                    if (invalidVideo) {
+                        alert('Please provide a valid video URL (http/https) before submitting.');
+                        return;
+                    }
+
+                    if (confirm('Are you sure you want to finish the exam?')) {
                         this.submitting = true;
                         this.$refs.submitForm.submit();
+                    }
+                },
+
+                getQuestionById(questionId) {
+                    return this.questions.find(q => q.id === questionId);
+                },
+
+                isValidUrl(value) {
+                    try {
+                        const url = new URL(value);
+                        return url.protocol === 'http:' || url.protocol === 'https:';
+                    } catch (e) {
+                        return false;
                     }
                 },
 

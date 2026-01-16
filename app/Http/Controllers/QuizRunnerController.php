@@ -292,7 +292,7 @@ class QuizRunnerController extends Controller
             $result = $this->quizService->submitAttempt($attemptId, $userId);
             
             // If passed, trigger xAPI completion log
-            if ($result['is_passed']) {
+            if ($result['is_passed'] && ($result['grading_status'] ?? 'final') === 'final') {
                 // Update Progress Logic
                 $db = \App\Core\Database::getInstance();
                 
@@ -325,8 +325,16 @@ class QuizRunnerController extends Controller
                 }
             }
 
+            if (($result['grading_status'] ?? 'final') === 'pending') {
+                $_SESSION['flash_info'] = 'Your submission is pending manual review.';
+            }
             header('Location: /learn/quiz/result/' . $attemptId);
         } catch (\Exception $e) {
+            if ($e->getMessage() === 'INVALID_VIDEO_URL') {
+                $_SESSION['flash_error'] = 'Video submissions must be valid URLs (http/https).';
+                header('Location: /learn/quiz/attempt/' . $attemptId);
+                exit;
+            }
             header('Location: /dashboard');
         }
     }

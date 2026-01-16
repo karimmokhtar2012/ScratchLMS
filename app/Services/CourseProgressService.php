@@ -90,29 +90,88 @@ class CourseProgressService
         }
 
         // 2. Linear Flow Logic: Must complete previous lesson
-        // Get all lessons in order
-        $sqlLessons = "SELECT l.id 
-                       FROM lessons l 
-                       JOIN modules m ON l.module_id = m.id 
-                       WHERE m.course_id = :cid 
-                       ORDER BY m.sort_order ASC, l.sort_order ASC";
-        $lessons = $this->db->fetchAll($sqlLessons, [':cid' => $courseId]);
-        
-        $lessonIds = array_column($lessons, 'id');
-        $targetIndex = array_search($lessonId, $lessonIds);
+        if ($course['content_flow'] === 'linear') {
+            // Get all lessons in order
+            $sqlLessons = "SELECT l.id 
+                           FROM lessons l 
+                           JOIN modules m ON l.module_id = m.id 
+                           WHERE m.course_id = :cid 
+                           ORDER BY m.sort_order ASC, l.sort_order ASC";
+            $lessons = $this->db->fetchAll($sqlLessons, [':cid' => $courseId]);
+            
+            $lessonIds = array_column($lessons, 'id');
+            $targetIndex = array_search($lessonId, $lessonIds);
 
-        if ($targetIndex === false || $targetIndex === 0) {
-            return false; // First lesson is always open
+            if ($targetIndex === false || $targetIndex === 0) {
+                return false; // First lesson is always open
+            }
+
+            $prevLessonId = $lessonIds[$targetIndex - 1];
+
+            // Check if previous lesson is completed
+            $check = $this->db->fetchAll("SELECT lesson_id FROM completed_lessons WHERE user_id = :uid AND lesson_id = :lid", [
+                ':uid' => $userId,
+                ':lid' => $prevLessonId
+            ]);
+
+            return empty($check);
         }
 
-        $prevLessonId = $lessonIds[$targetIndex - 1];
+        // 3. Drip logic (time/progress/combined)
+        $rule = $this->db->fetchAll("SELECT unlock_after_days, unlock_after_lesson_id, unlock_after_percent FROM lesson_drip_rules WHERE lesson_id = :lid", [
+            ':lid' => $lessonId
+        ])[0] ?? null;
 
-        // Check if previous lesson is completed
-        $check = $this->db->fetchAll("SELECT lesson_id FROM completed_lessons WHERE user_id = :uid AND lesson_id = :lid", [
-            ':uid' => $userId,
-            ':lid' => $prevLessonId
-        ]);
+        if (!$rule) {
+            return false;
+        }
 
-        return empty($check);
+        $timeLocked = false;
+        $progressLocked = false;
+
+        if (in_array($course['content_flow'], ['drip_time', 'drip_combined'], true)) {
+            if (!empty($rule['unlock_after_days'])) {
+                $enroll = $this->db->fetchAll("SELECT created_at FROM enrollments WHERE user_id = :uid AND course_id = :cid", [
+                    ':uid' => $userId,
+                    ':cid' => $courseId
+                ])[0] ?? null;
+                if ($enroll) {
+                    $unlockAt = strtotime($enroll['created_at']) + ((int) $rule['unlock_after_days'] * 86400);
+                    $timeLocked = time() < $unlockAt;
+                }
+            }
+        }
+
+        if (in_array($course['content_flow'], ['drip_progress', 'drip_combined'], true)) {
+            if (!empty($rule['unlock_after_lesson_id'])) {
+                $check = $this->db->fetchAll("SELECT lesson_id FROM completed_lessons WHERE user_id = :uid AND lesson_id = :lid", [
+                    ':uid' => $userId,
+                    ':lid' => (int) $rule['unlock_after_lesson_id']
+                ]);
+                $progressLocked = empty($check);
+            }
+            if (!empty($rule['unlock_after_percent'])) {
+                $total = $this->db->fetchAll("SELECT COUNT(*) as total FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid", [
+                    ':cid' => $courseId
+                ])[0]['total'] ?? 0;
+                $completed = $this->db->fetchAll("SELECT COUNT(*) as completed FROM completed_lessons cl JOIN lessons l ON cl.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE cl.user_id = :uid AND m.course_id = :cid", [
+                    ':uid' => $userId,
+                    ':cid' => $courseId
+                ])[0]['completed'] ?? 0;
+                $percent = $total > 0 ? ($completed / $total) * 100 : 0;
+                if ($percent < (int) $rule['unlock_after_percent']) {
+                    $progressLocked = true;
+                }
+            }
+        }
+
+        if ($course['content_flow'] === 'drip_time') {
+            return $timeLocked;
+        }
+        if ($course['content_flow'] === 'drip_progress') {
+            return $progressLocked;
+        }
+
+        return $timeLocked || $progressLocked;
     }
 }
