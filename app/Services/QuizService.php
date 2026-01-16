@@ -537,7 +537,7 @@ class QuizService
 
     private function shouldUseAiGrading(array $question): bool
     {
-        $key = getenv('GROQ_API_KEY');
+        $key = getenv('GROQ_API_KEY') ?: ($_ENV['GROQ_API_KEY'] ?? null);
         if (!$key) {
             return false;
         }
@@ -555,7 +555,7 @@ class QuizService
 
     private function requestAiScore(array $question, mixed $userAnswer, array $correctAnswers): ?array
     {
-        $key = getenv('GROQ_API_KEY');
+        $key = getenv('GROQ_API_KEY') ?: ($_ENV['GROQ_API_KEY'] ?? null);
         if (!$key) {
             $this->logAi("GROQ_API_KEY not found in environment.");
             return null;

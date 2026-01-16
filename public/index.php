@@ -32,7 +32,10 @@ if (file_exists(BASE_PATH . '.env')) {
         
         $parts = explode('=', $line, 2);
         if (count($parts) === 2) {
-            $_ENV[trim($parts[0])] = trim($parts[1]);
+            $key = trim($parts[0]);
+            $value = trim($parts[1]);
+            $_ENV[$key] = $value;
+            putenv("$key=$value");
         }
     }
 }
