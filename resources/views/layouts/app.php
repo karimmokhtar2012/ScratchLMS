@@ -108,6 +108,10 @@
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 const url = new URL(href, window.location.href);
                 if (url.origin !== window.location.origin) return;
+                
+                // Prevent loader on same-page anchor navigation
+                if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
+
                 showOverlay();
             }, true);
             document.addEventListener('submit', (e) => {

@@ -185,9 +185,12 @@
                 <tbody class="divide-y divide-zinc-800">
                     <?php if (empty($gradingQueue)): ?>
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center text-zinc-500">
-                                <i class="fa-solid fa-pen-to-square text-4xl mb-4 block opacity-20"></i>
-                                No submissions waiting for grading.
+                            <td colspan="5" class="px-6 py-16 text-center">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800/50 mb-4 ring-1 ring-zinc-700/50">
+                                    <i class="fa-solid fa-pen-to-square text-2xl text-zinc-600"></i>
+                                </div>
+                                <h3 class="text-zinc-400 font-medium mb-1">Queue Empty</h3>
+                                <p class="text-zinc-500 text-sm">No submissions waiting for manual grading.</p>
                             </td>
                         </tr>
                     <?php else: ?>

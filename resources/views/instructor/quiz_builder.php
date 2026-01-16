@@ -67,6 +67,7 @@
                 <div class="flex-1 flex flex-col overflow-hidden">
                     <template x-if="activeBank">
                         <form action="/instructor/quiz/import" method="POST" class="flex flex-col h-full">
+                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                             <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
                             <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
                             
@@ -112,6 +113,7 @@
                 </h2>
 
                 <form action="/instructor/quiz/settings" method="POST" class="space-y-5">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
                     <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
 
@@ -231,6 +233,7 @@
                                 </div>
                                 
                                 <form action="/instructor/question/delete/<?= $q['id'] ?>" method="POST" onsubmit="return confirm('Delete this question?');">
+                                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                                     <button type="submit" class="text-zinc-600 hover:text-red-400 transition p-2">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
@@ -248,6 +251,7 @@
                 </h2>
 
                 <form action="/instructor/question/add" method="POST" class="space-y-6" @submit="submitting = true">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
                     <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
 

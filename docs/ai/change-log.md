@@ -276,3 +276,15 @@
     - **Security**: N/A.
     - **DB Notes**: Run `php database/fix_quiz_lesson_fk.php` on the active DB.
     - **Tests run + results**: N/A.
+
+- 2026-01-17 00:05 (Africa/Cairo)
+    - **Goal**: Fix UX bug where loader stuck on anchor nav and inconsistent UI states.
+    - **Files Changed**:
+        - `resources/views/layouts/app.php`: Prevent transition overlay for same-page hash navigation.
+        - `resources/views/instructor/pending_requests.php`: Polished empty state for Grading Queue.
+        - `resources/views/instructor/quiz_builder.php`: Added missing CSRF tokens to forms.
+        - `database/fix_questions_quiz_fk.php`: Rebuilds questions table to reference quizzes(id).
+    - **Rationale**: Resolve Issue #13 and #15, and ensure data integrity/security.
+    - **Security**: CSRF protection added to quiz builder.
+    - **DB Notes**: Run `php database/fix_questions_quiz_fk.php` on the active DB.
+    - **Tests run + results**: Verified syntax.
