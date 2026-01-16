@@ -17,4 +17,4 @@
     - Free courses: Direct enrollment via `CourseController::enroll`.
     - Paid courses: Redirects to cart; enrollment happens after `CheckoutController::process`.
 - **Quizzes**: Treated as separate units from Video/Article lessons in the UI. Access is secured by `Authorization` and `RateLimiter`.
-- **Content Flow**: (In Progress) System to support "Free" vs "Linear" progression. DB migration complete (`courses.content_flow`).
+- **Content Flow**: System to support "Free" vs "Linear" (sequential) progression. Enforced in `LearnController` and calculated via `CourseProgressService`.
