@@ -182,7 +182,7 @@ class QuizService
         $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
 
         // 2. Fetch Questions & Correct Answers
-        $sqlQ = "SELECT id, type, correct_answers, points, grading_policy, options FROM questions WHERE quiz_id = :qid";
+        $sqlQ = "SELECT id, type, question_text, correct_answers, points, grading_policy, ai_rubric, options FROM questions WHERE quiz_id = :qid";
         $questions = $this->db->fetchAll($sqlQ, [':qid' => $attempt['quiz_id']]);
 
         $totalPoints = 0;
@@ -215,9 +215,20 @@ class QuizService
                 }
             } elseif ($q['type'] === 'fill_blank') {
                 $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
+                if (!$isCorrect && $this->shouldUseAiGrading($q)) {
+                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
+                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                }
             } elseif ($q['type'] === 'matching') {
                 $options = json_decode($q['options'] ?? '[]', true);
                 $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
+            } elseif ($q['type'] === 'short_text') {
+                if (!empty($correctKey) && $userAns == $correctKey[0]) {
+                    $isCorrect = true;
+                } elseif ($this->shouldUseAiGrading($q)) {
+                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
+                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                }
             } elseif (in_array($q['type'], ['essay', 'video_submission'], true)) {
                 if ($q['type'] === 'video_submission' && is_string($userAns) && $userAns !== '' && !$this->isValidUrl($userAns)) {
                     throw new \Exception('INVALID_VIDEO_URL');
@@ -252,9 +263,16 @@ class QuizService
                 $status = 'pending_review';
                 $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
                 if ($q['type'] === 'essay' && $policy === 'ai') {
-                    $aiScore = round($q['points'] * 0.6, 2);
-                    $aiFeedback = 'AI pre-score placeholder. Manual review required.';
-                    $status = 'ai_scored';
+                    $aiResult = $this->requestAiScore($q, $userAnswers[$q['id']] ?? null, []);
+                    if ($aiResult !== null) {
+                        $aiScore = $aiResult['score'];
+                        $aiFeedback = $aiResult['feedback'];
+                        $status = 'ai_scored';
+                    } else {
+                        $aiScore = round($q['points'] * 0.6, 2);
+                        $aiFeedback = 'AI pre-score placeholder. Manual review required.';
+                        $status = 'ai_scored';
+                    }
                 }
                 $this->db->query("INSERT INTO grading_queue (attempt_id, question_id, status, ai_score, ai_feedback) VALUES (:aid, :qid, :status, :ai_score, :ai_feedback)", [
                     ':aid' => $attemptId,
@@ -282,7 +300,7 @@ class QuizService
         }
 
         $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
-        $questions = $this->db->fetchAll("SELECT id, type, correct_answers, points, grading_policy, options FROM questions WHERE quiz_id = :qid", [':qid' => $attempt['quiz_id']]);
+        $questions = $this->db->fetchAll("SELECT id, type, question_text, correct_answers, points, grading_policy, ai_rubric, options FROM questions WHERE quiz_id = :qid", [':qid' => $attempt['quiz_id']]);
         $manualScores = $this->db->fetchAll("SELECT question_id, final_score, status FROM grading_queue WHERE attempt_id = :aid", [':aid' => $attemptId]);
         $manualMap = [];
         $manualComplete = true;
@@ -324,9 +342,20 @@ class QuizService
                 }
             } elseif ($q['type'] === 'fill_blank') {
                 $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
+                if (!$isCorrect && $this->shouldUseAiGrading($q)) {
+                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
+                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                }
             } elseif ($q['type'] === 'matching') {
                 $options = json_decode($q['options'] ?? '[]', true);
                 $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
+            } elseif ($q['type'] === 'short_text') {
+                if (!empty($correctKey) && $userAns == $correctKey[0]) {
+                    $isCorrect = true;
+                } elseif ($this->shouldUseAiGrading($q)) {
+                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
+                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                }
             }
 
             if ($isCorrect) {
@@ -504,5 +533,114 @@ class QuizService
         }
         $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
         return in_array($scheme, ['http', 'https'], true);
+    }
+
+    private function shouldUseAiGrading(array $question): bool
+    {
+        $key = getenv('GROQ_API_KEY');
+        if (!$key) {
+            return false;
+        }
+        return !empty($question['ai_rubric']);
+    }
+
+    private function aiPasses(?array $aiResult, float $points): bool
+    {
+        if (!$aiResult) {
+            return false;
+        }
+        $threshold = max(1.0, $points * 0.7);
+        return $aiResult['score'] >= $threshold;
+    }
+
+    private function requestAiScore(array $question, mixed $userAnswer, array $correctAnswers): ?array
+    {
+        $key = getenv('GROQ_API_KEY');
+        if (!$key) {
+            $this->logAi("GROQ_API_KEY not found in environment.");
+            return null;
+        }
+
+        $prompt = "You are grading a student answer.\n"
+            . "Question: " . ($question['question_text'] ?? '') . "\n"
+            . "Correct answers: " . json_encode($correctAnswers) . "\n"
+            . "Student answer: " . json_encode($userAnswer) . "\n"
+            . "Rubric: " . ($question['ai_rubric'] ?? '') . "\n"
+            . "Return JSON: {\"score\": number (0 to " . (float) $question['points'] . "), \"feedback\": string}.\n";
+
+        $payload = json_encode([
+            'model' => 'openai/gpt-oss-20b',
+            'input' => $prompt,
+            'temperature' => 0.2,
+            'max_output_tokens' => 200
+        ]);
+
+        $this->logAi("Sending request to Groq API. Payload: " . $payload);
+
+        $ch = curl_init('https://api.groq.com/openai/v1/responses');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $key,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        $raw = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($raw === false) {
+            $this->logAi("cURL Error: " . $error);
+            return null;
+        }
+
+        $this->logAi("Response Status: $status. Body: " . $raw);
+
+        if ($status < 200 || $status >= 300) {
+            $this->logAi("API Error (Status $status). Response: " . $raw);
+            return null;
+        }
+
+        $data = json_decode($raw, true);
+        $text = $data['output_text'] ?? '';
+        if (!$text && isset($data['output'][0]['content'][0]['text'])) {
+            $text = $data['output'][0]['content'][0]['text'];
+        }
+        $json = $this->extractJson($text);
+        if (!$json || !isset($json['score'])) {
+            $this->logAi("Failed to extract JSON from response. Text: " . $text);
+            return null;
+        }
+
+        return [
+            'score' => (float) $json['score'],
+            'feedback' => (string) ($json['feedback'] ?? '')
+        ];
+    }
+
+    private function logAi(string $message): void
+    {
+        $dir = __DIR__ . '/../../storage/logs';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $file = $dir . '/ai_grading.log';
+        $timestamp = date('Y-m-d H:i:s');
+        file_put_contents($file, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
+    }
+
+    private function extractJson(string $text): ?array
+    {
+        $start = strpos($text, '{');
+        $end = strrpos($text, '}');
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+        $json = substr($text, $start, $end - $start + 1);
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : null;
     }
 }
