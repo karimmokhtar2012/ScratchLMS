@@ -142,6 +142,16 @@
     - **Tests run + results**: N/A.
     - **Follow-ups**: Gemini to author their own report at end of session.
 
+- 2026-01-16 12:45 (Africa/Cairo)
+    - **Goal**: Overhaul README.md with comprehensive project documentation and add "Learning Paths" section.
+    - **Files Changed**:
+        - `README.md`: Completely rewritten to include high-level features, tech stack, installation steps, and the new "Adaptive Learning Paths" section.
+    - **Rationale**: Improve project visibility and provide clear documentation for users and contributors about the system's capabilities and architecture.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: Manual verification of Markdown rendering.
+    - **Follow-ups**: Ensure all upcoming features mentioned in README are tracked in the roadmap.
+
 - 2026-01-16 03:50 (Africa/Cairo)
     - **Goal**: Add repository contributor guide and consolidate Codex rules into AGENTS.md.
     - **Files Changed**:
