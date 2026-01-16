@@ -24,6 +24,14 @@ A high-performance, lightweight Learning Management System (LMS) built from scra
 - **Course Governance**: Review, publish, or unpublish courses.
 - **System Health**: Monitor application logs and system integrity.
 
+## 🗺️ Adaptive Learning Paths
+
+ScratchLMS allows instructors to define the student journey through flexible "Content Flow" settings:
+
+- **Linear Sequencing**: Enforce a step-by-step progression. Students must complete the current lesson before unlocking the next one, ensuring foundational knowledge is mastered.
+- **Free Exploration**: Allow students to jump between lessons and modules freely. Ideal for reference-based courses or advanced workshops.
+- **Prerequisite Locking**: (In Progress) System-level course prerequisites to guide students through complex curricula.
+
 ### 🛒 E-Commerce
 - **Shopping Cart**: Fully functional cart system.
 - **Checkout Flow**: Secure checkout process for course purchases.
