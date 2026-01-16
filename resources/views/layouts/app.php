@@ -285,7 +285,7 @@
                         </div>
                         <p class="px-4 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2" x-show="!sidebarCollapsed">Bending Requests</p>
                         <div class="space-y-1">
-                            <a href="/dashboard" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/certificates/approvals" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
                                     <i class="fa-solid fa-clipboard-check w-5 text-center group-hover:text-amber-400 transition"></i>

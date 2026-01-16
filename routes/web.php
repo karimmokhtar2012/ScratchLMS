@@ -77,6 +77,8 @@ $router->post('/instructor/modules/reorder', [InstructorController::class, 'reor
 $router->post('/instructor/lessons/reorder', [InstructorController::class, 'reorderLessons']);
 $router->get('/instructor/lesson/([^/]+)/edit', [InstructorController::class, 'editLesson']);
 $router->post('/instructor/lesson/([^/]+)/update', [InstructorController::class, 'updateLesson']);
+$router->get('/instructor/certificates/approvals', [InstructorController::class, 'certificateApprovals']);
+$router->post('/instructor/certificates/issue', [InstructorController::class, 'issueCertificate']);
 
 // Quiz Routes
 $router->get('/instructor/lesson/([^/]+)/quiz', [QuizController::class, 'build']);

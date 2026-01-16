@@ -707,6 +707,97 @@ class InstructorController extends Controller
         exit;
     }
 
+    public function certificateApprovals(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $sql = "SELECT e.id as enrollment_id,
+                       e.progress_percent,
+                       e.is_completed,
+                       e.created_at as enrolled_at,
+                       u.id as user_id,
+                       u.name,
+                       u.email,
+                       c.id as course_id,
+                       c.title as course_title
+                FROM enrollments e
+                JOIN users u ON e.user_id = u.id
+                JOIN courses c ON e.course_id = c.id
+                WHERE c.instructor_id = :uid
+                  AND c.has_certificate = 1
+                  AND c.certificate_auto_issue = 0
+                  AND e.is_completed = 1
+                  AND e.certificate_id IS NULL
+                ORDER BY e.created_at DESC";
+        $approvals = $db->fetchAll($sql, [':uid' => $userId]);
+
+        $this->view('instructor.certificate_approvals', ['approvals' => $approvals]);
+    }
+
+    public function issueCertificate(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /instructor/certificates/approvals');
+            exit;
+        }
+
+        $enrollmentId = (int) ($_POST['enrollment_id'] ?? 0);
+        $userId = $_SESSION['user_id'] ?? null;
+
+        if (!$enrollmentId || !$userId) {
+            $_SESSION['flash_error'] = 'Invalid certificate approval request.';
+            header('Location: /instructor/certificates/approvals');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $sql = "SELECT e.id,
+                       e.user_id,
+                       e.course_id,
+                       e.certificate_id,
+                       e.is_completed,
+                       c.has_certificate,
+                       c.certificate_auto_issue
+                FROM enrollments e
+                JOIN courses c ON e.course_id = c.id
+                WHERE e.id = :eid
+                  AND c.instructor_id = :uid";
+        $row = $db->fetchAll($sql, [':eid' => $enrollmentId, ':uid' => $userId])[0] ?? null;
+
+        if (!$row) {
+            $_SESSION['flash_error'] = 'Enrollment not found or access denied.';
+            header('Location: /instructor/certificates/approvals');
+            exit;
+        }
+
+        if (!empty($row['certificate_id'])) {
+            $_SESSION['flash_info'] = 'Certificate already issued for this enrollment.';
+            header('Location: /instructor/certificates/approvals');
+            exit;
+        }
+
+        if (!$row['is_completed'] || !$row['has_certificate'] || $row['certificate_auto_issue']) {
+            $_SESSION['flash_error'] = 'Certificate cannot be issued for this enrollment.';
+            header('Location: /instructor/certificates/approvals');
+            exit;
+        }
+
+        $certId = 'CERT-' . strtoupper(uniqid());
+        $db->query("UPDATE enrollments SET certificate_id = :certId, certified_at = CURRENT_TIMESTAMP WHERE id = :eid", [
+            ':certId' => $certId,
+            ':eid' => $enrollmentId
+        ]);
+
+        $_SESSION['flash_success'] = 'Certificate issued successfully.';
+        header('Location: /instructor/certificates/approvals');
+        exit;
+    }
+
     public function lessonLibrary(): void
     {
         $userId = $_SESSION['user_id'];

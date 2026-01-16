@@ -190,3 +190,15 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-16 20:25 (Africa/Cairo)
+    - **Goal**: Add instructor UI to approve and issue certificates when auto-issue is disabled.
+    - **Files Changed**:
+        - `routes/web.php`: Added instructor certificate approval routes.
+        - `app/Http/Controllers/InstructorController.php`: Added approval listing and issue actions.
+        - `resources/views/instructor/certificate_approvals.php`: Added approvals UI.
+        - `resources/views/layouts/app.php`: Wired sidebar link to approvals page.
+    - **Rationale**: Allow instructors to manually issue certificates for completed enrollments when auto-issue is off.
+    - **Security**: Instructor ownership checks enforced before issuing certificates.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
