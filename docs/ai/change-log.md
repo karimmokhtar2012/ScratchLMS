@@ -315,3 +315,30 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-17 00:56 (Africa/Cairo)
+    - **Goal**: Fix grading_queue foreign keys referencing old tables.
+    - **Files Changed**:
+        - `database/fix_grading_queue_fk.php`: Rebuilds grading_queue to reference quiz_attempts and questions.
+    - **Rationale**: Allow grading queue inserts for manual review items.
+    - **Security**: N/A.
+    - **DB Notes**: Run `php database/fix_grading_queue_fk.php` on the active DB.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 01:05 (Africa/Cairo)
+    - **Goal**: Backfill missing grading queue items for pending attempts.
+    - **Files Changed**:
+        - `database/backfill_grading_queue.php`: Inserts grading_queue rows for pending attempts with essay/video questions.
+    - **Rationale**: Populate manual grading queue after fixing foreign key issues.
+    - **Security**: N/A.
+    - **DB Notes**: Run `php database/backfill_grading_queue.php` after `fix_grading_queue_fk.php`.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 01:12 (Africa/Cairo)
+    - **Goal**: Fix backfill script parameter handling.
+    - **Files Changed**:
+        - `database/backfill_grading_queue.php`: Use prepared statements for parameterized queries.
+    - **Rationale**: Avoid PDO::query parameter errors during backfill.
+    - **Security**: N/A.
+    - **DB Notes**: Re-run `php database/backfill_grading_queue.php`.
+    - **Tests run + results**: N/A.
