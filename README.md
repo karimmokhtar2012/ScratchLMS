@@ -2,6 +2,26 @@
 
 A high-performance, lightweight Learning Management System (LMS) built from scratch using a custom MVC architecture in PHP. ScratchLMS provides a comprehensive suite of tools for students, instructors, and administrators, focusing on speed, simplicity, and flexibility without the overhead of heavy frameworks.
 
+## 🌟 Version 0.7 Release (January 17, 2026)
+
+**Introducing Scracha**, the AI backbone of ScratchLMS, alongside a massive UI/UX overhaul for the Instructor Studio.
+
+### 🤖 Meet "Scracha"
+**Scracha** is our purpose-built AI engine designed to augment the educational experience. It doesn't just grade; it understands.
+- **Smart Grading**: Automatically scores subjective answers like essays and short text with high accuracy.
+- **Contextual Rationale**: Provides instructors with a detailed "Why?" for every AI-suggested score, which can be transparently shared with students.
+- **Rubric Awareness**: Follows instructor-defined rubrics to ensure grading consistency across hundreds of students.
+- **Adaptive Feedback**: (Coming Soon) Offers personalized study tips based on quiz performance.
+
+### 🎨 Instructor Studio Redesign
+We've completely reimagined the course creation workflow to be faster, cleaner, and more powerful.
+- **Visual Quiz Builder**: A new timeline-based interface for crafting assessments.
+- **WYSIWYG Editor**: A rich-text question editor with live preview for Bold, Italic, Underline, and Images.
+- **Collapsible Workspace**: A professional 3-column layout (Settings | Editor | Formats) that adapts to your focus.
+- **Unified Approvals**: A single command center for managing Quiz Retakes, Manual Grading, and Certificate Issuance.
+
+---
+
 ## 🚀 Features
 
 ### 🎓 For Students
@@ -17,8 +37,8 @@ A high-performance, lightweight Learning Management System (LMS) built from scra
 - **Advanced Quiz Engine**: 
     - **Grading Policies**: Configure Strict (exact match), Fuzzy (typo-tolerant), or Manual (instructor review) grading per question.
     - **Question Bank**: Reusable repository of questions for rapid quiz assembly.
-    - **Manual Grading Queue**: Dedicated workflow for reviewing essays and video submissions with AI score acceptance.
-- **Unified Approvals**: streamlined dashboard for managing quiz retake requests and certificate issuance.
+    - **Manual Grading Queue**: Dedicated workflow for reviewing essays and video submissions with **Scracha** AI assistance.
+- **Unified Approvals**: Streamlined dashboard for managing quiz retake requests and certificate issuance.
 - **Rich Media Support**: Upload and manage video lessons, resources, and attachments.
 - **Analytics**: Track student enrollment, progress, and quiz performance.
 
@@ -34,7 +54,7 @@ ScratchLMS introduces a flexible grading system designed for modern learning nee
 
 - **Strict Mode**: Requires exact matches (case-insensitive). Ideal for coding terms or precise answers.
 - **Fuzzy Match**: Uses similarity algorithms (e.g., Levenshtein distance) to accept answers with minor typos (85%+ match).
-- **AI-Assisted Grading**: (Experimental) Pre-scores essay responses to assist instructors, who can then "Accept" or modify the score.
+- **AI-Assisted Grading (Scracha)**: Pre-scores subjective responses to assist instructors, who can then "Accept" or modify the score based on the AI's rationale.
 - **Manual Review**: Flags subjective answers (Essays, Video URLs) for instructor approval before finalizing the quiz attempt.
 
 ## 🗺️ Adaptive Learning Paths
@@ -43,19 +63,19 @@ Instructors can define the student journey through flexible "Content Flow" setti
 
 - **Linear Sequencing**: Enforce a step-by-step progression. Students must complete the current lesson before unlocking the next.
 - **Free Exploration**: Allow students to jump between lessons and modules freely.
-- **Drip Content**: (Coming Soon) Schedule content release based on enrollment duration or specific dates.
+- **Drip Content**: Schedule content release based on enrollment duration or specific dates (Integrated in Course Settings).
 
 ### 🛒 E-Commerce
 - **Shopping Cart**: Fully functional cart system.
 - **Checkout Flow**: Secure checkout process for course purchases.
-- **Coupons**: Discount code support (planned/implemented).
+- **Coupons**: Discount code support.
 
 ## 🛠️ Technology Stack
 
 - **Language**: PHP 8.1+
 - **Database**: SQLite (Zero-config, file-based database)
 - **Architecture**: Custom Model-View-Controller (MVC)
-- **Frontend**: Vanilla JS, HTML5, Tailwind CSS (Dark Mode Native)
+- **Frontend**: Vanilla JS, HTML5, Tailwind CSS (Dark Mode Native), Alpine.js
 - **Dependencies**: Managed via Composer (Minimal external dependencies)
 
 ## 📋 Prerequisites
