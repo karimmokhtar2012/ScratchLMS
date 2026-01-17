@@ -793,6 +793,61 @@ class InstructorController extends Controller
         ]);
     }
 
+    public function gradingQueue(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
+
+        $sqlGrading = "SELECT g.id as grading_id,
+                              g.attempt_id,
+                              g.question_id,
+                              g.status,
+                              g.ai_score,
+                              g.ai_feedback,
+                              g.ai_rationale,
+                              g.final_score,
+                              u.id as user_id,
+                              u.name,
+                              u.email,
+                              c.id as course_id,
+                              c.title as course_title,
+                              qz.id as quiz_id,
+                              l.title as lesson_title,
+                              qu.question_text,
+                              qu.points,
+                              qa.answers as attempt_answers
+                       FROM grading_queue g
+                       JOIN quiz_attempts qa ON g.attempt_id = qa.id
+                       JOIN questions qu ON g.question_id = qu.id
+                       JOIN quizzes qz ON qa.quiz_id = qz.id
+                       JOIN lessons l ON qz.lesson_id = l.id
+                       JOIN modules m ON l.module_id = m.id
+                       JOIN courses c ON m.course_id = c.id
+                       JOIN users u ON qa.user_id = u.id
+                       WHERE g.status IN ('pending_review','ai_scored')";
+        if (!$isPrivileged) {
+            $sqlGrading .= " AND c.instructor_id = :uid";
+        }
+        $sqlGrading .= " ORDER BY g.created_at DESC";
+        $gradingQueue = $db->fetchAll($sqlGrading, $isPrivileged ? [] : [':uid' => $userId]);
+
+        foreach ($gradingQueue as &$item) {
+            $answers = json_decode($item['attempt_answers'] ?? '{}', true);
+            $item['submission_text'] = $answers[$item['question_id']] ?? 'No submission found';
+        }
+
+        $this->view('instructor.grading_queue', [
+            'gradingQueue' => $gradingQueue
+        ]);
+    }
+
     public function certificateApprovals(): void
     {
         $userId = $_SESSION['user_id'] ?? null;
