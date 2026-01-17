@@ -130,7 +130,23 @@ class InstructorController extends Controller
             exit;
         }
 
-        $this->view('instructor.edit_course', ['course' => $course]);
+        // Fetch lessons + existing drip rules for this course (for UI helpers)
+        $db = \App\Core\Database::getInstance();
+        $lessons = $db->fetchAll(
+            "SELECT l.id, l.title, l.type, m.sort_order as module_sort, l.sort_order as lesson_sort,
+                    r.unlock_after_days, r.unlock_after_lesson_id, r.unlock_after_percent
+             FROM lessons l
+             JOIN modules m ON l.module_id = m.id
+             LEFT JOIN lesson_drip_rules r ON r.lesson_id = l.id
+             WHERE m.course_id = :cid
+             ORDER BY m.sort_order ASC, l.sort_order ASC",
+            [':cid' => $courseId]
+        );
+
+        $this->view('instructor.edit_course', [
+            'course' => $course,
+            'course_lessons' => $lessons
+        ]);
     }
 
     public function update(string $id): void
@@ -189,6 +205,45 @@ class InstructorController extends Controller
             ':flow' => $contentFlow,
             ':id' => $courseId
         ]);
+
+        // Persist drip rules per lesson if drip modes are chosen (for convenience in course settings)
+        if (in_array($contentFlow, ['drip_time', 'drip_progress', 'drip_combined'], true)) {
+            $dripRules = $_POST['drip_rules'] ?? [];
+            if (is_array($dripRules) && !empty($dripRules)) {
+                // Fetch lessons belonging to this course to validate ownership
+                $lessons = $db->fetchAll("SELECT l.id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid", [
+                    ':cid' => $courseId
+                ]);
+                $lessonIds = array_column($lessons, 'id');
+
+                foreach ($dripRules as $lessonId => $rule) {
+                    $lessonId = (int) $lessonId;
+                    if (!in_array($lessonId, $lessonIds, true)) {
+                        continue;
+                    }
+                    $days = isset($rule['days']) && $rule['days'] !== '' ? (int) $rule['days'] : null;
+                    $prev = isset($rule['lesson']) && $rule['lesson'] !== '' ? (int) $rule['lesson'] : null;
+                    $pct = isset($rule['percent']) && $rule['percent'] !== '' ? (int) $rule['percent'] : null;
+                    $hasRule = ($days !== null) || ($prev !== null) || ($pct !== null);
+
+                    if ($hasRule) {
+                        $db->query(
+                            "INSERT INTO lesson_drip_rules (lesson_id, unlock_after_days, unlock_after_lesson_id, unlock_after_percent)
+                             VALUES (:lid, :days, :prev, :pct)
+                             ON CONFLICT(lesson_id) DO UPDATE SET unlock_after_days = :days, unlock_after_lesson_id = :prev, unlock_after_percent = :pct",
+                            [
+                                ':lid' => $lessonId,
+                                ':days' => $days,
+                                ':prev' => $prev,
+                                ':pct' => $pct
+                            ]
+                        );
+                    } else {
+                        $db->query("DELETE FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lessonId]);
+                    }
+                }
+            }
+        }
 
         $_SESSION['flash_success'] = 'Course details updated.';
         header("Location: /instructor/course/$courseId/settings");

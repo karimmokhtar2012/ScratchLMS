@@ -733,3 +733,11 @@
         - `resources/views/instructor/edit_course.php`: Relocated 'Progression' section to the main column for better visibility. Redesigned Drip Rules into a clear, row-based list with suffix inputs. Applied consistent glassmorphism styling to all inputs.
     - **Rationale**: Resolve layout breakage caused by the complex Drip table being in a narrow sidebar, and prevent logical errors in prerequisite selection.
     - **Tests run + results**: `php -l` passed. Visual verification of layout.
+
+- 2026-01-17 16:30 (Africa/Cairo)
+    - **Goal**: Fix Undefined array key "type" warning in Course Settings.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Updated SQL query in `settings` method to include the `type` column in the lessons selection.
+        - `resources/views/instructor/edit_course.php`: Added strict `isset()` checks to lesson loop output to safeguard against missing data.
+    - **Rationale**: The previous database query was omitting the `type` field, causing a warning when the view attempted to access it for labeling.
+    - **Tests run + results**: `php -l` checks passed. Warning resolved.

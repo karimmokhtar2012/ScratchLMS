@@ -169,7 +169,7 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-1">
                                         <span class="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded text-[10px] font-bold border border-zinc-700 group-hover:border-zinc-600 transition">
-                                            <?= $l['type'] === 'quiz' ? 'QUIZ' : 'LESSON' ?>
+                                            <?= (isset($l['type']) && $l['type'] === 'quiz') ? 'QUIZ' : 'LESSON' ?>
                                         </span>
                                         <h4 class="text-sm font-bold text-white truncate"><?= htmlspecialchars($l['title']) ?></h4>
                                     </div>
