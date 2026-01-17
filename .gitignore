@@ -36,3 +36,4 @@ coverage/
 
 .gemini/
 gha-creds-*.json
+*.bak_*

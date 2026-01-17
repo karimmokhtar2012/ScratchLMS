@@ -806,3 +806,11 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` checks passed.
+
+- 2026-01-17 21:15 (Africa/Cairo)
+    - **Goal**: Formulate and finalize architectural resolution plan for Issue #38 (Lesson-centric model).
+    - **Files Changed**: N/A (GitHub Issue #38 updated).
+    - **Rationale**: Collaborated with Codex to establish "Plan A: Unified content_items model". Addressed UX concerns regarding linearization friction and rule editor complexity.
+    - **Security**: N/A.
+    - **DB Notes**: Plan includes future schema changes for `content_items`, `content_item_rules`, `content_prerequisites`, and `content_progress`.
+    - **Tests run + results**: Plan approved and posted to GitHub.
