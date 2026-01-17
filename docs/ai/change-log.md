@@ -501,3 +501,11 @@
     - **Rationale**: Provide a robust testbed for all question types and AI grading.
     - **DB Notes**: `questions` schema updated, `grading_queue` schema repaired.
     - **Tests run + results**: Seed script executed successfully.
+
+- 2026-01-17 05:15 (Africa/Cairo)
+    - **Goal**: Expand test course to 5 lessons/quizzes.
+    - **Files Changed**:
+        - `database/seed_test_trading_course.php`: Added Lesson 4 (Algorithmic Trading) and Lesson 5 (Final Assessment) with mixed question types.
+    - **Rationale**: Full coverage of all question types and grading scenarios as requested.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: Seed script passed.
