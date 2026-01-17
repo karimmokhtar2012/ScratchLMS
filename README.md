@@ -20,6 +20,17 @@ We've completely reimagined the course creation workflow to be faster, cleaner, 
 - **Collapsible Workspace**: A professional 3-column layout (Settings | Editor | Formats) that adapts to your focus.
 - **Unified Approvals**: A single command center for managing Quiz Retakes, Manual Grading, and Certificate Issuance.
 
+## 📦 Version 0.6 Release (January 15-16, 2026)
+
+**Focus: Security Core, Instructor Tools, and Content Flow.**
+
+- **🛡️ Security Architecture**: Implemented Rate Limiting, CSRF Protection on all forms/AJAX, and Centralized RBAC (Role-Based Access Control).
+- **🏗️ Course Builder V2**: Added Drag-and-drop module ordering, in-place renaming, and a global Lesson Library for reusing content.
+- **🌊 Content Flow Control**: New "Linear" (sequential) vs. "Free" (open navigation) progression modes for courses.
+- **📜 Manual Certificates**: Instructors can now manually approve and issue certificates for completed enrollments.
+- **🎯 Grading Controls**: Introduced "Strict" (exact match) vs. "Fuzzy" (typo-tolerant) matching policies for text answers.
+- **📹 Video Validation**: Added server-side validation for video submission URLs.
+
 ---
 
 ## 🚀 Features
