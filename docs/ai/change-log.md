@@ -492,15 +492,6 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
 
-- 2026-01-17 04:50 (Africa/Cairo)
-    - **Goal**: Restore AI grading after Groq model deprecation.
-    - **Files Changed**:
-        - `app/Services/QuizService.php`: Reverted chat completion model to `llama-3.1-8b-instant`.
-    - **Rationale**: `llama-3.1-70b-versatile` is decommissioned; using a supported model prevents 400 errors and placeholders.
-    - **Security**: No change.
-    - **DB Notes**: N/A.
-    - **Tests run + results**: `php -l app/Services/QuizService.php`.
-
 - 2026-01-17 05:00 (Africa/Cairo)
     - **Goal**: Add virtual trading course for comprehensive testing.
     - **Files Changed**:
@@ -526,3 +517,15 @@
     - **Rationale**: Ensure full test coverage as requested. Previous seed attached quizzes to video lessons which are hidden in the current UI logic.
     - **DB Notes**: N/A.
     - **Tests run + results**: Seed script executed successfully.
+
+- 2026-01-17 05:45 (Africa/Cairo)
+    - **Goal**: Refactor instructor grading workflow into a dedicated, modern UI.
+    - **Files Changed**:
+        - `routes/web.php`: Added `/instructor/grading` route.
+        - `app/Http/Controllers/InstructorController.php`: Added `gradingQueue` method and updated `pendingRequests`.
+        - `resources/views/instructor/grading_queue.php`: Created new view with card-based layout for grading.
+        - `resources/views/instructor/pending_requests.php`: Removed grading table, added navigation link.
+    - **Rationale**: Improve usability and visual clarity for instructors managing grading queues.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` checks passed.
