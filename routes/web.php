@@ -88,6 +88,7 @@ $router->get('/instructor/lesson/([^/]+)/quiz', [QuizController::class, 'build']
 $router->post('/instructor/quiz/settings', [QuizController::class, 'updateSettings']);
 $router->post('/instructor/quiz/import', [QuizController::class, 'importFromBank']);
 $router->post('/instructor/question/add', [QuizController::class, 'addQuestion']);
+$router->post('/instructor/question/update/([^/]+)', [QuizController::class, 'updateQuestion']);
 $router->post('/instructor/question/delete/([^/]+)', [QuizController::class, 'deleteQuestion']);
 
 // Upload Routes

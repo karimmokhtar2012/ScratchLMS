@@ -243,6 +243,123 @@ class QuizController extends Controller
         exit;
     }
 
+    public function updateQuestion(string $id): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+
+        $questionId = (int) $id;
+        $quizId = (int) $_POST['quiz_id'];
+        $lessonId = (int) $_POST['lesson_id'];
+        
+        // Security Check
+        $sqlCheck = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
+        $res = $this->db->fetchAll($sqlCheck, [':lid' => $lessonId]);
+        if (empty($res)) { http_response_code(403); exit; }
+        try { Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']); } catch (\Exception $e) { http_response_code(403); exit; }
+
+        $type = $_POST['type'];
+        $text = $_POST['question_text'];
+        $points = (int) ($_POST['points'] ?? 1);
+        $explanation = $_POST['explanation'] ?? '';
+
+        // Process Options & Answers based on Type
+        $options = [];
+        $correctAnswers = [];
+        $gradingPolicy = $_POST['grading_policy'] ?? null;
+        
+        if ($type === 'fill_blank') {
+            $gradingPolicy = $gradingPolicy ?: 'both';
+        } elseif ($type === 'matching') {
+            $gradingPolicy = 'strict';
+        } elseif ($type === 'essay') {
+            $gradingPolicy = $gradingPolicy ?: 'ai';
+        } elseif ($type === 'video_submission') {
+            $gradingPolicy = 'manual';
+        } else {
+            $gradingPolicy = $gradingPolicy ?: 'auto';
+        }
+        $aiRubric = $_POST['ai_rubric'] ?? null;
+
+        if (in_array($type, ['single_choice', 'multi_choice'])) {
+            $rawOptions = $_POST['option_text'] ?? [];
+            $rawCorrect = $_POST['is_correct'] ?? [];
+            $radioCorrectIndex = isset($_POST['correct_option']) ? (int)$_POST['correct_option'] : -1;
+
+            foreach ($rawOptions as $index => $optText) {
+                if (trim($optText) === '') continue;
+                
+                $id = $index + 1;
+                $options[] = ['id' => $id, 'text' => trim($optText)];
+
+                if (isset($rawCorrect[$index])) {
+                    $correctAnswers[] = $id;
+                } elseif ($radioCorrectIndex === $index) {
+                     $correctAnswers[] = $id;
+                }
+            }
+        } elseif ($type === 'true_false') {
+            $options = [
+                ['id' => 1, 'text' => 'True'],
+                ['id' => 0, 'text' => 'False']
+            ];
+            $correctAnswers[] = (int) ($_POST['tf_correct'] ?? 1);
+        } elseif ($type === 'fill_blank') {
+            $raw = $_POST['fill_blank_answers'] ?? '';
+            $answers = array_filter(array_map('trim', explode(',', $raw)));
+            $correctAnswers = array_values($answers);
+        } elseif ($type === 'matching') {
+            $left = $_POST['match_left'] ?? [];
+            $right = $_POST['match_right'] ?? [];
+            $pairs = [];
+            $correct = [];
+            foreach ($left as $index => $leftText) {
+                $leftText = trim($leftText);
+                $rightText = trim($right[$index] ?? '');
+                if ($leftText === '' || $rightText === '') continue;
+                $leftId = $index + 1;
+                $rightId = $index + 1;
+                $pairs[] = [
+                    'left_id' => $leftId,
+                    'left_text' => $leftText,
+                    'right_id' => $rightId,
+                    'right_text' => $rightText
+                ];
+                $correct[] = ['left_id' => $leftId, 'right_id' => $rightId];
+            }
+            $options = $pairs;
+            $correctAnswers = $correct;
+        } elseif (in_array($type, ['essay', 'video_submission'], true)) {
+            $correctAnswers = [];
+        }
+
+        $sql = "UPDATE questions SET 
+                type = :type, 
+                question_text = :text, 
+                points = :points, 
+                options = :opts, 
+                correct_answers = :ans, 
+                explanation = :exp, 
+                grading_policy = :policy, 
+                ai_rubric = :rubric
+                WHERE id = :id";
+        
+        $this->db->query($sql, [
+            ':type' => $type,
+            ':text' => $text,
+            ':points' => $points,
+            ':opts' => json_encode($options),
+            ':ans' => json_encode($correctAnswers),
+            ':exp' => $explanation,
+            ':policy' => $gradingPolicy,
+            ':rubric' => $aiRubric,
+            ':id' => $questionId
+        ]);
+
+        $_SESSION['flash_success'] = 'Question updated.';
+        header("Location: /instructor/lesson/$lessonId/quiz");
+        exit;
+    }
+
     public function deleteQuestion(string $id): void
     {
         $questionId = (int) $id;

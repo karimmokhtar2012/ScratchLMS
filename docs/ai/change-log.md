@@ -601,3 +601,12 @@
         - `resources/views/partials/toast_notifications.php`: Replaced CDN link with Base64 audio string to prevent network blocking.
     - **Rationale**: Ensure sound plays reliably without external dependencies.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 08:00 (Africa/Cairo)
+    - **Goal**: Enhance Quiz Builder UI and functionality.
+    - **Files Changed**:
+        - `app/Http/Controllers/QuizController.php`: Added `updateQuestion` method.
+        - `routes/web.php`: Registered update question route.
+        - `resources/views/instructor/quiz_builder.php`: Redesigned layout (Settings on right), added Edit Question functionality.
+    - **Rationale**: Improve usability and aesthetics for instructors.
+    - **Tests run + results**: PHP syntax check passed.
