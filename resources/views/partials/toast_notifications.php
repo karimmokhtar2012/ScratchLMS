@@ -12,30 +12,30 @@
              x-transition:leave="transition ease-in duration-300"
              x-transition:leave-start="translate-x-0 opacity-100 scale-100"
              x-transition:leave-end="translate-x-12 opacity-0 scale-90"
-             class="pointer-events-auto w-85 bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative group ring-1 ring-white/5">
+             class="pointer-events-auto w-72 bg-zinc-950 border border-indigo-500/30 rounded-xl shadow-2xl shadow-indigo-500/10 overflow-hidden flex flex-col relative group ring-1 ring-white/5 backdrop-blur-md">
             
             <!-- Progress Bar (Draining) -->
-            <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 transition-all ease-linear"
-                 :style="'width: ' + toast.progress + '%; transition-duration: 5000ms;'"></div>
+            <div class="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-500 transition-all ease-linear"
+                 :style="'width: ' + toast.progress + '%; transition-duration: 10000ms;'"></div>
 
-            <div class="p-5 flex items-start gap-4">
+            <div class="p-4 flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner">
-                        <i class="fa-solid fa-bell-concierge"></i>
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                        <i class="fa-solid fa-bell text-xs"></i>
                     </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-black text-white tracking-tight" x-text="toast.title"></h4>
-                    <p class="text-xs text-zinc-400 mt-1.5 leading-relaxed line-clamp-2" x-text="toast.message"></p>
+                    <h4 class="text-sm font-bold text-white tracking-tight leading-tight mb-1" x-text="toast.title"></h4>
+                    <p class="text-[11px] text-zinc-400 leading-snug line-clamp-3" x-text="toast.message"></p>
                 </div>
-                <button @click="removeToast(toast.tempId)" class="text-zinc-600 hover:text-white transition-colors p-1 -mr-1">
-                    <i class="fa-solid fa-xmark text-sm"></i>
+                <button @click="removeToast(toast.tempId)" class="text-zinc-500 hover:text-white transition-colors -mt-1 -mr-1 p-1">
+                    <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
             
             <a :href="toast.link" @click="markReadAndRedirect(toast.id, toast.link)" x-show="toast.link" 
-               class="block bg-white/5 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-indigo-400 hover:text-white hover:bg-indigo-600 transition-all text-center border-t border-zinc-800/50">
-                Action Required <i class="fa-solid fa-chevron-right ml-2 text-[9px]"></i>
+               class="block bg-white/5 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-indigo-300 hover:text-white hover:bg-indigo-600 transition-all text-center border-t border-white/5">
+                View Details <i class="fa-solid fa-arrow-right ml-1"></i>
             </a>
         </div>
     </template>
@@ -110,10 +110,10 @@
                 const toast = { ...notification, tempId: tempId, visible: true, progress: 100 };
                 this.toasts.push(toast);
                 
-                // Auto dismiss after 5 seconds
+                // Auto dismiss after 10 seconds
                 setTimeout(() => {
                     this.removeToast(tempId);
-                }, 5000);
+                }, 10000);
             },
             removeToast(tempId) {
                 const index = this.toasts.findIndex(t => t.tempId === tempId);

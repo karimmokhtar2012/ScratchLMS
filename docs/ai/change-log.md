@@ -573,3 +573,10 @@
         - `resources/views/partials/toast_notifications.php`: Updated `init` to toast fresh (<10s) notifications even on initial load; reduced poll interval to 5s.
     - **Rationale**: Ensure users see feedback even if the action caused a page redirect.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 07:00 (Africa/Cairo)
+    - **Goal**: Refine toast notification design and duration.
+    - **Files Changed**:
+        - `resources/views/partials/toast_notifications.php`: Reduced width, updated colors to brand gradients, increased duration to 10s.
+    - **Rationale**: Better visibility and readability consistent with the UI theme.
+    - **Tests run + results**: PHP syntax check passed.
