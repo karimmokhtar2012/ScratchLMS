@@ -53,7 +53,23 @@
                 fetch('/api/notifications')
                     .then(res => res.json())
                     .then(data => {
-                        data.notifications.forEach(n => this.seenIds.add(n.id));
+                        const now = new Date();
+                        data.notifications.forEach(n => {
+                            // Attempt to parse UTC date (SQLite CURRENT_TIMESTAMP is UTC 'YYYY-MM-DD HH:MM:SS')
+                            // We replace space with T and add Z to ensure JS treats it as UTC
+                            const dateStr = n.created_at.replace(' ', 'T') + 'Z';
+                            const created = new Date(dateStr);
+                            const age = (now - created) / 1000; // seconds
+
+                            // If it's unread and very fresh (< 10s), show it even on initial load
+                            // This handles "Redirect-after-action" scenarios where notification generated 
+                            // just before page load.
+                            if (n.is_read == 0 && age < 10) {
+                                this.addToast(n);
+                            }
+
+                            this.seenIds.add(n.id);
+                        });
                         this.notifications = data.notifications;
                         this.unreadCount = data.unread_count;
                         
@@ -64,7 +80,7 @@
                     });
 
                 // Poll for NEW notifications
-                setInterval(() => this.checkForNewNotifications(), 15000); // Check every 15 seconds
+                setInterval(() => this.checkForNewNotifications(), 5000); // Check every 5 seconds for snappier feeling
             },
             checkForNewNotifications() {
                 fetch('/api/notifications')

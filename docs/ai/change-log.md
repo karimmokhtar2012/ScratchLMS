@@ -566,3 +566,10 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 06:45 (Africa/Cairo)
+    - **Goal**: Fix missing toast pop-ups on page reload.
+    - **Files Changed**:
+        - `resources/views/partials/toast_notifications.php`: Updated `init` to toast fresh (<10s) notifications even on initial load; reduced poll interval to 5s.
+    - **Rationale**: Ensure users see feedback even if the action caused a page redirect.
+    - **Tests run + results**: PHP syntax check passed.
