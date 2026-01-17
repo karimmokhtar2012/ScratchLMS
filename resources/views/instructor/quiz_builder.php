@@ -161,28 +161,28 @@ $totalPoints = array_sum(array_column($questions, 'points'));
 
             <!-- Question Modal (Expanded & Fixed) -->
             <div x-show="showQuestionModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" x-transition.opacity style="display: none;">
-                <div @click.away="showQuestionModal = false" class="w-full max-w-[98%] xl:max-w-7xl h-[90vh] overflow-hidden rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative flex flex-col">
+                <div @click.away="showQuestionModal = false" class="w-full max-w-[98%] h-[95vh] overflow-hidden rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative flex flex-col">
                     
                     <!-- Header -->
-                    <div class="flex items-center justify-between px-8 py-5 border-b border-zinc-800 bg-zinc-900/50 z-50 backdrop-blur-md shrink-0">
+                    <div class="flex items-center justify-between px-8 py-6 border-b border-zinc-800 bg-zinc-900/50 z-50 backdrop-blur-md shrink-0">
                         <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-lg"
+                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center mr-5 shadow-lg"
                                  :class="mode === 'edit' ? 'bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'">
-                                <i class="fa-solid text-lg" :class="mode === 'edit' ? 'fa-pen-to-square' : 'fa-plus'"></i>
+                                <i class="fa-solid text-xl" :class="mode === 'edit' ? 'fa-pen-to-square' : 'fa-plus'"></i>
                             </div>
                             <div>
-                                <h2 class="text-xl font-bold text-white leading-tight" x-text="mode === 'edit' ? 'Edit Question' : 'Add New Question'"></h2>
-                                <p class="text-xs text-zinc-500 uppercase tracking-widest font-medium" x-text="mode === 'edit' ? 'Updating existing assessment' : 'Creating new assessment item'"></p>
+                                <h2 class="text-2xl font-bold text-white leading-tight" x-text="mode === 'edit' ? 'Edit Question' : 'Add New Question'"></h2>
+                                <p class="text-sm text-zinc-500 uppercase tracking-widest font-medium" x-text="mode === 'edit' ? 'Updating assessment' : 'Creating new item'"></p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-4">
                             <!-- Layout Toggles (Visible only when focused) -->
-                            <div x-show="isFocused" x-transition.opacity class="flex items-center bg-zinc-900 rounded-lg p-1 border border-zinc-800">
-                                <button type="button" @click="isFocused = false" class="px-3 py-1.5 rounded-md text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition flex items-center">
+                            <div x-show="isFocused" x-transition.opacity class="flex items-center bg-zinc-900 rounded-xl p-1.5 border border-zinc-800">
+                                <button type="button" @click="isFocused = false" class="px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition flex items-center uppercase tracking-wide">
                                     <i class="fa-solid fa-columns mr-2"></i> Show Sidebars
                                 </button>
                             </div>
-                            <button @click="showQuestionModal = false" class="w-9 h-9 flex items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition">
+                            <button @click="showQuestionModal = false" class="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition">
                                 <i class="fa-solid fa-times"></i>
                             </button>
                         </div>
@@ -199,20 +199,20 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                         <input type="hidden" name="question_text" :value="question_text">
 
                         <!-- LEFT COLUMN: Guide & Settings (Span 3) -->
-                        <div class="col-span-3 border-r border-zinc-800 bg-zinc-900/20 flex flex-col p-6 gap-6 overflow-y-auto transition-all duration-500 ease-in-out"
-                             :class="isFocused ? 'w-0 opacity-0 px-0' : 'w-[25%] opacity-100 px-6 py-6 gap-6'">
+                        <div class="col-span-3 border-r border-zinc-800 bg-zinc-900/20 flex flex-col p-8 gap-8 overflow-y-auto transition-all duration-500 ease-in-out"
+                             :class="isFocused ? 'w-0 opacity-0 px-0 py-0' : 'w-[25%] opacity-100'">
                             
                             <!-- 1. Type Info -->
-                            <div class="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800 flex flex-col gap-3 shrink-0 shadow-sm min-w-[200px]">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center transition-colors duration-300" :class="`bg-${questionTypes[type].color}-500/10 text-${questionTypes[type].color}-400`">
-                                        <i class="fa-solid text-lg" :class="`fa-${questionTypes[type].icon}`"></i>
+                            <div class="p-6 rounded-3xl bg-zinc-900/50 border border-zinc-800 flex flex-col gap-4 shrink-0 shadow-sm min-w-[240px]">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center transition-colors duration-300" :class="`bg-${questionTypes[type].color}-500/10 text-${questionTypes[type].color}-400`">
+                                        <i class="fa-solid text-xl" :class="`fa-${questionTypes[type].icon}`"></i>
                                     </div>
-                                    <h3 class="text-sm font-bold text-white uppercase tracking-wider" x-text="questionTypes[type].label"></h3>
+                                    <h3 class="text-base font-bold text-white uppercase tracking-wider" x-text="questionTypes[type].label"></h3>
                                 </div>
-                                <p class="text-xs text-zinc-400 leading-relaxed" x-text="questionTypes[type].description"></p>
-                                <div class="flex items-start gap-2 text-[11px] text-zinc-500 bg-black/20 p-3 rounded-lg border border-zinc-800/50">
-                                    <i class="fa-solid fa-lightbulb text-amber-500/70 mt-0.5"></i>
+                                <p class="text-sm text-zinc-400 leading-relaxed" x-text="questionTypes[type].description"></p>
+                                <div class="flex items-start gap-3 text-xs text-zinc-500 bg-black/20 p-4 rounded-xl border border-zinc-800/50">
+                                    <i class="fa-solid fa-lightbulb text-amber-500/70 mt-0.5 text-sm"></i>
                                     <span x-text="questionTypes[type].guide" class="leading-relaxed"></span>
                                 </div>
                             </div>
@@ -220,29 +220,29 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                             <div class="h-px bg-zinc-800/50 w-full shrink-0"></div>
 
                             <!-- 2. Settings -->
-                            <div class="flex-1 flex flex-col gap-5 min-w-[200px]">
-                                <label class="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Configuration</label>
+                            <div class="flex-1 flex flex-col gap-6 min-w-[240px]">
+                                <label class="text-xs font-black text-zinc-500 uppercase tracking-widest">Configuration</label>
                                 
                                 <!-- Points (Fixed Width Logic) -->
-                                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shrink-0 shadow-inner">
-                                    <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex justify-between">
+                                <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shrink-0 shadow-inner">
+                                    <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex justify-between">
                                         Points Value <i class="fa-solid fa-star text-amber-500/50"></i>
                                     </label>
-                                    <div class="flex items-center justify-between gap-2">
-                                        <button type="button" @click="points = Math.max(1, parseInt(points) - 1)" class="w-10 h-10 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition flex items-center justify-center border border-zinc-700/50 shrink-0"><i class="fa-solid fa-minus"></i></button>
-                                        <div class="flex-1 text-center border-b-2 border-zinc-800 pb-1 mx-2">
-                                            <input type="number" name="points" x-model="points" min="1" class="w-full bg-transparent text-center text-white font-black text-3xl border-none focus:ring-0 p-0 leading-none">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <button type="button" @click="points = Math.max(1, parseInt(points) - 1)" class="w-12 h-12 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition flex items-center justify-center border border-zinc-700/50 shrink-0"><i class="fa-solid fa-minus"></i></button>
+                                        <div class="flex-1 text-center border-b-2 border-zinc-800 pb-1 mx-2 min-w-0">
+                                            <input type="number" name="points" x-model="points" min="1" class="w-full bg-transparent text-center text-white font-black text-4xl border-none focus:ring-0 p-0 leading-none">
                                         </div>
-                                        <button type="button" @click="points = parseInt(points) + 1" class="w-10 h-10 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition flex items-center justify-center border border-zinc-700/50 shrink-0"><i class="fa-solid fa-plus"></i></button>
+                                        <button type="button" @click="points = parseInt(points) + 1" class="w-12 h-12 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition flex items-center justify-center border border-zinc-700/50 shrink-0"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                 </div>
 
                                 <!-- Explanation -->
-                                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex-1 flex flex-col min-h-[150px] shadow-inner">
-                                    <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        Instructor Note <span class="text-[9px] opacity-40 lowercase font-normal">(Optional)</span>
+                                <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 flex-1 flex flex-col min-h-[200px] shadow-inner">
+                                    <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        Instructor Note <span class="text-[10px] opacity-40 lowercase font-normal">(Optional)</span>
                                     </label>
-                                    <textarea name="explanation" x-model="explanation" class="flex-1 w-full bg-black/20 border border-zinc-800 text-white text-xs rounded-xl p-3 focus:border-blue-500/50 transition resize-none placeholder-zinc-700 leading-relaxed" placeholder="Write an explanation shown after the student answers..."></textarea>
+                                    <textarea name="explanation" x-model="explanation" class="flex-1 w-full bg-black/20 border border-zinc-800 text-white text-sm rounded-2xl p-4 focus:border-blue-500/50 transition resize-none placeholder-zinc-700 leading-relaxed" placeholder="Write an explanation shown after the student answers..."></textarea>
                                 </div>
                             </div>
                         </div>
@@ -251,19 +251,19 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                         <div class="flex-1 flex flex-col h-full bg-black/40 relative border-r border-zinc-800 transition-all duration-500 ease-in-out">
                             
                             <!-- Prompt Section with Toolbar -->
-                            <div class="p-8 border-b border-zinc-800 bg-zinc-900/30 shrink-0 relative group">
-                                <div class="flex items-center justify-between mb-4">
-                                    <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
-                                        <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span> Question
+                            <div class="p-10 border-b border-zinc-800 bg-zinc-900/30 shrink-0 relative group">
+                                <div class="flex items-center justify-between mb-6">
+                                    <label class="block text-sm font-black text-zinc-500 uppercase tracking-widest flex items-center">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-3 animate-pulse"></span> Question
                                     </label>
                                     
                                     <!-- Editor Toolbar (Visible on Focus) -->
-                                    <div x-show="isFocused" x-transition.opacity class="flex items-center gap-1 bg-zinc-900/80 border border-zinc-700/50 rounded-lg p-1">
-                                        <button type="button" @click="formatText('bold')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Bold"><i class="fa-solid fa-bold text-xs"></i></button>
-                                        <button type="button" @click="formatText('italic')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Italic"><i class="fa-solid fa-italic text-xs"></i></button>
-                                        <button type="button" @click="formatText('underline')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Underline"><i class="fa-solid fa-underline text-xs"></i></button>
-                                        <div class="w-px h-4 bg-zinc-700 mx-1"></div>
-                                        <button type="button" @click="formatText('insertImage', 'https://placehold.co/600x400')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Insert Image"><i class="fa-regular fa-image text-xs"></i></button>
+                                    <div x-show="isFocused" x-transition.opacity class="flex items-center gap-2 bg-zinc-900/90 border border-zinc-700/50 rounded-xl p-1.5 shadow-lg backdrop-blur-md">
+                                        <button type="button" @click="formatText('bold')" class="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Bold"><i class="fa-solid fa-bold text-sm"></i></button>
+                                        <button type="button" @click="formatText('italic')" class="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Italic"><i class="fa-solid fa-italic text-sm"></i></button>
+                                        <button type="button" @click="formatText('underline')" class="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Underline"><i class="fa-solid fa-underline text-sm"></i></button>
+                                        <div class="w-px h-5 bg-zinc-700 mx-1"></div>
+                                        <button type="button" @click="formatText('insertImage', 'https://placehold.co/600x400')" class="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Insert Image"><i class="fa-regular fa-image text-sm"></i></button>
                                     </div>
                                 </div>
 
@@ -274,59 +274,59 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                                     @input="question_text = $el.innerHTML"
                                     @focus="isFocused = true"
                                     @blur="/* Optional: sync on blur */"
-                                    class="w-full bg-transparent text-2xl font-bold text-white placeholder-zinc-800 border-none focus:outline-none focus:ring-0 p-0 resize-none leading-snug min-h-[3.5rem] empty:before:content-[attr(placeholder)] empty:before:text-zinc-700"
+                                    class="w-full bg-transparent text-3xl font-bold text-white placeholder-zinc-800 border-none focus:outline-none focus:ring-0 p-0 resize-none leading-snug min-h-[4rem] empty:before:content-[attr(placeholder)] empty:before:text-zinc-700"
                                     placeholder="Type your assessment question here..."
                                 ></div>
                             </div>
 
                             <!-- Interactive Answer Area -->
-                            <div class="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-zinc-800">
+                            <div class="flex-1 overflow-y-auto p-10 scrollbar-thin scrollbar-thumb-zinc-800">
                                 <!-- True/False -->
-                                <div x-show="type === 'true_false'" class="grid grid-cols-2 gap-6">
+                                <div x-show="type === 'true_false'" class="grid grid-cols-2 gap-8">
                                     <label class="cursor-pointer group">
                                         <input type="radio" name="tf_correct" value="1" x-model="tf_correct" class="peer sr-only">
-                                        <div class="p-8 rounded-3xl border-2 border-zinc-800 bg-zinc-900/50 text-center transition-all duration-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 group-hover:border-zinc-700 shadow-xl">
-                                            <i class="fa-solid fa-check text-3xl mb-3 text-zinc-600 peer-checked:text-emerald-400 transition-colors"></i>
-                                            <div class="font-bold text-zinc-500 text-lg peer-checked:text-white transition-colors">True</div>
+                                        <div class="p-10 rounded-[2rem] border-2 border-zinc-800 bg-zinc-900/50 text-center transition-all duration-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 group-hover:border-zinc-700 shadow-xl">
+                                            <i class="fa-solid fa-check text-4xl mb-4 text-zinc-600 peer-checked:text-emerald-400 transition-colors"></i>
+                                            <div class="font-bold text-zinc-500 text-xl peer-checked:text-white transition-colors">True</div>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer group">
                                         <input type="radio" name="tf_correct" value="0" x-model="tf_correct" class="peer sr-only">
-                                        <div class="p-8 rounded-3xl border-2 border-zinc-800 bg-zinc-900/50 text-center transition-all duration-300 peer-checked:border-red-500 peer-checked:bg-red-500/10 group-hover:border-zinc-700 shadow-xl">
-                                            <i class="fa-solid fa-xmark text-3xl mb-3 text-zinc-600 peer-checked:text-red-400 transition-colors"></i>
-                                            <div class="font-bold text-zinc-500 text-lg peer-checked:text-white transition-colors">False</div>
+                                        <div class="p-10 rounded-[2rem] border-2 border-zinc-800 bg-zinc-900/50 text-center transition-all duration-300 peer-checked:border-red-500 peer-checked:bg-red-500/10 group-hover:border-zinc-700 shadow-xl">
+                                            <i class="fa-solid fa-xmark text-4xl mb-4 text-zinc-600 peer-checked:text-red-400 transition-colors"></i>
+                                            <div class="font-bold text-zinc-500 text-xl peer-checked:text-white transition-colors">False</div>
                                         </div>
                                     </label>
                                 </div>
 
                                 <!-- Choice Logic -->
-                                <div x-show="type === 'single_choice' || type === 'multi_choice'" class="space-y-3">
+                                <div x-show="type === 'single_choice' || type === 'multi_choice'" class="space-y-4">
                                     <template x-for="(opt, index) in options" :key="index">
-                                        <div class="flex items-center group gap-4">
+                                        <div class="flex items-center group gap-5">
                                             <label class="cursor-pointer shrink-0">
                                                 <input :type="type === 'single_choice' ? 'radio' : 'checkbox'" :name="type === 'single_choice' ? 'correct_option' : 'is_correct[' + index + ']'" :value="index" :checked="opt.is_correct" x-model="opt.is_correct" class="peer sr-only">
-                                                <div class="w-12 h-12 rounded-xl border-2 border-zinc-800 bg-zinc-900/50 flex items-center justify-center transition-all peer-checked:bg-indigo-600 peer-checked:border-indigo-500 peer-checked:shadow-lg peer-checked:shadow-indigo-500/20 group-hover:border-zinc-600">
-                                                    <i class="fa-solid fa-check text-white text-sm opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all duration-300"></i>
+                                                <div class="w-14 h-14 rounded-2xl border-2 border-zinc-800 bg-zinc-900/50 flex items-center justify-center transition-all peer-checked:bg-indigo-600 peer-checked:border-indigo-500 peer-checked:shadow-lg peer-checked:shadow-indigo-500/20 group-hover:border-zinc-600">
+                                                    <i class="fa-solid fa-check text-white text-lg opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all duration-300"></i>
                                                 </div>
                                             </label>
                                             <div class="flex-1 relative">
-                                                <input type="text" name="option_text[]" x-model="opt.text" class="w-full bg-zinc-900/50 border border-zinc-800 text-white rounded-xl px-5 py-3.5 text-base focus:border-indigo-500/50 transition shadow-sm group-hover:border-zinc-700 focus:bg-black/40" placeholder="Option text...">
-                                                <button type="button" @click="removeOption(index)" x-show="options.length > 2" class="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-red-400 transition p-2"><i class="fa-solid fa-trash-can"></i></button>
+                                                <input type="text" name="option_text[]" x-model="opt.text" class="w-full bg-zinc-900/50 border border-zinc-800 text-white rounded-2xl px-6 py-4 text-lg focus:border-indigo-500/50 transition shadow-sm group-hover:border-zinc-700 focus:bg-black/40" placeholder="Option text...">
+                                                <button type="button" @click="removeOption(index)" x-show="options.length > 2" class="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-red-400 transition p-2"><i class="fa-solid fa-trash-can text-lg"></i></button>
                                             </div>
                                         </div>
                                     </template>
-                                    <button type="button" @click="addOption()" class="w-full py-3 rounded-xl border border-dashed border-zinc-800 text-xs font-bold text-zinc-500 uppercase tracking-widest hover:border-zinc-600 hover:text-zinc-300 transition-all mt-4 flex items-center justify-center gap-2 hover:bg-zinc-900/50"><i class="fa-solid fa-plus"></i> Add Option</button>
+                                    <button type="button" @click="addOption()" class="w-full py-4 rounded-2xl border border-dashed border-zinc-800 text-sm font-bold text-zinc-500 uppercase tracking-widest hover:border-zinc-600 hover:text-zinc-300 transition-all mt-6 flex items-center justify-center gap-3 hover:bg-zinc-900/50"><i class="fa-solid fa-plus"></i> Add Option</button>
                                 </div>
 
                                 <!-- Other types (Fill, Matching, AI) -->
-                                <div x-show="type === 'fill_blank'" class="space-y-6">
-                                    <div class="bg-amber-500/5 border border-amber-500/10 p-6 rounded-2xl">
-                                        <label class="block text-xs font-bold text-amber-500 uppercase mb-3 tracking-wide">Accepted Phrases</label>
-                                        <input type="text" name="fill_blank_answers" x-model="fill_blank_answers" class="w-full bg-zinc-900/80 border border-zinc-800 text-white rounded-xl px-5 py-4 text-sm focus:border-amber-500/50 font-mono" placeholder="Comma separated (e.g. color, colour)...">
+                                <div x-show="type === 'fill_blank'" class="space-y-8">
+                                    <div class="bg-amber-500/5 border border-amber-500/10 p-8 rounded-3xl">
+                                        <label class="block text-sm font-bold text-amber-500 uppercase mb-4 tracking-wide">Accepted Phrases</label>
+                                        <input type="text" name="fill_blank_answers" x-model="fill_blank_answers" class="w-full bg-zinc-900/80 border border-zinc-800 text-white rounded-2xl px-6 py-5 text-lg focus:border-amber-500/50 font-mono" placeholder="Comma separated (e.g. color, colour)...">
                                     </div>
-                                    <div class="grid grid-cols-3 gap-3">
+                                    <div class="grid grid-cols-3 gap-4">
                                         <template x-for="p in ['both', 'strict', 'fuzzy']">
-                                            <label class="cursor-pointer text-center py-3 rounded-xl border border-zinc-800 bg-zinc-900 text-xs font-bold transition" :class="grading_policy === p ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'text-zinc-500 hover:bg-zinc-800 hover:border-zinc-700'">
+                                            <label class="cursor-pointer text-center py-4 rounded-2xl border border-zinc-800 bg-zinc-900 text-sm font-bold transition" :class="grading_policy === p ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'text-zinc-500 hover:bg-zinc-800 hover:border-zinc-700'">
                                                 <input type="radio" name="grading_policy" :value="p" x-model="grading_policy" class="sr-only">
                                                 <span x-text="p === 'both' ? 'Hybrid Match' : p.charAt(0).toUpperCase() + p.slice(1) + ' Only'"></span>
                                             </label>
@@ -334,48 +334,48 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                                     </div>
                                 </div>
 
-                                <div x-show="type === 'matching'" class="space-y-3">
+                                <div x-show="type === 'matching'" class="space-y-4">
                                     <template x-for="(pair, idx) in matchingPairs" :key="idx">
-                                        <div class="flex items-center gap-4 group">
-                                            <input type="text" :name="`match_left[${idx}]`" x-model="pair.left" class="flex-1 bg-zinc-900/50 border border-zinc-800 text-white rounded-xl px-4 py-3 text-sm focus:border-pink-500/50 transition text-right group-hover:border-zinc-700" placeholder="Term">
-                                            <i class="fa-solid fa-arrow-right-long text-zinc-600"></i>
-                                            <input type="text" :name="`match_right[${idx}]`" x-model="pair.right" class="flex-1 bg-zinc-900/50 border border-zinc-800 text-white rounded-xl px-4 py-3 text-sm focus:border-pink-500/50 transition group-hover:border-zinc-700" placeholder="Match">
+                                        <div class="flex items-center gap-6 group">
+                                            <input type="text" :name="`match_left[${idx}]`" x-model="pair.left" class="flex-1 bg-zinc-900/50 border border-zinc-800 text-white rounded-2xl px-6 py-4 text-base focus:border-pink-500/50 transition text-right group-hover:border-zinc-700" placeholder="Term">
+                                            <i class="fa-solid fa-arrow-right-long text-zinc-600 text-xl"></i>
+                                            <input type="text" :name="`match_right[${idx}]`" x-model="pair.right" class="flex-1 bg-zinc-900/50 border border-zinc-800 text-white rounded-2xl px-6 py-4 text-base focus:border-pink-500/50 transition group-hover:border-zinc-700" placeholder="Match">
                                         </div>
                                     </template>
-                                    <button type="button" @click="addMatchPair()" class="w-full py-3 rounded-xl border border-dashed border-zinc-800 text-xs font-bold text-zinc-500 hover:text-pink-400 transition mt-4 flex items-center justify-center gap-2 hover:bg-pink-500/5 hover:border-pink-500/20"><i class="fa-solid fa-plus"></i> Add Pair</button>
+                                    <button type="button" @click="addMatchPair()" class="w-full py-4 rounded-2xl border border-dashed border-zinc-800 text-sm font-bold text-zinc-500 hover:text-pink-400 transition mt-6 flex items-center justify-center gap-3 hover:bg-pink-500/5 hover:border-pink-500/20"><i class="fa-solid fa-plus"></i> Add Pair</button>
                                 </div>
 
-                                <div x-show="['short_text', 'essay'].includes(type)" class="bg-indigo-500/5 border border-indigo-500/10 p-6 rounded-2xl">
-                                    <label class="block text-xs font-bold text-indigo-400 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-robot"></i> AI Grading Rubric</label>
-                                    <textarea name="ai_rubric" x-model="ai_rubric" rows="4" class="w-full bg-zinc-900/80 border border-zinc-800 text-white text-sm rounded-xl p-4 focus:outline-none focus:border-indigo-500/50 transition leading-relaxed" placeholder="Tell the AI exactly what to look for..."></textarea>
+                                <div x-show="['short_text', 'essay'].includes(type)" class="bg-indigo-500/5 border border-indigo-500/10 p-8 rounded-3xl">
+                                    <label class="block text-sm font-bold text-indigo-400 uppercase mb-4 flex items-center gap-3"><i class="fa-solid fa-robot"></i> AI Grading Rubric</label>
+                                    <textarea name="ai_rubric" x-model="ai_rubric" rows="5" class="w-full bg-zinc-900/80 border border-zinc-800 text-white text-base rounded-2xl p-6 focus:outline-none focus:border-indigo-500/50 transition leading-relaxed" placeholder="Tell the AI exactly what to look for..."></textarea>
                                 </div>
                             </div>
 
                             <!-- Single Save Button (Sticky Bottom) -->
-                            <div class="px-8 py-5 border-t border-zinc-800 bg-zinc-900/50 shrink-0 flex justify-end">
-                                <button type="submit" :disabled="submitting" class="px-12 py-4 rounded-2xl font-black text-white shadow-xl transform hover:-translate-y-0.5 transition duration-200 disabled:opacity-50 flex items-center justify-center uppercase tracking-widest text-sm" :class="mode === 'edit' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 shadow-indigo-500/20 hover:shadow-indigo-500/40' : 'bg-gradient-to-r from-blue-600 to-cyan-500 shadow-blue-500/20 hover:shadow-blue-500/40'">
+                            <div class="px-10 py-6 border-t border-zinc-800 bg-zinc-900/50 shrink-0 flex justify-end">
+                                <button type="submit" :disabled="submitting" class="px-14 py-5 rounded-2xl font-black text-white shadow-xl transform hover:-translate-y-0.5 transition duration-200 disabled:opacity-50 flex items-center justify-center uppercase tracking-widest text-base" :class="mode === 'edit' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 shadow-indigo-500/20 hover:shadow-indigo-500/40' : 'bg-gradient-to-r from-blue-600 to-cyan-500 shadow-blue-500/20 hover:shadow-blue-500/40'">
                                     <span x-show="!submitting" class="flex items-center"><i class="fa-solid mr-3" :class="mode === 'edit' ? 'fa-floppy-disk' : 'fa-plus'"></i> <span x-text="mode === 'edit' ? 'Update Assessment' : 'Add Question'"></span></span>
-                                    <span x-show="submitting"><i class="fa-solid fa-circle-notch fa-spin text-lg"></i></span>
+                                    <span x-show="submitting"><i class="fa-solid fa-circle-notch fa-spin text-xl"></i></span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- RIGHT COLUMN: Type Selector (Span 2) -->
-                        <div class="bg-zinc-900/40 flex flex-col p-4 gap-3 overflow-y-auto border-l border-zinc-800 transition-all duration-500 ease-in-out"
-                             :class="isFocused ? 'w-0 opacity-0 px-0' : 'w-[16.66%] opacity-100'">
-                            <label class="text-[9px] font-black text-zinc-600 uppercase tracking-widest text-center py-1 min-w-[100px]">Format</label>
-                            <div class="flex-1 flex flex-col gap-2 min-w-[100px]">
+                        <div class="bg-zinc-900/40 flex flex-col p-6 gap-4 overflow-y-auto border-l border-zinc-800 transition-all duration-500 ease-in-out"
+                             :class="isFocused ? 'w-0 opacity-0 px-0' : 'w-[20%] opacity-100'">
+                            <label class="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-center py-2 min-w-[120px]">Format</label>
+                            <div class="flex-1 flex flex-col gap-3 min-w-[120px]">
                                 <template x-for="(t, key) in questionTypes">
                                     <button @click="type = key" type="button"
-                                            class="w-full relative overflow-hidden group rounded-xl px-3 py-3 transition-all duration-300 border flex flex-col items-center gap-2 shrink-0 min-h-[80px] justify-center"
+                                            class="w-full relative overflow-hidden group rounded-2xl px-4 py-4 transition-all duration-300 border flex flex-col items-center gap-2 shrink-0 justify-center"
                                             :class="type === key 
                                                 ? `bg-gradient-to-b from-${t.color}-900/80 to-${t.color}-600/20 border-${t.color}-500 shadow-lg shadow-${t.color}-500/20` 
                                                 : `bg-zinc-950/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700`">
                                         
                                         <div x-show="type === key" class="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"></div>
 
-                                        <i class="fa-solid text-xl transition-transform duration-300 group-hover:scale-110 relative z-10" :class="[`fa-${t.icon}`, type === key ? 'text-white' : `text-${t.color}-500/70`]"></i>
-                                        <span class="text-[9px] font-bold uppercase tracking-tight text-center relative z-10 leading-none" :class="type === key ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'" x-text="t.label"></span>
+                                        <i class="fa-solid text-2xl transition-transform duration-300 group-hover:scale-110 relative z-10" :class="[`fa-${t.icon}`, type === key ? 'text-white' : `text-${t.color}-500/70`]"></i>
+                                        <span class="text-xs font-bold uppercase tracking-tight text-center relative z-10 leading-none" :class="type === key ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'" x-text="t.label"></span>
                                     </button>
                                 </template>
                             </div>

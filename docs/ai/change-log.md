@@ -680,3 +680,10 @@
         - `resources/views/instructor/quiz_builder.php`: Replaced the question prompt textarea with a `contenteditable` div to render rich text natively. Updated the toolbar to use `document.execCommand` for direct visual styling instead of markdown syntax insertion.
     - **Rationale**: Provide immediate visual feedback for bold, italics, and underlines, solving the user confusion around raw markdown syntax being visible during editing.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 13:30 (Africa/Cairo)
+    - **Goal**: Fix broken UI in the Quiz Builder "Add Question" modal.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Restored the complete modal structure, fixed closing tags, and verified the 3-column flex layout. Addressed scaling issues by expanding the modal and improving text readability.
+    - **Rationale**: Resolve layout breakage caused by previous incomplete edits and ensure the modal renders correctly across different screen sizes.
+    - **Tests run + results**: PHP syntax check passed.
