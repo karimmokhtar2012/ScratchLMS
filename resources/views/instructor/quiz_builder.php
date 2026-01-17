@@ -191,16 +191,7 @@
                     <!-- Type Selector Toolbar -->
                     <div class="px-6 py-6 border-b border-zinc-800/50 bg-black/40" x-show="mode === 'add'">
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <template x-for="(t, key) in {
-                                single_choice: { label: 'Single Choice', icon: 'circle-dot', color: 'blue' },
-                                multi_choice: { label: 'Multi Choice', icon: 'list-check', color: 'purple' },
-                                true_false: { label: 'True / False', icon: 'check-double', color: 'emerald' },
-                                fill_blank: { label: 'Fill Blank', icon: 'keyboard', color: 'amber' },
-                                matching: { label: 'Matching', icon: 'right-left', color: 'pink' },
-                                short_text: { label: 'Short Text', icon: 'comment', color: 'cyan' },
-                                essay: { label: 'Essay', icon: 'align-left', color: 'indigo' },
-                                video_submission: { label: 'Video', icon: 'film', color: 'red' }
-                            }">
+                            <template x-for="(t, key) in questionTypes">
                                 <button @click="type = key" type="button"
                                         class="relative overflow-hidden group rounded-xl p-4 transition-all duration-300 border flex flex-col items-center justify-center gap-3 h-24"
                                         :class="type === key 
@@ -219,6 +210,22 @@
                                           x-text="t.label"></span>
                                 </button>
                             </template>
+                        </div>
+
+                        <!-- Type Info Box -->
+                        <div class="mt-6 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-start gap-4">
+                            <div class="p-2.5 rounded-lg shrink-0 transition-colors duration-300" 
+                                 :class="`bg-${questionTypes[type].color}-500/10 text-${questionTypes[type].color}-400`">
+                                <i class="fa-solid text-lg" :class="`fa-${questionTypes[type].icon}`"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-white mb-1" x-text="questionTypes[type].label"></h3>
+                                <p class="text-xs text-zinc-400 mb-2 leading-relaxed" x-text="questionTypes[type].description"></p>
+                                <div class="flex items-start gap-2 text-[11px] text-zinc-500 bg-black/20 px-3 py-2 rounded-lg border border-zinc-800/50">
+                                    <i class="fa-solid fa-lightbulb text-amber-500/70 mt-0.5"></i>
+                                    <span x-text="questionTypes[type].guide" class="leading-relaxed"></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -330,6 +337,19 @@
                                         <input type="radio" name="grading_policy" value="fuzzy" x-model="grading_policy" class="peer sr-only">
                                         <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Fuzzy Only</div>
                                     </label>
+                                </div>
+                                
+                                <!-- Grading Policy Helper Text -->
+                                <div class="mt-3 text-[11px] leading-relaxed text-zinc-500 bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                    <template x-if="grading_policy === 'strict'">
+                                        <span><strong class="text-amber-500">Strict Only:</strong> Students must match the answer exactly (case-insensitive). Spelling and punctuation must be precise. Recommended for codes, dates, or specific terms.</span>
+                                    </template>
+                                    <template x-if="grading_policy === 'both'">
+                                        <span><strong class="text-amber-500">Strict + Fuzzy:</strong> Checks for an exact match first. If that fails, it uses AI fuzzy matching to allow for minor typos (~15% variance). Recommended default.</span>
+                                    </template>
+                                    <template x-if="grading_policy === 'fuzzy'">
+                                        <span><strong class="text-amber-500">Fuzzy Only:</strong> Relies entirely on approximate string matching. Useful when you want to be very lenient with spelling, spacing, or punctuation errors.</span>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -543,6 +563,65 @@
             ai_rubric: '',
             options: [ { text: '', is_correct: false }, { text: '', is_correct: false } ],
             matchingPairs: [ { left: '', right: '' }, { left: '', right: '' } ],
+
+            questionTypes: {
+                single_choice: { 
+                    label: 'Single Choice', 
+                    icon: 'circle-dot', 
+                    color: 'blue',
+                    description: 'Students select a single correct answer from a list of options.',
+                    guide: 'Enter your question, add multiple options, and select the radio button next to the one correct answer.'
+                },
+                multi_choice: { 
+                    label: 'Multi Choice', 
+                    icon: 'list-check', 
+                    color: 'purple',
+                    description: 'Students select one or more correct answers from a list.',
+                    guide: 'Add options and check the box next to every correct answer. Students must select all correct options to get full points.'
+                },
+                true_false: { 
+                    label: 'True / False', 
+                    icon: 'check-double', 
+                    color: 'emerald',
+                    description: 'A binary choice question to validate understanding.',
+                    guide: 'Define the statement as the question and select whether "True" or "False" is the correct response.'
+                },
+                fill_blank: { 
+                    label: 'Fill in the Blank', 
+                    icon: 'keyboard', 
+                    color: 'amber',
+                    description: 'Students type a missing word or phrase to complete a sentence.',
+                    guide: 'Provide the sentence with a blank. Enter all acceptable variations of the answer (e.g., "color, colour") separated by commas.'
+                },
+                matching: { 
+                    label: 'Matching', 
+                    icon: 'right-left', 
+                    color: 'pink',
+                    description: 'Students pair items from two related lists.',
+                    guide: 'Create pairs of items (e.g., Term and Definition). The system will shuffle the right-side items for the student.'
+                },
+                short_text: { 
+                    label: 'Short Answer', 
+                    icon: 'comment', 
+                    color: 'cyan',
+                    description: 'Students write a brief text response (1-2 sentences).',
+                    guide: 'Specify the question. Optionally provide an AI grading rubric to allow the system to automatically evaluate the response.'
+                },
+                essay: { 
+                    label: 'Essay', 
+                    icon: 'align-left', 
+                    color: 'indigo',
+                    description: 'Students write a detailed, long-form response.',
+                    guide: 'This type usually requires manual grading. You can provide AI instructions to help generate a suggested score.'
+                },
+                video_submission: { 
+                    label: 'Video Response', 
+                    icon: 'film', 
+                    color: 'red',
+                    description: 'Students record or upload a video answer.',
+                    guide: 'Useful for practical demonstrations. Requires manual review by an instructor.'
+                }
+            },
 
             addOption() { this.options.push({ text: '', is_correct: false }); },
             removeOption(index) { this.options.splice(index, 1); },

@@ -631,3 +631,10 @@
         - `resources/views/instructor/quiz_builder.php`: Updated icon classes to standard FontAwesome 6 Free names (circle-dot, list-check, etc.) for better compatibility.
     - **Rationale**: Ensure icons render correctly and look distinct.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 10:00 (Africa/Cairo)
+    - **Goal**: Add detailed descriptions and guides for each question type.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Added `questionTypes` object with descriptions and instructions. Updated UI to display a dynamic Info Box.
+    - **Rationale**: Provide instructors with clear guidance on how to use each question type directly within the builder interface.
+    - **Tests run + results**: PHP syntax check passed.
