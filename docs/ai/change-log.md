@@ -554,3 +554,15 @@
     - **Security**: N/A.
     - **DB Notes**: `grading_queue` has `ai_rationale` and `ai_rationale_version` columns.
     - **Tests run + results**: Verified syntax.
+
+- 2026-01-17 06:30 (Africa/Cairo)
+    - **Goal**: Implement global, real-time toast notifications.
+    - **Files Changed**:
+        - `resources/views/partials/toast_notifications.php`: Created reusable toast component with polling logic.
+        - `resources/views/layouts/app.php`: Integrated toast system and refactored header to sync via events.
+        - `resources/views/learn/player.php`: Added toast notifications to the course player.
+        - `resources/views/layouts/admin.php`: Added toast notifications to the admin dashboard.
+    - **Rationale**: Ensure users receive critical updates (like approvals or grading) anywhere on the site without manual refresh.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: PHP syntax check passed.
