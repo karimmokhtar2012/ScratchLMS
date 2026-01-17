@@ -581,7 +581,7 @@ class QuizService
         ];
 
         $payload = json_encode([
-            'model' => 'llama-3.1-70b-versatile',
+            'model' => 'llama-3.1-8b-instant',
             'messages' => $messages,
             'temperature' => 0.2,
             'response_format' => ['type' => 'json_object']

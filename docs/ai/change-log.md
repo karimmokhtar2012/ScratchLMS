@@ -492,6 +492,15 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
 
+- 2026-01-17 04:50 (Africa/Cairo)
+    - **Goal**: Restore AI grading after Groq model deprecation.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Reverted chat completion model to `llama-3.1-8b-instant`.
+    - **Rationale**: `llama-3.1-70b-versatile` is decommissioned; using a supported model prevents 400 errors and placeholders.
+    - **Security**: No change.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`.
+
 - 2026-01-17 05:00 (Africa/Cairo)
     - **Goal**: Add virtual trading course for comprehensive testing.
     - **Files Changed**:
