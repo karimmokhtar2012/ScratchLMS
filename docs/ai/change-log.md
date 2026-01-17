@@ -796,3 +796,13 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` checks passed.
+
+- 2026-01-17 20:05 (Africa/Cairo)
+    - **Goal**: Add safe cache-busting fallback for missing minified assets.
+    - **Files Changed**:
+        - `resources/views/learn/player.php`: Added `is_file()` check before `filemtime()` for `player.min.js`.
+        - `resources/views/instructor/course_builder.php`: Added `is_file()` check before `filemtime()` for `uploader.min.js`.
+    - **Rationale**: Prevent PHP warnings when minified assets are not present on the filesystem, falling back to `time()` in such cases.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` checks passed.

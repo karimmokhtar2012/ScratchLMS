@@ -598,7 +598,11 @@
             }
         });
     </script>
-    <script src="/assets/js/player.min.js?v=<?= filemtime(BASE_PATH . 'public/assets/js/player.min.js') ?>"></script>
+    <?php 
+        $playerJsPath = BASE_PATH . 'public/assets/js/player.min.js';
+        $playerJsVer = is_file($playerJsPath) ? filemtime($playerJsPath) : time();
+    ?>
+    <script src="/assets/js/player.min.js?v=<?= $playerJsVer ?>"></script>
     <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
 </html>

@@ -52,7 +52,11 @@
     </div>
 
     <!-- Chunked Uploader Script -->
-    <script src="/assets/js/uploader.min.js?v=<?= filemtime(BASE_PATH . 'public/assets/js/uploader.min.js') ?>"></script>
+    <?php 
+        $uploaderJsPath = BASE_PATH . 'public/assets/js/uploader.min.js';
+        $uploaderJsVer = is_file($uploaderJsPath) ? filemtime($uploaderJsPath) : time();
+    ?>
+    <script src="/assets/js/uploader.min.js?v=<?= $uploaderJsVer ?>"></script>
 
     <!-- Curriculum Builder -->
     <div>
