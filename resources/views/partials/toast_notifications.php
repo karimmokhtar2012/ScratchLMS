@@ -16,7 +16,7 @@
             
             <!-- Progress Bar (Draining) -->
             <div class="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-500 transition-all ease-linear"
-                 :style="'width: ' + toast.progress + '%; transition-duration: 10000ms;'"></div>
+                 :style="'width: ' + toast.progress + '%; transition-duration: 15000ms;'"></div>
 
             <div class="p-4 flex items-start gap-3">
                 <div class="flex-shrink-0 mt-0.5">
@@ -110,10 +110,10 @@
                 const toast = { ...notification, tempId: tempId, visible: true, progress: 100 };
                 this.toasts.push(toast);
                 
-                // Auto dismiss after 10 seconds
+                // Auto dismiss after 15 seconds
                 setTimeout(() => {
                     this.removeToast(tempId);
-                }, 10000);
+                }, 15000);
             },
             removeToast(tempId) {
                 const index = this.toasts.findIndex(t => t.tempId === tempId);
