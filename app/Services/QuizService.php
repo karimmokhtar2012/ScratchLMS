@@ -218,9 +218,6 @@ class QuizService
                 if (!$isCorrect && $this->shouldUseAiGrading($q)) {
                     $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
                     $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
-                    if ($aiResult) {
-                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
-                    }
                 }
             } elseif ($q['type'] === 'matching') {
                 $options = json_decode($q['options'] ?? '[]', true);
@@ -231,9 +228,6 @@ class QuizService
                 } elseif ($this->shouldUseAiGrading($q)) {
                     $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
                     $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
-                    if ($aiResult) {
-                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
-                    }
                 }
             } elseif (in_array($q['type'], ['essay', 'video_submission'], true)) {
                 if ($q['type'] === 'video_submission' && is_string($userAns) && $userAns !== '' && !$this->isValidUrl($userAns)) {
@@ -352,25 +346,12 @@ class QuizService
                 }
             } elseif ($q['type'] === 'fill_blank') {
                 $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
-                if (!$isCorrect && $this->shouldUseAiGrading($q)) {
-                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
-                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
-                    if ($aiResult) {
-                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
-                    }
-                }
             } elseif ($q['type'] === 'matching') {
                 $options = json_decode($q['options'] ?? '[]', true);
                 $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
             } elseif ($q['type'] === 'short_text') {
                 if (!empty($correctKey) && $userAns == $correctKey[0]) {
                     $isCorrect = true;
-                } elseif ($this->shouldUseAiGrading($q)) {
-                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
-                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
-                    if ($aiResult) {
-                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
-                    }
                 }
             }
 
@@ -615,7 +596,6 @@ class QuizService
         $raw = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
 
         if ($raw === false) {
             $this->logAi("cURL Error: " . $error);

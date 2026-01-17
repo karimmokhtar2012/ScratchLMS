@@ -437,3 +437,12 @@
     - **Security**: Explicit cURL handle closure.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l app/Services/QuizService.php`.
+
+- 2026-01-17 03:00 (Africa/Cairo)
+    - **Goal**: Clean up deprecated cURL usage.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Removed `curl_close()` to prevent PHP 8.x deprecation warnings.
+    - **Rationale**: Modern PHP handles cURL resource management automatically via CurlHandle objects.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` passed.
