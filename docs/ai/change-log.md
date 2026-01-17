@@ -591,6 +591,13 @@
 - 2026-01-17 07:30 (Africa/Cairo)
     - **Goal**: Add audio feedback to toast notifications.
     - **Files Changed**:
-        - `resources/views/partials/toast_notifications.php`: Added `Audio` object and play logic.
-    - **Rationale**: Improve user awareness of new alerts.
+        - `resources/views/partials/toast_notifications.php`: Added `Audio` object and play logic using Base64.
+    - **Rationale**: Improve user awareness of new alerts without external dependencies.
+    - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 07:45 (Africa/Cairo)
+    - **Goal**: Fix audio feedback using embedded Base64.
+    - **Files Changed**:
+        - `resources/views/partials/toast_notifications.php`: Replaced CDN link with Base64 audio string to prevent network blocking.
+    - **Rationale**: Ensure sound plays reliably without external dependencies.
     - **Tests run + results**: PHP syntax check passed.

@@ -48,18 +48,13 @@
             unreadCount: 0,
             toasts: [],
             seenIds: new Set(),
-                        init() {
-                            // Notification Sound (Subtle 'Pluck')
-                            this.audio = new Audio("data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"); 
-                            // Note: The string above is a tiny placeholder. I will use a real one below.
-                            
-                            // Real Short Pop Sound
-                            this.audio = new Audio("https://cdn.freesound.org/previews/536/536108_11562682-lq.mp3"); // Using a reliable CDN link instead of massive base64 for cleaner code
-                            this.audio.volume = 0.5;
-            
-                            // Pre-populate seenIds with existing unread notifications so we don't toast them on page load
-                            fetch('/api/notifications')
-                                .then(res => res.json())
+                                    init() {
+                                        // Sound Effect (Subtle Pop - Base64)
+                                        this.audio = new Audio("data:audio/mpeg;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG840/iomSVjMAAAAAASLm4//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG840/iomSVjMAAAAAASLm4"); 
+                                        this.audio.volume = 0.5;
+                        
+                                        // Pre-populate seenIds with existing unread notifications so we don't toast them on page load
+                                        fetch('/api/notifications')                                .then(res => res.json())
                                 .then(data => {
                                     const now = new Date();
                                     data.notifications.forEach(n => {
