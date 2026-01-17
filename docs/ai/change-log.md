@@ -645,3 +645,10 @@
         - `resources/views/instructor/quiz_builder.php`: Moved the builder form into a hidden modal triggered by a new "Add Question" button. Updated Alpine logic for modal state management.
     - **Rationale**: Improve UI cleanliness by hiding the complex form until needed, focusing the user on the question list and key actions.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 11:00 (Africa/Cairo)
+    - **Goal**: Reorganize Quiz Builder layout for a modern, user-friendly experience.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Implemented a timeline-style question list, added a "Quiz Overview" summary card to the sidebar, and simplified the header.
+    - **Rationale**: Create a cleaner visual hierarchy and provide better progress feedback (Total Points, Question Count) to the instructor.
+    - **Tests run + results**: PHP syntax check passed.
