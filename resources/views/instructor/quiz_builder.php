@@ -159,7 +159,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 </div>
             </div>
 
-            <!-- Question Modal (Expanded & Fixed) -->
+            <!-- Question Modal (Expandable Flex Layout) -->
             <div x-show="showQuestionModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" x-transition.opacity style="display: none;">
                 <div @click.away="showQuestionModal = false" class="w-full max-w-[98%] xl:max-w-7xl h-[90vh] overflow-hidden rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative flex flex-col">
                     
@@ -175,23 +175,32 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                                 <p class="text-xs text-zinc-500 uppercase tracking-widest font-medium" x-text="mode === 'edit' ? 'Updating existing assessment' : 'Creating new assessment item'"></p>
                             </div>
                         </div>
-                        <button @click="showQuestionModal = false" class="w-9 h-9 flex items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition">
-                            <i class="fa-solid fa-times"></i>
-                        </button>
+                        <div class="flex items-center space-x-4">
+                            <!-- Layout Toggles (Visible only when focused) -->
+                            <div x-show="isFocused" x-transition.opacity class="flex items-center bg-zinc-900 rounded-lg p-1 border border-zinc-800">
+                                <button type="button" @click="isFocused = false" class="px-3 py-1.5 rounded-md text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition flex items-center">
+                                    <i class="fa-solid fa-columns mr-2"></i> Show Sidebars
+                                </button>
+                            </div>
+                            <button @click="showQuestionModal = false" class="w-9 h-9 flex items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Modal Body (3 Columns) -->
-                    <form :action="actionUrl" method="POST" @submit="submitting = true" class="flex-1 overflow-hidden grid grid-cols-12">
+                    <!-- Modal Body (Flex with Transitions) -->
+                    <form :action="actionUrl" method="POST" @submit="submitting = true" class="flex-1 overflow-hidden flex w-full">
                         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                         <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
                         <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
                         <input type="hidden" name="type" x-model="type">
 
-                        <!-- LEFT COLUMN: Guide & Settings (Span 3) -->
-                        <div class="col-span-3 border-r border-zinc-800 bg-zinc-900/20 flex flex-col p-6 gap-6 overflow-y-auto">
+                        <!-- LEFT COLUMN: Guide & Settings -->
+                        <div class="border-r border-zinc-800 bg-zinc-900/20 flex flex-col overflow-y-auto transition-all duration-500 ease-in-out"
+                             :class="isFocused ? 'w-0 opacity-0 px-0' : 'w-[25%] opacity-100 px-6 py-6 gap-6'">
                             
                             <!-- 1. Type Info -->
-                            <div class="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800 flex flex-col gap-3 shrink-0 shadow-sm">
+                            <div class="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800 flex flex-col gap-3 shrink-0 shadow-sm min-w-[200px]">
                                 <div class="flex items-center gap-3">
                                     <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center transition-colors duration-300" :class="`bg-${questionTypes[type].color}-500/10 text-${questionTypes[type].color}-400`">
                                         <i class="fa-solid text-lg" :class="`fa-${questionTypes[type].icon}`"></i>
@@ -208,7 +217,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                             <div class="h-px bg-zinc-800/50 w-full shrink-0"></div>
 
                             <!-- 2. Settings -->
-                            <div class="flex-1 flex flex-col gap-5">
+                            <div class="flex-1 flex flex-col gap-5 min-w-[200px]">
                                 <label class="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Configuration</label>
                                 
                                 <!-- Points (Fixed Width Logic) -->
@@ -235,15 +244,28 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                             </div>
                         </div>
 
-                        <!-- MIDDLE COLUMN: Content Editor (Span 7) -->
-                        <div class="col-span-7 flex flex-col h-full bg-black/40 relative border-r border-zinc-800">
+                        <!-- MIDDLE COLUMN: Content Editor -->
+                        <div class="flex-1 flex flex-col h-full bg-black/40 relative border-r border-zinc-800 transition-all duration-500 ease-in-out">
                             
-                            <!-- Prompt Section -->
-                            <div class="p-8 border-b border-zinc-800 bg-zinc-900/30 shrink-0">
-                                <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
-                                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span> Question Prompt
-                                </label>
-                                <textarea name="question_text" x-model="question_text" required rows="2"
+                            <!-- Prompt Section with Toolbar -->
+                            <div class="p-8 border-b border-zinc-800 bg-zinc-900/30 shrink-0 relative group">
+                                <div class="flex items-center justify-between mb-4">
+                                    <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span> Question
+                                    </label>
+                                    
+                                    <!-- Editor Toolbar (Visible on Focus) -->
+                                    <div x-show="isFocused" x-transition.opacity class="flex items-center gap-1 bg-zinc-900/80 border border-zinc-700/50 rounded-lg p-1">
+                                        <button type="button" @click="formatText('bold')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Bold"><i class="fa-solid fa-bold text-xs"></i></button>
+                                        <button type="button" @click="formatText('italic')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Italic"><i class="fa-solid fa-italic text-xs"></i></button>
+                                        <button type="button" @click="formatText('underline')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Underline"><i class="fa-solid fa-underline text-xs"></i></button>
+                                        <div class="w-px h-4 bg-zinc-700 mx-1"></div>
+                                        <button type="button" @click="formatText('image')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Insert Image"><i class="fa-regular fa-image text-xs"></i></button>
+                                    </div>
+                                </div>
+
+                                <textarea name="question_text" id="questionPrompt" x-model="question_text" required rows="2"
+                                          @focus="isFocused = true"
                                           class="w-full bg-transparent text-2xl font-bold text-white placeholder-zinc-800 border-none focus:ring-0 p-0 resize-none leading-snug"
                                           placeholder="Type your assessment question here..."></textarea>
                             </div>
@@ -323,16 +345,17 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                             <!-- Single Save Button (Sticky Bottom) -->
                             <div class="px-8 py-5 border-t border-zinc-800 bg-zinc-900/50 shrink-0 flex justify-end">
                                 <button type="submit" :disabled="submitting" class="px-12 py-4 rounded-2xl font-black text-white shadow-xl transform hover:-translate-y-0.5 transition duration-200 disabled:opacity-50 flex items-center justify-center uppercase tracking-widest text-sm" :class="mode === 'edit' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 shadow-indigo-500/20 hover:shadow-indigo-500/40' : 'bg-gradient-to-r from-blue-600 to-cyan-500 shadow-blue-500/20 hover:shadow-blue-500/40'">
-                                    <span x-show="!submitting" class="flex items-center"><i class="fa-solid mr-3" :class="mode === 'edit' ? 'fa-floppy-disk' : 'fa-plus'"></i> <span x-text="mode === 'edit' ? 'Update Assessment' : 'Commit Question'"></span></span>
+                                    <span x-show="!submitting" class="flex items-center"><i class="fa-solid mr-3" :class="mode === 'edit' ? 'fa-floppy-disk' : 'fa-plus'"></i> <span x-text="mode === 'edit' ? 'Update Assessment' : 'Add Question'"></span></span>
                                     <span x-show="submitting"><i class="fa-solid fa-circle-notch fa-spin text-lg"></i></span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- RIGHT COLUMN: Type Selector (Span 2) -->
-                        <div class="col-span-2 bg-zinc-900/40 flex flex-col p-4 gap-3 overflow-y-auto border-l border-zinc-800">
-                            <label class="text-[9px] font-black text-zinc-600 uppercase tracking-widest text-center py-1">Format</label>
-                            <div class="flex-1 flex flex-col gap-2">
+                        <div class="bg-zinc-900/40 flex flex-col p-4 gap-3 overflow-y-auto border-l border-zinc-800 transition-all duration-500 ease-in-out"
+                             :class="isFocused ? 'w-0 opacity-0 px-0' : 'w-[16.66%] opacity-100'">
+                            <label class="text-[9px] font-black text-zinc-600 uppercase tracking-widest text-center py-1 min-w-[100px]">Format</label>
+                            <div class="flex-1 flex flex-col gap-2 min-w-[100px]">
                                 <template x-for="(t, key) in questionTypes">
                                     <button @click="type = key" type="button"
                                             class="w-full relative overflow-hidden group rounded-xl px-3 py-3 transition-all duration-300 border flex flex-col items-center gap-2 shrink-0 min-h-[80px] justify-center"
@@ -494,6 +517,11 @@ $totalPoints = array_sum(array_column($questions, 'points'));
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
     .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    /* Hide Number Input Arrows */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
 </style>
 
 <script>
@@ -501,6 +529,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
         return {
             mode: 'add',
             showQuestionModal: false,
+            isFocused: false,
             actionUrl: '/instructor/question/add',
             type: 'single_choice',
             submitting: false,
@@ -573,6 +602,36 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 }
             },
 
+            formatText(command) {
+                const textarea = document.getElementById('questionPrompt');
+                if (!textarea) return;
+
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+                const selected = text.substring(start, end);
+                
+                let insert = '';
+                let offset = 0;
+
+                switch(command) {
+                    case 'bold': insert = `**${selected || 'bold'}**`; offset = 2; break;
+                    case 'italic': insert = `*${selected || 'italic'}*`; offset = 1; break;
+                    case 'underline': insert = `<u>${selected || 'underline'}</u>`; offset = 3; break;
+                    case 'image': insert = `![Image](https://placehold.co/600x400)`; break; // Mock for now
+                }
+
+                this.question_text = text.substring(0, start) + insert + text.substring(end);
+                
+                // Restore cursor and state
+                this.$nextTick(() => {
+                    textarea.focus();
+                    textarea.selectionStart = start + offset;
+                    textarea.selectionEnd = start + insert.length - offset;
+                    this.isFocused = true;
+                });
+            },
+
             addOption() { this.options.push({ text: '', is_correct: false }); },
             removeOption(index) { this.options.splice(index, 1); },
             addMatchPair() { this.matchingPairs.push({ left: '', right: '' }); },
@@ -590,6 +649,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 this.ai_rubric = '';
                 this.options = [ { text: '', is_correct: false }, { text: '', is_correct: false } ];
                 this.matchingPairs = [ { left: '', right: '' }, { left: '', right: '' } ];
+                this.isFocused = false;
             },
 
             openAddModal() {

@@ -666,3 +666,10 @@
         - `resources/views/instructor/quiz_builder.php`: Expanded modal width to `max-w-[98%]`. Fixed "Points" input overflow. Removed restrictive `calc()` heights from the right column to fix text display issues. Improved text sizes and spacing.
     - **Rationale**: Ensure all content is visible and legible without layout glitches or cramped elements, creating a polished user experience.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 12:30 (Africa/Cairo)
+    - **Goal**: Add collapsible sidebars and rich text toolbar to the question editor.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Converted modal body to flexbox with dynamic width transitions for side columns. Implemented a custom Markdown toolbar (Bold, Italic, Underline, Image) that appears on textarea focus.
+    - **Rationale**: Maximize the writing space when the user is typing while keeping tools accessible, and provide necessary formatting options inline.
+    - **Tests run + results**: PHP syntax check passed.
