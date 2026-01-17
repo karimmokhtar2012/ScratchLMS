@@ -529,3 +529,16 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` checks passed.
+
+- 2026-01-17 06:00 (Africa/Cairo)
+    - **Goal**: Complete separation of instructor workflows into dedicated pages.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Refactored `pendingRequests` and `certificateApprovals` to render distinct views.
+        - `resources/views/instructor/retake_requests.php`: Created new view for quiz retakes.
+        - `resources/views/instructor/certificate_approvals.php`: Created new view for certificate approvals.
+        - `resources/views/instructor/pending_requests.php`: Deleted (obsolete).
+        - `resources/views/layouts/app.php`: Updated sidebar with dedicated links for Retakes, Certificates, and Grading.
+    - **Rationale**: Provide a focused, uncluttered experience for each administrative task type.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` passed.

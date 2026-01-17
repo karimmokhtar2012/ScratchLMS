@@ -292,27 +292,37 @@
                                 <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Question Bank</span>
                             </a>
                         </div>
-                        <p class="px-4 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2" x-show="!sidebarCollapsed">Bending Requests</p>
+                        <p class="px-4 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2" x-show="!sidebarCollapsed">Actions</p>
                         <div class="space-y-1">
-                            <a href="/instructor/requests#attempts" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/requests" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
-                                    <i class="fa-solid fa-clipboard-check w-5 text-center group-hover:text-amber-400 transition"></i>
-                                    <span x-show="!sidebarCollapsed">Attempt Approvals</span>
+                                    <i class="fa-solid fa-rotate-right w-5 text-center group-hover:text-amber-400 transition"></i>
+                                    <span x-show="!sidebarCollapsed">Retake Requests</span>
                                 </div>
-                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Attempt Approvals</span>
-                                <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
-                                      :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingAttemptCount ?></span>
+                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Retake Requests</span>
+                                <?php if ($pendingAttemptCount > 0): ?>
+                                    <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
+                                          :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingAttemptCount ?></span>
+                                <?php endif; ?>
                             </a>
-                            <a href="/instructor/requests#certificates" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/certificates/approvals" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
-                                    <i class="fa-solid fa-award w-5 text-center group-hover:text-amber-400 transition"></i>
-                                    <span x-show="!sidebarCollapsed">Certificate Approvals</span>
+                                    <i class="fa-solid fa-award w-5 text-center group-hover:text-emerald-400 transition"></i>
+                                    <span x-show="!sidebarCollapsed">Certificates</span>
                                 </div>
-                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Certificate Approvals</span>
-                                <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
-                                      :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingCertificateCount ?></span>
+                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Certificates</span>
+                                <?php if ($pendingCertificateCount > 0): ?>
+                                    <span class="bg-emerald-500/10 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30"
+                                          :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingCertificateCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                            <a href="/instructor/grading" class="relative flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                               :class="sidebarCollapsed ? 'justify-center px-0' : ''">
+                                <i class="fa-solid fa-pen-to-square w-5 text-center group-hover:text-indigo-400 transition"></i>
+                                <span x-show="!sidebarCollapsed">Grading Queue</span>
+                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Grading Queue</span>
                             </a>
                         </div>
                     </div>
