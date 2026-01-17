@@ -57,19 +57,15 @@ class Course extends Model
 
     
 
-        public function contentItems(int $courseId): array
+    public function contentItems(int $courseId): array
 
-        {
+    {
 
-            // First check if content_items table exists
+        if (!$this->hasTable('content_items')) {
 
-            $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name='content_items'");
+            return [];
 
-            if (empty($tableCheck)) {
-
-                return [];
-
-            }
+        }
 
     
 
@@ -119,6 +115,22 @@ class Course extends Model
 
             return $this->db->fetchAll($sql, [':course_id' => $courseId]);
 
+        }
+
+        private function hasTable(string $table): bool
+        {
+            $driver = $this->db->getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name = :table", [
+                    ':table' => $table
+                ]);
+            } else {
+                $tableCheck = $this->db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table", [
+                    ':table' => $table
+                ]);
+            }
+
+            return !empty($tableCheck);
         }
 
     }

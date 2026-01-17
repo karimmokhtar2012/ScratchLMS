@@ -309,13 +309,17 @@ class QuizRunnerController extends Controller
 
                     // New Model Progress (content_items)
                     $item = $db->fetchAll("SELECT id FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $result['quiz_id']])[0] ?? null;
-                    if ($item) {
-                        $db->query("INSERT OR REPLACE INTO content_progress (user_id, item_id, status, completed_at, score, attempts) 
-                                    VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP, :score, (SELECT attempts + 1 FROM quiz_attempts WHERE id = :aid))", [
+                    if ($item && $this->hasTable($db, 'content_progress')) {
+                        $db->query("INSERT INTO content_progress (user_id, item_id, status, completed_at, score, attempts)
+                                    VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP, :score, 1)
+                                    ON CONFLICT(user_id, item_id) DO UPDATE SET
+                                        status = 'completed',
+                                        completed_at = CURRENT_TIMESTAMP,
+                                        score = excluded.score,
+                                        attempts = content_progress.attempts + 1", [
                             ':uid' => $userId,
                             ':iid' => $item['id'],
-                            ':score' => $result['score'],
-                            ':aid' => $attemptId
+                            ':score' => $result['score']
                         ]);
                     }
 
@@ -391,9 +395,10 @@ class QuizRunnerController extends Controller
                 $q['options'] = json_decode($q['options'] ?? '[]', true);
                 $q['correct_answers'] = json_decode($q['correct_answers'] ?? '[]', true);
                 $q['user_answer'] = $userAnswers[$q['id']] ?? null;
-            }
-            $reviewData = $questions;
-        }
+    }
+
+        $reviewData = $questions;
+    }
 
         // 2. Fetch Course & Curriculum (For Sidebar context)
         $courseModel = new \App\Domain\Courses\Course();
@@ -607,9 +612,25 @@ class QuizRunnerController extends Controller
 
             
 
-                    $this->view('learn.quiz_review', ['reviewData' => $questions, 'attempt' => $attempt]);
+    $this->view('learn.quiz_review', ['reviewData' => $questions, 'attempt' => $attempt]);
 
-                }
+}
+
+    private function hasTable(\App\Core\Database $db, string $table): bool
+    {
+        $driver = $db->getConnection()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $tableCheck = $db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name = :table", [
+                ':table' => $table
+            ]);
+        } else {
+            $tableCheck = $db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table", [
+                ':table' => $table
+            ]);
+        }
+
+        return !empty($tableCheck);
+    }
 
             }
 

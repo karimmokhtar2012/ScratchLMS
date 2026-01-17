@@ -457,9 +457,45 @@ class QuizController extends Controller
             return $res[0];
         }
 
-        // Create Default
+        // Create Default Quiz
         $sqlInsert = "INSERT INTO quizzes (lesson_id) VALUES (:lid)";
         $this->db->query($sqlInsert, [':lid' => $lessonId]);
+        $quizId = $this->db->getConnection()->lastInsertId();
+
+        // Sync with ContentItems (Structure)
+        // Find parent lesson to get Module ID and Course ID
+        $parentLesson = $this->db->fetchAll("SELECT l.module_id, m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid", [':lid' => $lessonId])[0] ?? null;
+        
+        if ($parentLesson) {
+            // Find parent content item to link display_group_id
+            $parentItem = $this->db->fetchAll("SELECT id, position FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
+            
+            $pos = ($parentItem['position'] ?? 0) + 1; // Default to right after lesson
+            $groupId = $parentItem['id'] ?? null; // Use lesson's Item ID as group ID, or create a new group ID logic.
+            // Plan A said: "default to same display_group_id as their parent lesson".
+            // If parent lesson has no group, we can set one for both or just set quiz's group to lesson's item ID (if logic supports that).
+            // Let's use a unique integer for the group. If parent has no group, generate one and update parent.
+            
+            if ($parentItem) {
+                if (empty($parentItem['display_group_id'])) {
+                    $newGroupId = (int) $parentItem['id'] + 90000; // Simple hack for now
+                    $this->db->query("UPDATE content_items SET display_group_id = :gid WHERE id = :id", [':gid' => $newGroupId, ':id' => $parentItem['id']]);
+                    $groupId = $newGroupId;
+                } else {
+                    $groupId = $parentItem['display_group_id'];
+                }
+            }
+
+            $contentItemModel = new \App\Domain\Courses\ContentItem();
+            $contentItemModel->createItem([
+                'course_id' => $parentLesson['course_id'],
+                'module_id' => $parentLesson['module_id'],
+                'item_type' => 'quiz',
+                'item_id' => $quizId,
+                'position' => $pos,
+                'display_group_id' => $groupId
+            ]);
+        }
 
         // Fetch again
         return $this->db->fetchAll($sql, [':lid' => $lessonId])[0];

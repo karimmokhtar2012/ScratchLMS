@@ -839,3 +839,93 @@
     - **Security**: N/A.
     - **DB Notes**: Adds seeded lessons/quizzes; optionally seeds `content_items` when the table and columns exist.
     - **Tests run + results**: Not run (seed script only).
+
+- 2026-01-17 23:11 (EET)
+    - **Goal**: Harden Plan A content-items rollout for locking, progress integrity, and mobile playlist parity.
+    - **Files Changed**:
+        - `database/migrate_content_items.php`: Added indexes for `content_progress` uniqueness and content item ordering.
+        - `app/Http/Controllers/QuizRunnerController.php`: Fixed `content_progress` upsert and attempts handling.
+        - `app/Http/Controllers/LearnController.php`: Enforced item-level locking and computed locked item IDs for UI.
+        - `app/Services/CourseProgressService.php`: Added table guards and distinct completion counting.
+        - `resources/views/learn/player.php`: Corrected lock checks, item URLs, and mobile playlist item rendering.
+    - **Rationale**: Prevent duplicate progress rows, ensure quiz items respect locking, and align mobile UI with the item-centric playlist.
+    - **Security**: N/A.
+    - **DB Notes**: Adds unique index on `(user_id, item_id)` for `content_progress` and index on `(course_id, position)` for `content_items`.
+    - **Tests run + results**: Not run (manual review only).
+
+- 2026-01-17 23:18 (EET)
+    - **Goal**: Start Plan A checklist audits and rule schema scaffolding.
+    - **Files Changed**:
+        - `app/Services/ContentRuleService.php`: Added rule catalog and validation helpers.
+        - `database/audit_content_items.php`: Added audit script for content items/progress and rule validation.
+        - `database/migrate_content_items.php`: Added rule definition table and indexes for rules/prereqs.
+    - **Rationale**: Establish early validation for item integrity and rule parameter correctness.
+    - **Security**: N/A.
+    - **DB Notes**: Adds `content_rule_definitions` table and indexes for rule/prerequisite lookups.
+    - **Tests run + results**: `php -l` (syntax checks) only.
+
+- 2026-01-17 23:22 (EET)
+    - **Goal**: Provide a clean dev reset path for Plan A (wipe + migrate + seed + audit).
+    - **Files Changed**:
+        - `database/reset_dev_plan_a.sh`: New script to reset SQLite DB, migrate, seed, and audit content items.
+    - **Rationale**: Ensure a repeatable dev-only workflow for validating the item-centric model.
+    - **Security**: N/A.
+    - **DB Notes**: Deletes and recreates `database/database.sqlite`.
+    - **Tests run + results**: Not run (script added).
+
+- 2026-01-17 23:33 (EET)
+    - **Goal**: Complete Plan A rule evaluation, mapping, and server-driven state scaffolding.
+    - **Files Changed**:
+        - `app/Services/CourseProgressService.php`: Added item rule evaluation and shared progress calculation helpers.
+        - `app/Domain/Courses/Course.php`: Added cross-DB table detection for content items.
+        - `app/Http/Controllers/LearnController.php`: Added server-driven state payloads and next-item resolution.
+        - `app/Http/Controllers/QuizRunnerController.php`: Guarded content progress writes when tables exist.
+        - `public/assets/js/player.js`: Updated to prefer server-provided next item URLs.
+        - `public/assets/js/player.min.js`: Mirrored player.js changes for production asset.
+        - `resources/views/learn/player.php`: Passed server-driven state for completion and next-item URLs.
+        - `database/seed_content_rule_definitions.php`: Added rule definition seeder.
+        - `database/backfill_content_items.php`: Added backfill + rule mapping script.
+        - `database/audit_content_items.php`: Added rule definition coverage checks.
+        - `database/reset_dev_plan_a.sh`: Seeds rule definitions during reset.
+        - `docs/ai/context.md`: Documented Plan A content item flow and scripts.
+    - **Rationale**: Enforce item-based drip rules, ensure server-driven navigation state, and provide rule definition/backfill tooling with parity auditing.
+    - **Security**: Fail-closed rule validation to avoid unintended unlocks.
+    - **DB Notes**: Adds `content_rule_definitions` seed path and backfill script for content item rules.
+    - **Tests run + results**: `php -l` (syntax checks) only.
+
+- 2026-01-17 23:46 (EET)
+    - **Goal**: Fix dev reset ordering to support lesson schema migrations.
+    - **Files Changed**:
+        - `database/reset_dev_plan_a.sh`: Added `migrate_rich_content.php` before `migrate_jan15.php`.
+    - **Rationale**: Ensure `content_text`/`attachment_url` columns exist before Jan 15 migration recreates lessons table.
+    - **Security**: N/A.
+    - **DB Notes**: Adjusts migration order for dev reset only.
+    - **Tests run + results**: Not run (script update).
+
+- 2026-01-17 23:47 (EET)
+    - **Goal**: Ensure dev reset adds course/quiz status columns required by seeding.
+    - **Files Changed**:
+        - `database/reset_dev_plan_a.sh`: Added `migrate_draft_upcoming.php` after quiz engine migration.
+    - **Rationale**: Seed scripts depend on `courses.status` and `quizzes.status`.
+    - **Security**: N/A.
+    - **DB Notes**: Runs draft/upcoming migration during reset.
+    - **Tests run + results**: Not run (script update).
+
+- 2026-01-17 23:48 (EET)
+    - **Goal**: Allow `short_text` question types in quiz extensions migration.
+    - **Files Changed**:
+        - `database/migrate_quiz_extensions.php`: Added `short_text` to question and bank question type checks.
+    - **Rationale**: Seed scripts and quiz logic use `short_text` questions.
+    - **Security**: N/A.
+    - **DB Notes**: Updates allowed question types during migration.
+    - **Tests run + results**: Not run (script update).
+
+- 2026-01-17 23:49 (EET)
+    - **Goal**: Align audit expectations with quiz lesson handling and fix seed positions.
+    - **Files Changed**:
+        - `database/audit_content_items.php`: Excluded quiz-type lessons from missing item checks.
+        - `database/seed_test_trading_course.php`: Fixed section test content item position to avoid duplicates.
+    - **Rationale**: Quiz lessons are represented by quiz items; content item positions must be unique per course.
+    - **Security**: N/A.
+    - **DB Notes**: Seed positions updated; audit logic refined.
+    - **Tests run + results**: Not run (script update).

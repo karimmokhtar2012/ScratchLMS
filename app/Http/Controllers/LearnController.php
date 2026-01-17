@@ -51,11 +51,13 @@ class LearnController extends Controller
         // 3. Fetch Content Items (The New Model)
         $contentItems = $courseModel->contentItems($courseId);
         
+        $useContentItems = !empty($contentItems);
+
         // Build Playlist Hierarchy & Flat List
         $flatItems = [];
         $playlist = [];
         
-        if (!empty($contentItems)) {
+        if ($useContentItems) {
             // New Item-Centric Logic
             $moduleMap = [];
             foreach ($modules as $m) {
@@ -125,13 +127,15 @@ class LearnController extends Controller
             exit;
         }
 
-        // 5. Locking Logic (Placeholder for updated service)
+        // 5. Locking Logic
         $progressService = new \App\Services\CourseProgressService();
         $isLocked = false;
-        if ($currentItem['item_type'] === 'lesson') {
+        if ($useContentItems && isset($currentItem['id'])) {
+            $isLocked = $progressService->isItemLocked($userId, $courseId, (int) $currentItem['id']);
+        } elseif ($currentItem['item_type'] === 'lesson') {
             $isLocked = $progressService->isLessonLocked($userId, $courseId, (int) $currentItem['item_id']);
         }
-        
+
         if ($isLocked) {
             $_SESSION['flash_error'] = 'This item is locked.';
             header('Location: /learn/' . $courseId);
@@ -156,6 +160,33 @@ class LearnController extends Controller
 
         // 7. Get Progress for UI
         $completedItemIds = $this->getCompletedItemIds($userId, $courseId);
+        $lockedItemIds = [];
+        foreach ($flatItems as $item) {
+            if ($useContentItems && isset($item['id'])) {
+                if ($progressService->isItemLocked($userId, $courseId, (int) $item['id'])) {
+                    $lockedItemIds[] = (int) $item['id'];
+                }
+            } elseif (($item['item_type'] ?? '') === 'lesson') {
+                if ($progressService->isLessonLocked($userId, $courseId, (int) $item['item_id'])) {
+                    $lockedItemIds[] = (int) $item['item_id'];
+                }
+            }
+        }
+
+        $progressPercent = $progressService->calculateProgressPercent($userId, $courseId);
+        $currentItemCompleted = false;
+        foreach ($completedItemIds as $c) {
+            if ($c['item_type'] === $currentItem['item_type'] && $c['item_id'] === $currentItem['item_id']) {
+                $currentItemCompleted = true;
+                break;
+            }
+        }
+        $nextItemUrl = null;
+        if ($nextItem) {
+            $nextItemUrl = ($useContentItems && isset($nextItem['id']))
+                ? "/learn/{$courseId}/item/{$nextItem['id']}"
+                : "/learn/{$courseId}/lesson/{$nextItem['item_id']}";
+        }
         
         // Fetch underlying lesson data for rendering if it's a lesson or quiz
         $currentLesson = null;
@@ -179,7 +210,11 @@ class LearnController extends Controller
             'prevItem' => $prevItem,
             'nextItem' => $nextItem,
             'completedItems' => $completedItemIds,
-            'lockedItemIds' => [] // TODO: Implement item-level locking
+            'lockedItemIds' => $lockedItemIds,
+            'useContentItems' => $useContentItems,
+            'progressPercent' => $progressPercent,
+            'currentItemCompleted' => $currentItemCompleted,
+            'nextItemUrl' => $nextItemUrl
         ]);
     }
 
@@ -190,8 +225,7 @@ class LearnController extends Controller
         $lessons = $this->db->fetchAll($sqlLessons, [':uid' => $userId]);
         
         // New model check (content_progress)
-        $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name='content_progress'");
-        if (!empty($tableCheck)) {
+        if ($this->hasTable('content_progress') && $this->hasTable('content_items')) {
             $sqlProgress = "SELECT ci.item_type, ci.item_id 
                             FROM content_progress cp 
                             JOIN content_items ci ON cp.item_id = ci.id 
@@ -220,7 +254,7 @@ class LearnController extends Controller
 
         // 1. Security Check: Find Course and Verify Enrollment
         $courseId = 0;
-        if ($itemId) {
+        if ($itemId && $this->hasTable('content_items')) {
             $res = $this->db->fetchAll("SELECT course_id FROM content_items WHERE id = :id", [':id' => $itemId]);
             $courseId = (int) ($res[0]['course_id'] ?? 0);
         } elseif ($lessonId) {
@@ -257,9 +291,12 @@ class LearnController extends Controller
         // 3. Authorized: Mark Completed
         if ($verb === 'completed') {
             // New model progress
-            if ($itemId) {
-                $this->db->query("INSERT OR REPLACE INTO content_progress (user_id, item_id, status, completed_at) 
-                                  VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP)", [
+            if ($itemId && $this->hasTable('content_progress')) {
+                $this->db->query("INSERT INTO content_progress (user_id, item_id, status, completed_at)
+                                  VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP)
+                                  ON CONFLICT(user_id, item_id) DO UPDATE SET
+                                      status = 'completed',
+                                      completed_at = CURRENT_TIMESTAMP", [
                     ':uid' => $userId,
                     ':iid' => $itemId
                 ]);
@@ -275,8 +312,15 @@ class LearnController extends Controller
             $progressService = new \App\Services\CourseProgressService();
             $progressService->updateProgress($userId, $courseId);
         }
+        $progressService = new \App\Services\CourseProgressService();
+        $progressPercent = $progressService->calculateProgressPercent($userId, $courseId);
+        $nextItemUrl = $this->getNextItemUrl($courseId, $itemId, $lessonId);
 
-        echo json_encode(['status' => 'success']);
+        echo json_encode([
+            'status' => 'success',
+            'progress_percent' => $progressPercent,
+            'next_item_url' => $nextItemUrl
+        ]);
     }
 
     private function getCompletedLessonIds(int $userId): array
@@ -284,5 +328,58 @@ class LearnController extends Controller
         $sql = "SELECT lesson_id FROM completed_lessons WHERE user_id = :uid";
         $rows = $this->db->fetchAll($sql, [':uid' => $userId]);
         return array_column($rows, 'lesson_id');
+    }
+
+    private function getNextItemUrl(int $courseId, int $itemId, int $lessonId): ?string
+    {
+        if ($itemId && $this->hasTable('content_items')) {
+            $current = $this->db->fetchAll("SELECT position FROM content_items WHERE id = :id AND course_id = :cid", [
+                ':id' => $itemId,
+                ':cid' => $courseId
+            ])[0] ?? null;
+
+            if ($current) {
+                $next = $this->db->fetchAll("SELECT id, item_type, item_id FROM content_items WHERE course_id = :cid AND position > :pos ORDER BY position ASC LIMIT 1", [
+                    ':cid' => $courseId,
+                    ':pos' => (int) $current['position']
+                ])[0] ?? null;
+                if ($next) {
+                    return "/learn/{$courseId}/item/{$next['id']}";
+                }
+            }
+        }
+
+        if ($lessonId) {
+            $lessons = $this->db->fetchAll("SELECT l.id
+                                            FROM lessons l
+                                            JOIN modules m ON l.module_id = m.id
+                                            WHERE m.course_id = :cid
+                                            ORDER BY m.sort_order ASC, l.sort_order ASC, l.id ASC", [
+                ':cid' => $courseId
+            ]);
+            $lessonIds = array_column($lessons, 'id');
+            $idx = array_search($lessonId, $lessonIds);
+            if ($idx !== false && isset($lessonIds[$idx + 1])) {
+                return "/learn/{$courseId}/lesson/{$lessonIds[$idx + 1]}";
+            }
+        }
+
+        return null;
+    }
+
+    private function hasTable(string $table): bool
+    {
+        $driver = $this->db->getConnection()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name = :table", [
+                ':table' => $table
+            ]);
+        } else {
+            $tableCheck = $this->db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table", [
+                ':table' => $table
+            ]);
+        }
+
+        return !empty($tableCheck);
     }
 }

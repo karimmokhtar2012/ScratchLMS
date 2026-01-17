@@ -38,6 +38,17 @@ try {
     echo "✅ Table 'content_item_rules' created.
 ";
 
+    $db->query("CREATE TABLE IF NOT EXISTS content_rule_definitions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rule_type TEXT NOT NULL,
+        version INTEGER DEFAULT 1,
+        schema_json TEXT NOT NULL,
+        ui_schema_json TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    echo "✅ Table 'content_rule_definitions' created.
+";
+
     // 3. content_prerequisites
     $db->query("CREATE TABLE IF NOT EXISTS content_prerequisites (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +74,48 @@ try {
         FOREIGN KEY (item_id) REFERENCES content_items(id) ON DELETE CASCADE
     )");
     echo "✅ Table 'content_progress' created.
+";
+
+    $driver = $db->getConnection()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $db->query("CREATE UNIQUE INDEX IF NOT EXISTS idx_content_progress_user_item ON content_progress (user_id, item_id)");
+        $db->query("CREATE INDEX IF NOT EXISTS idx_content_items_course_position ON content_items (course_id, position)");
+        $db->query("CREATE INDEX IF NOT EXISTS idx_content_item_rules_item ON content_item_rules (item_id)");
+        $db->query("CREATE INDEX IF NOT EXISTS idx_content_prereq_item ON content_prerequisites (item_id)");
+        $db->query("CREATE INDEX IF NOT EXISTS idx_content_prereq_prereq_item ON content_prerequisites (prerequisite_item_id)");
+        $db->query("CREATE UNIQUE INDEX IF NOT EXISTS idx_content_rule_definitions_type_version ON content_rule_definitions (rule_type, version)");
+    } else {
+        $indexCheck = $db->fetchAll("SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'content_progress' AND index_name = 'idx_content_progress_user_item'");
+        if (empty($indexCheck)) {
+            $db->query("CREATE UNIQUE INDEX idx_content_progress_user_item ON content_progress (user_id, item_id)");
+        }
+
+        $indexCheck = $db->fetchAll("SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'content_items' AND index_name = 'idx_content_items_course_position'");
+        if (empty($indexCheck)) {
+            $db->query("CREATE INDEX idx_content_items_course_position ON content_items (course_id, position)");
+        }
+
+        $indexCheck = $db->fetchAll("SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'content_item_rules' AND index_name = 'idx_content_item_rules_item'");
+        if (empty($indexCheck)) {
+            $db->query("CREATE INDEX idx_content_item_rules_item ON content_item_rules (item_id)");
+        }
+
+        $indexCheck = $db->fetchAll("SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'content_prerequisites' AND index_name = 'idx_content_prereq_item'");
+        if (empty($indexCheck)) {
+            $db->query("CREATE INDEX idx_content_prereq_item ON content_prerequisites (item_id)");
+        }
+
+        $indexCheck = $db->fetchAll("SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'content_prerequisites' AND index_name = 'idx_content_prereq_prereq_item'");
+        if (empty($indexCheck)) {
+            $db->query("CREATE INDEX idx_content_prereq_prereq_item ON content_prerequisites (prerequisite_item_id)");
+        }
+
+        $indexCheck = $db->fetchAll("SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'content_rule_definitions' AND index_name = 'idx_content_rule_definitions_type_version'");
+        if (empty($indexCheck)) {
+            $db->query("CREATE UNIQUE INDEX idx_content_rule_definitions_type_version ON content_rule_definitions (rule_type, version)");
+        }
+    }
+    echo "✅ Indexes created.
 ";
 
     echo "🎉 Content Items Model Migration Successful!

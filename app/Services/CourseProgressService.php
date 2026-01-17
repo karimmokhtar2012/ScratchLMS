@@ -6,14 +6,17 @@ namespace App\Services;
 
 use App\Core\Database;
 use App\Policies\Authorization;
+use App\Services\ContentRuleService;
 
 class CourseProgressService
 {
     private Database $db;
+    private ContentRuleService $ruleService;
 
     public function __construct()
     {
         $this->db = Database::getInstance();
+        $this->ruleService = new ContentRuleService();
     }
 
     public function updateProgress(int $userId, int $courseId): void
@@ -23,39 +26,7 @@ class CourseProgressService
             return;
         }
 
-        // Check if content_items table exists
-        $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name='content_items'");
-        $hasItems = !empty($tableCheck);
-
-        if ($hasItems) {
-            // 1. Count Total Content Items in Course
-            $sqlTotal = "SELECT COUNT(*) as total FROM content_items WHERE course_id = :cid";
-            $resTotal = $this->db->fetchAll($sqlTotal, [':cid' => $courseId]);
-            $totalItems = $resTotal[0]['total'] ?? 0;
-
-            // 2. Count Completed Items for User
-            $sqlCompleted = "SELECT COUNT(*) as completed 
-                             FROM content_progress cp
-                             JOIN content_items ci ON cp.item_id = ci.id
-                             WHERE cp.user_id = :uid AND ci.course_id = :cid AND cp.status = 'completed'";
-            $resCompleted = $this->db->fetchAll($sqlCompleted, [':uid' => $userId, ':cid' => $courseId]);
-            $completedCount = $resCompleted[0]['completed'] ?? 0;
-
-            // Note: We might want to fall back to completed_lessons if content_progress is empty for some items
-            // but for a clean "Wipe + Reseed" environment, this is perfect.
-        } else {
-            // Legacy Logic
-            $sqlTotal = "SELECT COUNT(*) as total FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid";
-            $resTotal = $this->db->fetchAll($sqlTotal, [':cid' => $courseId]);
-            $totalItems = $resTotal[0]['total'] ?? 0;
-
-            $sqlCompleted = "SELECT COUNT(*) as completed FROM completed_lessons cl JOIN lessons l ON cl.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE cl.user_id = :uid AND m.course_id = :cid";
-            $resCompleted = $this->db->fetchAll($sqlCompleted, [':uid' => $userId, ':cid' => $courseId]);
-            $completedCount = $resCompleted[0]['completed'] ?? 0;
-        }
-
-        // 3. Calculate Percentage
-        $percent = $totalItems > 0 ? ($completedCount / $totalItems) * 100 : 0;
+        $percent = $this->calculateProgressPercent($userId, $courseId);
         $isCompleted = $percent >= 100 ? 1 : 0;
 
         // 4. Update Enrollment Record
@@ -94,6 +65,10 @@ class CourseProgressService
 
     public function isLessonLocked(int $userId, int $courseId, int $lessonId): bool
     {
+        if (!$this->hasTable('content_items')) {
+            return $this->legacyIsLocked($userId, $courseId, $lessonId);
+        }
+
         // For now, redirect to isItemLocked if we can find the item
         $item = $this->db->fetchAll("SELECT id FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
         if ($item) {
@@ -106,6 +81,10 @@ class CourseProgressService
 
     public function isItemLocked(int $userId, int $courseId, int $itemId): bool
     {
+        if (!$this->hasTable('content_items')) {
+            return false;
+        }
+
         // 1. Get Course Flow
         $course = $this->db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $courseId])[0] ?? null;
         if (!$course || $course['content_flow'] === 'free') return false;
@@ -127,11 +106,131 @@ class CourseProgressService
         }
 
         // 3. Drip rules (item-level)
-        $rules = $this->db->fetchAll("SELECT * FROM content_item_rules WHERE item_id = :iid", [':iid' => $itemId]);
-        if (empty($rules)) return false;
+        if (!$this->hasTable('content_item_rules')) {
+            return false;
+        }
 
-        // TODO: Implement complex rule evaluation
+        $rules = $this->db->fetchAll("SELECT * FROM content_item_rules WHERE item_id = :iid", [':iid' => $itemId]);
+        if (empty($rules)) {
+            return false;
+        }
+
+        $hasTimeRule = false;
+        $timeLocked = false;
+        $hasProgressRule = false;
+        $progressLocked = false;
+
+        foreach ($rules as $rule) {
+            [$isValid, $errors] = $this->ruleService->validateRuleRecord($rule);
+            if (!$isValid) {
+                // Fail-closed: invalid rule definitions should not unlock content.
+                return true;
+            }
+
+            $params = json_decode($rule['params_json'], true);
+            $ruleType = $rule['rule_type'];
+
+            if ($ruleType === 'unlock_after_days') {
+                $hasTimeRule = true;
+                $days = (int) ($params['days'] ?? 0);
+                $enroll = $this->db->fetchAll("SELECT created_at FROM enrollments WHERE user_id = :uid AND course_id = :cid", [
+                    ':uid' => $userId,
+                    ':cid' => $courseId
+                ])[0] ?? null;
+                if (!$enroll) {
+                    $timeLocked = true;
+                    continue;
+                }
+                $unlockAt = strtotime($enroll['created_at']) + ($days * 86400);
+                if (time() < $unlockAt) {
+                    $timeLocked = true;
+                }
+            }
+
+            if ($ruleType === 'unlock_after_item_completion') {
+                $hasProgressRule = true;
+                $unlockItemId = (int) ($params['item_id'] ?? 0);
+                if ($unlockItemId <= 0) {
+                    $progressLocked = true;
+                    continue;
+                }
+                $check = $this->db->fetchAll("SELECT id FROM content_progress WHERE user_id = :uid AND item_id = :iid AND status = 'completed'", [
+                    ':uid' => $userId,
+                    ':iid' => $unlockItemId
+                ]);
+                if (empty($check)) {
+                    $progressLocked = true;
+                }
+            }
+
+            if ($ruleType === 'unlock_after_percent') {
+                $hasProgressRule = true;
+                $threshold = (int) ($params['percent'] ?? 0);
+                $percent = $this->calculateProgressPercent($userId, $courseId);
+                if ($percent < $threshold) {
+                    $progressLocked = true;
+                }
+            }
+        }
+
+        if ($course['content_flow'] === 'drip_time') {
+            return $hasTimeRule ? $timeLocked : false;
+        }
+
+        if ($course['content_flow'] === 'drip_progress') {
+            return $hasProgressRule ? $progressLocked : false;
+        }
+
+        if ($course['content_flow'] === 'drip_combined') {
+            $timeSatisfied = !$hasTimeRule || !$timeLocked;
+            $progressSatisfied = !$hasProgressRule || !$progressLocked;
+            return !($timeSatisfied && $progressSatisfied);
+        }
+
         return false;
+    }
+
+    public function calculateProgressPercent(int $userId, int $courseId): float
+    {
+        if ($this->hasTable('content_items') && $this->hasTable('content_progress')) {
+            $sqlTotal = "SELECT COUNT(*) as total FROM content_items WHERE course_id = :cid";
+            $resTotal = $this->db->fetchAll($sqlTotal, [':cid' => $courseId]);
+            $totalItems = (int) ($resTotal[0]['total'] ?? 0);
+
+            $sqlCompleted = "SELECT COUNT(DISTINCT cp.item_id) as completed
+                             FROM content_progress cp
+                             JOIN content_items ci ON cp.item_id = ci.id
+                             WHERE cp.user_id = :uid AND ci.course_id = :cid AND cp.status = 'completed'";
+            $resCompleted = $this->db->fetchAll($sqlCompleted, [':uid' => $userId, ':cid' => $courseId]);
+            $completedCount = (int) ($resCompleted[0]['completed'] ?? 0);
+            return $totalItems > 0 ? ($completedCount / $totalItems) * 100 : 0.0;
+        }
+
+        $sqlTotal = "SELECT COUNT(*) as total FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid";
+        $resTotal = $this->db->fetchAll($sqlTotal, [':cid' => $courseId]);
+        $totalItems = (int) ($resTotal[0]['total'] ?? 0);
+
+        $sqlCompleted = "SELECT COUNT(*) as completed FROM completed_lessons cl JOIN lessons l ON cl.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE cl.user_id = :uid AND m.course_id = :cid";
+        $resCompleted = $this->db->fetchAll($sqlCompleted, [':uid' => $userId, ':cid' => $courseId]);
+        $completedCount = (int) ($resCompleted[0]['completed'] ?? 0);
+
+        return $totalItems > 0 ? ($completedCount / $totalItems) * 100 : 0.0;
+    }
+
+    private function hasTable(string $table): bool
+    {
+        $driver = $this->db->getConnection()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name = :table", [
+                ':table' => $table
+            ]);
+        } else {
+            $tableCheck = $this->db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table", [
+                ':table' => $table
+            ]);
+        }
+
+        return !empty($tableCheck);
     }
 
     private function legacyIsLocked(int $userId, int $courseId, int $lessonId): bool

@@ -19,4 +19,12 @@
 - **Quizzes**: Treated as separate units from Video/Article lessons in the UI. Access is secured by `Authorization` and `RateLimiter`.
 - **Quiz Grading**: Fill-blank and matching can use strict/fuzzy/both matching via `grading_policy`. Essay/video submissions enter the manual grading queue; essays can receive AI pre-scores. Short-text and fill-blank can use AI grading when `ai_rubric` is set and `GROQ_API_KEY` is configured.
 - **Instructor Approvals**: Unified pending approvals view at `/instructor/requests` for quiz retake requests and manual certificate issuance.
-- **Content Flow**: Supports Free, Linear, and drip (time/progress/combined) rules. Enforced in `LearnController` and calculated via `CourseProgressService` with `lesson_drip_rules`.
+- **Content Flow**: Supports Free, Linear, and drip (time/progress/combined) rules. Item-based locking/progress uses `content_items` + `content_item_rules` when present; legacy `lesson_drip_rules` still exist for older courses.
+
+## Plan A (Content Items)
+- **Schema**: `content_items`, `content_progress`, `content_item_rules`, `content_prerequisites`, `content_rule_definitions`.
+- **Player**: `/learn/{course}/item/{id}` renders item-centric navigation with optional `display_group_id` grouping.
+- **Dev Reset**: `database/reset_dev_plan_a.sh` wipes and recreates SQLite DB, migrates, seeds rules, seeds the Trading Mastery course, and runs the audit.
+- **Audit**: `database/audit_content_items.php` validates item integrity and rule definitions.
+- **Backfill**: `database/backfill_content_items.php` builds `content_items` from lessons/quizzes and maps `lesson_drip_rules` to item rules.
+- **Rule Seeds**: `database/seed_content_rule_definitions.php` populates `content_rule_definitions` from the rule catalog.

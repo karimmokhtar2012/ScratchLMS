@@ -294,7 +294,7 @@ if ($hasContentItems) {
         ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q5, 'position' => 10, 'display_group_id' => null],
         ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l6, 'position' => 11, 'display_group_id' => null],
         ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q6, 'position' => 12, 'display_group_id' => null],
-        ['module_id' => $sectionModuleId, 'item_type' => 'quiz', 'item_id' => $sectionTestQuiz, 'position' => 1, 'display_group_id' => null],
+        ['module_id' => $sectionModuleId, 'item_type' => 'quiz', 'item_id' => $sectionTestQuiz, 'position' => 13, 'display_group_id' => null],
     ];
 
     foreach ($contentItems as $item) {

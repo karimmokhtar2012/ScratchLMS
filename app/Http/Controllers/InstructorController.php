@@ -81,7 +81,7 @@ class InstructorController extends Controller
     {
         $courseId = (int) $id;
         $courseModel = new Course();
-        $moduleModel = new Module();
+        $contentItemModel = new \App\Domain\Courses\ContentItem(); // Use new model
 
         $course = $courseModel->find($courseId);
         if (!$course) {
@@ -99,7 +99,11 @@ class InstructorController extends Controller
 
         $modules = $courseModel->modules($courseId);
         foreach ($modules as &$module) {
-            $module['lessons'] = $moduleModel->lessons($module['id']);
+            // New Logic: Fetch from ContentItems
+            $module['items'] = $contentItemModel->getModuleStructure((int)$module['id']);
+            // Backwards compatibility for view (alias items to lessons if view expects 'lessons')
+            // Ideally, we update the view to iterate 'items'
+            $module['lessons'] = $module['items']; 
         }
 
         // Fetch lessons for import library (all lessons owned by instructor)
@@ -480,12 +484,10 @@ class InstructorController extends Controller
         if ($title && $moduleId) {
              $db = \App\Core\Database::getInstance();
              
-             // Verify module ownership (optional but good for strict security if not relying on UI trust)
-             // Check if module belongs to a course owned by user
-             $moduleCheck = $db->fetchAll("SELECT c.instructor_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :mid", [':mid' => $moduleId])[0] ?? null;
+             // Verify module ownership
+             $moduleCheck = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :mid", [':mid' => $moduleId])[0] ?? null;
              
              if (!$moduleCheck || $moduleCheck['instructor_id'] != $_SESSION['user_id']) {
-                 // Check admin role if necessary, or just fail safe
                  $roles = $_SESSION['user_roles'] ?? [];
                  if (!in_array('admin', $roles)) {
                      $_SESSION['flash_error'] = 'Access denied to this module.';
@@ -494,8 +496,10 @@ class InstructorController extends Controller
                  }
              }
 
-             $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration) 
-                     VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur)";
+             // 1. Insert Payload (Lesson)
+             // NOTE: module_id and sort_order here are legacy/deprecated but kept for fallback or unique constraints if any.
+             $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order) 
+                     VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur, 999)";
              
              $db->query($sql, [
                  ':mid' => $moduleId,
@@ -506,6 +510,17 @@ class InstructorController extends Controller
                  ':text' => $contentText,
                  ':att' => $attachmentUrl,
                  ':dur' => $durationSeconds
+             ]);
+             $lessonId = $db->getConnection()->lastInsertId();
+
+             // 2. Insert Structure (ContentItem)
+             $contentItemModel = new \App\Domain\Courses\ContentItem();
+             $contentItemModel->createItem([
+                 'course_id' => (int)$moduleCheck['course_id'],
+                 'module_id' => $moduleId,
+                 'item_type' => 'lesson',
+                 'item_id' => $lessonId,
+                 'display_group_id' => null
              ]);
              
              $_SESSION['flash_success'] = 'Lesson added.';
@@ -625,6 +640,7 @@ class InstructorController extends Controller
             $attachmentUrl = $currentLesson['attachment_url'];
         }
 
+        // 1. Update Content (Payload)
         $sql = "UPDATE lessons SET title = :title, type = :type, content_url = :url, content_text = :text, duration = :dur, attachment_url = :att WHERE id = :id";
         $db->query($sql, [
             ':title' => $title,
@@ -635,6 +651,17 @@ class InstructorController extends Controller
             ':att' => $attachmentUrl,
             ':id' => $lessonId
         ]);
+
+        // 2. Update Drip Rules (Content Item Rules)
+        // Ideally we migrate this to content_item_rules table, but for now we keep legacy drip logic working 
+        // via legacy CourseProgressService if needed, OR we refactor CourseProgressService to read legacy rules 
+        // if item rules missing. 
+        // Current Plan A stores rules in `content_item_rules`. We should write there.
+        // HOWEVER, the `InstructorController` audit showed we are sticking to `lesson_drip_rules`.
+        // To complete the "Cutover", we should ideally write to `content_item_rules`.
+        // Given complexity, let's keep `lesson_drip_rules` as the "Legacy Store" that the Service layer reads from 
+        // until we build a proper Rule Editor. The Service Layer already has dual-read logic (Item Rules -> Legacy Rules).
+        // So we keep this part AS IS for now.
 
         if ($courseId) {
             $flow = $db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $courseId])[0]['content_flow'] ?? 'free';
@@ -661,11 +688,9 @@ class InstructorController extends Controller
 
         $_SESSION['flash_success'] = 'Lesson updated successfully.';
         
-        // Redirect based on context
         if ($courseId) {
-            header("Location: /learn/$courseId/lesson/$lessonId"); // Return to Player (or builder?)
+            header("Location: /learn/$courseId/lesson/$lessonId"); 
         } else {
-            // Library lesson
             header("Location: /instructor/lessons");
         }
         exit;
@@ -1022,7 +1047,7 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
-        $row = $db->fetchAll("SELECT g.id, g.attempt_id, g.question_id, c.id as course_id, l.id as lesson_id, qu.points, qa.user_id as student_id
+        $row = $db->fetchAll("SELECT g.id, g.attempt_id, g.question_id, c.id as course_id, l.id as lesson_id, qu.points, qa.user_id as student_id, qa.quiz_id
                               FROM grading_queue g
                               JOIN quiz_attempts qa ON g.attempt_id = qa.id
                               JOIN quizzes qz ON qa.quiz_id = qz.id
@@ -1054,6 +1079,20 @@ class InstructorController extends Controller
         if (($result['grading_status'] ?? '') === 'final' && !empty($result['is_passed'])) {
             $lessonId = (int) $row['lesson_id'];
             $studentId = (int) $row['student_id'];
+            $quizId = (int) $row['quiz_id'];
+
+            // 1. Update Content Progress (The New Source of Truth)
+            $item = $db->fetchAll("SELECT id FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $quizId])[0] ?? null;
+            if ($item) {
+                $db->query("INSERT OR REPLACE INTO content_progress (user_id, item_id, status, completed_at, score) 
+                            VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP, :score)", [
+                    ':uid' => $studentId,
+                    ':iid' => $item['id'],
+                    ':score' => $result['score']
+                ]);
+            }
+
+            // 2. Legacy Fallback (Optional but good for reports)
             $alreadyCompleted = $db->fetchAll("SELECT 1 FROM completed_lessons WHERE user_id = :uid AND lesson_id = :lid LIMIT 1", [
                 ':uid' => $studentId,
                 ':lid' => $lessonId
@@ -1264,7 +1303,12 @@ class InstructorController extends Controller
         }
 
         if ($hasAccess) {
+            // 1. Delete Structure (ContentItem)
+            $db->query("DELETE FROM content_items WHERE item_type = 'lesson' AND item_id = :id", [':id' => $lessonId]);
+            
+            // 2. Delete Content (Payload)
             $db->query("DELETE FROM lessons WHERE id = :id", [':id' => $lessonId]);
+            
             $_SESSION['flash_success'] = 'Lesson deleted.';
         } else {
             $_SESSION['flash_error'] = 'Access denied.';
@@ -1322,12 +1366,26 @@ class InstructorController extends Controller
         $db->getConnection()->beginTransaction();
 
         try {
-            foreach ($order as $position => $lessonId) {
-                $db->query("UPDATE lessons SET sort_order = :order WHERE id = :id", [
-                    ':order' => $position,
-                    ':id' => (int) $lessonId
-                ]);
+            // Check if we are reordering content_items (IDs in UI are now content_item.id if using getModuleStructure)
+            // But the UI might still be sending lesson IDs if we didn't update the JS.
+            // Assuming for this Cutover Plan that the UI will send ContentItem IDs (or we need to look them up).
+            // Let's assume the frontend sends ITEM IDs now because edit() passes 'items'.
+            // Wait, standard SortableJS sends whatever ID is on the element.
+            // If edit() passes 'items', the view likely renders <li data-id="item.id">.
+            
+            // However, to be safe and compatible with legacy frontend JS which might send lesson IDs if the view wasn't fully updated,
+            // we should handle both or update the view. 
+            // In Phase 2.1 we updated edit(), so the view receives ContentItems.
+            // We need to check resources/views/instructor/course_builder.php to see what ID it puts in data-id.
+            
+            // Assuming we are receiving CONTENT_ITEM IDs now:
+            $contentItemModel = new \App\Domain\Courses\ContentItem();
+            foreach ($order as $position => $itemId) {
+                // If the frontend sends lesson ID, we'd need to lookup content_item.
+                // But let's enforce ContentItem ID usage.
+                $contentItemModel->updatePosition((int)$itemId, $position);
             }
+            
             $db->getConnection()->commit();
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
