@@ -473,3 +473,21 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-17 04:15 (Africa/Cairo)
+    - **Goal**: Restore AI grading by switching to a supported Groq model.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Updated chat completion model to `llama-3.1-8b-instant`.
+    - **Rationale**: `llama3-70b-8192` is decommissioned; switching resolves API 400 errors and placeholder scores.
+    - **Security**: No change.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`.
+
+- 2026-01-17 04:25 (Africa/Cairo)
+    - **Goal**: Use higher-capacity Groq model for AI grading.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Updated chat completion model to `llama-3.1-70b-versatile`.
+    - **Rationale**: Improve grading quality with a larger model while keeping supported API.
+    - **Security**: No change.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
