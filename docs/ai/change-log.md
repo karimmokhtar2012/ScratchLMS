@@ -688,6 +688,13 @@
     - **Rationale**: Resolve layout breakage caused by previous incomplete edits and ensure the modal renders correctly across different screen sizes.
     - **Tests run + results**: PHP syntax check passed.
 
+- 2026-01-17 14:15 (Africa/Cairo)
+    - **Goal**: Finalize stable Flexbox restoration and layout integrity.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Strictly enforced Flexbox layout over Grid to prevent sidebar overlaps. Preserved WYSIWYG editor and collapsible transitions. Restored default option count to 2 per user preference.
+    - **Rationale**: Achieve the final, polished, and bug-free state of the Quiz Builder UI while respecting user feedback on defaults and visual behavior.
+    - **Tests run + results**: PHP syntax check passed. Verified 3-column stability.
+
 - 2026-01-17 05:25 (Africa/Cairo)
     - **Goal**: Expose AI rationale in instructor popup, show scores/rationale to students after approval, and enforce concise answer-focused AI tone.
     - **Files Changed**:
@@ -718,4 +725,4 @@
     - **Rationale**: Align progression setup with course settings so time/progress drip modes are actually configurable without visiting each lesson separately.
     - **Security**: Instructor-only updates; validates lessons belong to the course before writing rules.
     - **DB Notes**: Uses existing `lesson_drip_rules` table; no schema changes.
-    - **Tests run + results**: `php -l` on modified files.
+    - **Tests run + results**: `php -l on modified files.
