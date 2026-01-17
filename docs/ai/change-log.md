@@ -638,3 +638,10 @@
         - `resources/views/instructor/quiz_builder.php`: Added `questionTypes` object with descriptions and instructions. Updated UI to display a dynamic Info Box.
     - **Rationale**: Provide instructors with clear guidance on how to use each question type directly within the builder interface.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 10:30 (Africa/Cairo)
+    - **Goal**: Refactor Quiz Builder "Add Question" into a modal.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Moved the builder form into a hidden modal triggered by a new "Add Question" button. Updated Alpine logic for modal state management.
+    - **Rationale**: Improve UI cleanliness by hiding the complex form until needed, focusing the user on the question list and key actions.
+    - **Tests run + results**: PHP syntax check passed.

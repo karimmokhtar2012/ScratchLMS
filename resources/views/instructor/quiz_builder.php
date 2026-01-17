@@ -160,28 +160,49 @@
                 <?php endif; ?>
             </div>
 
-            <!-- Builder Form -->
-            <div class="relative" x-ref="builderForm">
-                
-                <!-- Edit Mode Header -->
-                <div x-show="mode === 'edit'" class="mb-6 flex items-center justify-between bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center text-white mr-4 shadow-lg shadow-indigo-500/20">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-sm font-bold text-white">Editing Question</h2>
-                            <p class="text-xs text-indigo-200">You are modifying an existing question.</p>
-                        </div>
-                    </div>
-                    <button @click="cancelEdit()" class="text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 px-4 py-2 rounded-lg transition border border-zinc-700">
-                        Cancel & Create New
-                    </button>
+            <!-- Builder Form (Hidden by default, shown in Modal) -->
+            <!-- Add Question Button Block -->
+            <div class="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-layer-group text-2xl text-blue-500"></i>
                 </div>
+                <h3 class="text-lg font-bold text-white mb-2">Build Your Quiz</h3>
+                <p class="text-zinc-400 text-sm mb-6 max-w-md">Mix and match different question types to create a comprehensive assessment.</p>
+                <button @click="openAddModal()" 
+                        class="px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold shadow-lg shadow-blue-500/20 transition transform hover:-translate-y-1 flex items-center">
+                    <i class="fa-solid fa-plus text-xl mr-3"></i>
+                    <span class="text-lg">Add New Question</span>
+                </button>
+            </div>
 
-                <!-- 2. The Editor Card -->
-                <form :action="actionUrl" method="POST" @submit="submitting = true" 
-                      class="bg-zinc-950 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden relative group">
+            <!-- Question Modal -->
+            <div x-show="showQuestionModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" x-transition.opacity style="display: none;">
+                <div @click.away="showQuestionModal = false" class="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative">
+                    
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between p-6 border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-50 backdrop-blur-md">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-lg"
+                                 :class="mode === 'edit' ? 'bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'">
+                                <i class="fa-solid text-lg" :class="mode === 'edit' ? 'fa-pen-to-square' : 'fa-plus'"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-white" x-text="mode === 'edit' ? 'Edit Question' : 'Add New Question'"></h2>
+                                <p class="text-xs text-zinc-400" x-text="mode === 'edit' ? 'Modify the existing question details below.' : 'Choose a type and configure your new question.'"></p>
+                            </div>
+                        </div>
+                        <button @click="showQuestionModal = false" class="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="relative" x-ref="builderForm">
+                        
+                        <!-- Edit Mode Header (Removed as now in modal header) -->
+
+                        <!-- 2. The Editor Card -->
+                        <form :action="actionUrl" method="POST" @submit="submitting = true" 
+                              class="bg-transparent">
                     
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
@@ -427,6 +448,7 @@
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
 
@@ -551,6 +573,7 @@
     function questionBuilder() {
         return {
             mode: 'add',
+            showQuestionModal: false,
             actionUrl: '/instructor/question/add',
             type: 'single_choice',
             submitting: false,
@@ -642,6 +665,11 @@
                 this.matchingPairs = [ { left: '', right: '' }, { left: '', right: '' } ];
             },
 
+            openAddModal() {
+                this.resetForm();
+                this.showQuestionModal = true;
+            },
+
             editQuestion(q) {
                 this.resetForm();
                 this.mode = 'edit';
@@ -670,10 +698,11 @@
                     }));
                 }
 
-                this.$refs.builderForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                this.showQuestionModal = true;
             },
 
             cancelEdit() {
+                this.showQuestionModal = false;
                 this.resetForm();
             }
         }
