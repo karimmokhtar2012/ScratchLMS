@@ -542,3 +542,15 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` passed.
+
+- 2026-01-17 06:15 (Africa/Cairo)
+    - **Goal**: Enhance AI grading with rationales and student review view.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Updated prompt to request 'rationale'; saved rationale to `grading_queue`.
+        - `app/Http/Controllers/QuizRunnerController.php`: Fetched grading rationales for student review.
+        - `resources/views/learn/quiz_review.php`: Displayed AI rationale to students after approval.
+        - `docs/vdocipher_integration_guide.md`: Created comprehensive server-side integration guide.
+    - **Rationale**: Improve transparency of AI grading for both instructors and students.
+    - **Security**: N/A.
+    - **DB Notes**: `grading_queue` has `ai_rationale` and `ai_rationale_version` columns.
+    - **Tests run + results**: Verified syntax.
