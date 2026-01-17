@@ -9,6 +9,7 @@ Task routing:
 Hard rule (GitHub issues):
 - If Gemini finds any issue, Gemini must create a GitHub issue via GitHub CLI and commit the action.
 - If Gemini resolves an issue, after user confirms it is solved, Gemini must close the GitHub issue via GitHub CLI and commit the action.
+- If Gemini resolved an issue in Git, He should mention how he solved the problem in a comment then close the issue.
 - When Gemini comments on GitHub issues/PRs, include a short attribution line stating who handled it (e.g., "Handled by Gemini" or "Handled by Codex; posted by Gemini").
 
 End-of-session report:
