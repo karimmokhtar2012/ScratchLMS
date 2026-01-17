@@ -31,6 +31,14 @@ We've completely reimagined the course creation workflow to be faster, cleaner, 
 - **🎯 Grading Controls**: Introduced "Strict" (exact match) vs. "Fuzzy" (typo-tolerant) matching policies for text answers.
 - **📹 Video Validation**: Added server-side validation for video submission URLs.
 
+## 🕰️ Version 0.5 - 0.1 (Early January 2026)
+
+- **v0.5 (Jan 14)**: **Data Integrity & Tracking**: Fixed critical foreign key constraints for progress tracking and xAPI logs. Standardized database migrations.
+- **v0.4 (Jan 12)**: **Instructor Analytics**: Dashboard for viewing enrollment stats, completion rates, and quiz averages.
+- **v0.3 (Jan 10)**: **Student Experience**: Implemented the "Immersive Player" for distraction-free learning, auto-resume, and note-taking.
+- **v0.2 (Jan 08)**: **Core Commerce**: Added Shopping Cart, Checkout flow, and initial Order management.
+- **v0.1 (Jan 05)**: **Foundation**: Initial MVC framework setup, User Authentication (Login/Register), and basic Course/Lesson CRUD.
+
 ---
 
 ## 🚀 Features
