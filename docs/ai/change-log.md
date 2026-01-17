@@ -455,3 +455,11 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+- 2026-01-17 03:26 (Africa/Cairo)
+    - **Goal**: Align AI grading with Groq chat completions JSON mode.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Switched to chat completions (`/openai/v1/chat/completions`), enforced `response_format: json_object`, and parse `choices[0].message.content` for score/feedback.
+    - **Rationale**: Prevent placeholder fallbacks by matching the documented response shape.
+    - **Security**: Logs remain redacted unless `APP_DEBUG=true`.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`.

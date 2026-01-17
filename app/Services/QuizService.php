@@ -563,27 +563,37 @@ class QuizService
 
         $isDebug = (getenv('APP_DEBUG') === 'true' || ($_ENV['APP_DEBUG'] ?? '') === 'true');
 
-        $prompt = "You are grading a student answer.\n"
-            . "Question: " . ($question['question_text'] ?? '') . "\n"
-            . "Correct answers: " . json_encode($correctAnswers) . "\n"
-            . "Student answer: " . json_encode($userAnswer) . "\n"
-            . "Rubric: " . ($question['ai_rubric'] ?? '') . "\n"
-            . "Return JSON: {\"score\": number (0 to " . (float) $question['points'] . "), \"feedback\": string}.\n";
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => 'Grade the student answer. Respond ONLY with JSON: {"score": number, "feedback": string}.'
+            ],
+            [
+                'role' => 'user',
+                'content' => json_encode([
+                    'question' => $question['question_text'] ?? '',
+                    'correct_answers' => $correctAnswers,
+                    'student_answer' => $userAnswer,
+                    'rubric' => $question['ai_rubric'] ?? '',
+                    'max_points' => (float) $question['points']
+                ])
+            ]
+        ];
 
         $payload = json_encode([
-            'model' => 'openai/gpt-oss-20b',
-            'input' => $prompt,
+            'model' => 'llama3-70b-8192',
+            'messages' => $messages,
             'temperature' => 0.2,
-            'max_output_tokens' => 200
+            'response_format' => ['type' => 'json_object']
         ]);
 
         if ($isDebug) {
-            $this->logAi("Sending request to Groq API. Payload: " . $payload);
+            $this->logAi("Sending request to Groq chat completions. Payload: " . $payload);
         } else {
-            $this->logAi("Sending request to Groq API. Question ID: " . ($question['id'] ?? 'unknown'));
+            $this->logAi("Sending request to Groq chat completions. Question ID: " . ($question['id'] ?? 'unknown'));
         }
 
-        $ch = curl_init('https://api.groq.com/openai/v1/responses');
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -596,6 +606,7 @@ class QuizService
         $raw = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
+        curl_close($ch);
 
         if ($raw === false) {
             $this->logAi("cURL Error: " . $error);
@@ -614,26 +625,10 @@ class QuizService
         }
 
         $data = json_decode($raw, true);
-        $text = '';
-        
-        if (isset($data['output_text'])) {
-            $text = $data['output_text'];
-        } elseif (isset($data['output']) && is_array($data['output'])) {
-            foreach ($data['output'] as $outBlock) {
-                if (isset($outBlock['content']) && is_array($outBlock['content'])) {
-                    foreach ($outBlock['content'] as $contentItem) {
-                        if (($contentItem['type'] ?? '') === 'output_text' && isset($contentItem['text'])) {
-                            $text = $contentItem['text'];
-                            break 2;
-                        }
-                    }
-                }
-            }
-        }
-
-        $json = $this->extractJson($text);
+        $content = $data['choices'][0]['message']['content'] ?? '';
+        $json = $this->extractJson((string) $content);
         if (!$json || !isset($json['score'])) {
-            $this->logAi("Failed to extract JSON from response. Text: " . ($isDebug ? $text : '[Redacted]'));
+            $this->logAi("Failed to extract JSON from chat content. Content: " . ($isDebug ? $content : '[Redacted]'));
             return null;
         }
 
