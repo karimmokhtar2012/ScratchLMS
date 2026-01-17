@@ -267,7 +267,6 @@ class QuizService
                         $aiScore = $aiResult['score'];
                         $aiFeedback = $aiResult['feedback'];
                         $status = 'ai_scored';
-                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
                     } else {
                         $aiScore = round($q['points'] * 0.6, 2);
                         $aiFeedback = 'AI pre-score placeholder. Manual review required.';
@@ -616,6 +615,7 @@ class QuizService
         $raw = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
+        curl_close($ch);
 
         if ($raw === false) {
             $this->logAi("cURL Error: " . $error);

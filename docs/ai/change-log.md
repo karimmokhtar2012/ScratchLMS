@@ -306,6 +306,7 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` checks passed.
+
 - 2026-01-17 00:44 (Africa/Cairo)
     - **Goal**: Prevent duplicate manual grading effects and add attempt review access.
     - **Files Changed**:
@@ -323,6 +324,15 @@
     - **Rationale**: Allow grading queue inserts for manual review items.
     - **Security**: N/A.
     - **DB Notes**: Run `php database/fix_grading_queue_fk.php` on the active DB.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 01:00 (Africa/Cairo)
+    - **Goal**: Fix attempt_requests foreign key pointing at quizzes_old.
+    - **Files Changed**:
+        - `database/fix_attempt_requests_fk.php`: Rebuilds attempt_requests table to reference quizzes(id).
+    - **Rationale**: Fix fatal error when requesting quiz reset due to stale foreign key.
+    - **Security**: N/A.
+    - **DB Notes**: Run `php database/fix_attempt_requests_fk.php` on the active DB.
     - **Tests run + results**: N/A.
 
 - 2026-01-17 01:05 (Africa/Cairo)
@@ -389,11 +399,41 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`.
 
-- 2026-01-17 02:08 (Africa/Cairo)
-    - **Goal**: Fix AI grading regression in recalculation and stop polluting answer payloads.
+- 2026-01-17 02:00 (Africa/Cairo)
+    - **Goal**: Enable Groq API integration via .env and update environment loader.
     - **Files Changed**:
-        - `app/Services/QuizService.php`: Restored `recalculateAttemptScore()` logic and removed AI result writes to `quiz_attempts.answers`.
-    - **Rationale**: Prevent fatal errors on grading and keep answer storage clean.
-    - **Security**: N/A.
+        - `public/index.php`: Updated environment loader to use `putenv()`.
+        - `app/Services/QuizService.php`: Updated `GROQ_API_KEY` retrieval to check `$_ENV` as fallback.
+        - `.env`: Created with `GROQ_API_KEY`.
+    - **Rationale**: Enable AI grading functionality by correctly loading the API key.
+    - **Security**: `.env` is excluded from git.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.
+
+- 2026-01-17 02:15 (Africa/Cairo)
+    - **Goal**: Fix security issues in logs, improve .env parsing, and add audit logging.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Redacted sensitive data from logs, stored AI results in `answers` JSON.
+        - `public/index.php`: Improved `.env` parsing to handle quotes.
+    - **Rationale**: Prevent PII leakage in logs, fix configuration parsing errors, and audit AI grading decisions.
+    - **Security**: Redacted logs, robust config parsing.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `tests/test_ai_grading.php` verified.
+
+- 2026-01-17 02:30 (Africa/Cairo)
+    - **Goal**: Restore missing grading helper methods and fix audit logging regression.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Restored missing methods, improved AI response parsing, and ensured audit logging persistence.
+    - **Rationale**: Fix fatal errors and ensure AI grading works correctly.
+    - **Security**: Removed deprecated `curl_close()`.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `tests/test_ai_grading.php` passed.
+
+- 2026-01-17 02:45 (Africa/Cairo)
+    - **Goal**: Enforce strict data boundaries for AI grading.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Removed AI calls from `recalculateAttemptScore`, removed AI metadata storage in `answers`, and re-added strict `curl_close()`.
+    - **Rationale**: Ensure recalculation is deterministic and prevent pollution of answer data with metadata.
+    - **Security**: Explicit cURL handle closure.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l app/Services/QuizService.php`.
