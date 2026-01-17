@@ -598,7 +598,7 @@
             }
         });
     </script>
-    <script src="/assets/js/player.min.js?v=<?= time() ?>"></script>
+    <script src="/assets/js/player.min.js?v=<?= filemtime(BASE_PATH . 'public/assets/js/player.min.js') ?>"></script>
     <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
 </html>

@@ -785,3 +785,14 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: Verified syntax of updated PHP files. Compressed existing images in `public/assets/images` and upload directories.
+
+- 2026-01-17 19:40 (Africa/Cairo)
+    - **Goal**: Refine asset optimization (Apache safety, caching precision, and stable cache busting).
+    - **Files Changed**:
+        - `public/.htaccess`: Wrapped `Header` in `mod_headers` guard, set `ExpiresDefault` to 0s, and explicitly excluded HTML/PHP from caching.
+        - `resources/views/learn/player.php`: Replaced `time()` with `filemtime()` for stable cache busting.
+        - `resources/views/instructor/course_builder.php`: Added stable cache busting to `uploader.min.js`.
+    - **Rationale**: Prevent 500 errors if `mod_headers` is missing, ensure dynamic content is always fresh, and allow proper browser caching of JS files until they are modified.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` checks passed.

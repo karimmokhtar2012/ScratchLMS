@@ -26,12 +26,21 @@
     BrowserMatch ^Mozilla/4 gzip-only-text/html
     BrowserMatch ^Mozilla/4\.0[678] no-gzip
     BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
-    Header append Vary User-Agent
+    
+    <IfModule mod_headers.c>
+        Header append Vary User-Agent
+    </IfModule>
 </IfModule>
 
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresDefault "access plus 1 month"
+    
+    # Default to no caching for dynamic content
+    ExpiresDefault "access plus 0 seconds"
+
+    # Explicitly set HTML and PHP to no-cache
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType application/x-httpd-php "access plus 0 seconds"
 
     # Images
     ExpiresByType image/jpeg "access plus 1 year"
