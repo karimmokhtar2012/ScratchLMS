@@ -1,39 +1,41 @@
 <!-- Toast Notification Container -->
 <div x-data="toastNotificationSystem()" 
-     class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+     class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"
      @keydown.window.escape="clearAllToasts()">
     
-    <template x-for="toast in toasts" :key="toast.id">
+    <template x-for="toast in toasts" :key="toast.tempId">
         <div x-show="toast.visible" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="translate-y-2 opacity-0 scale-95"
-             x-transition:enter-end="translate-y-0 opacity-100 scale-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="translate-y-0 opacity-100 scale-100"
-             x-transition:leave-end="translate-y-2 opacity-0 scale-95"
-             class="pointer-events-auto w-80 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col relative group">
+             x-init="$nextTick(() => { toast.progress = 0 })"
+             x-transition:enter="transition ease-out duration-500"
+             x-transition:enter-start="translate-x-12 opacity-0 scale-90"
+             x-transition:enter-end="translate-x-0 opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="translate-x-0 opacity-100 scale-100"
+             x-transition:leave-end="translate-x-12 opacity-0 scale-90"
+             class="pointer-events-auto w-85 bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative group ring-1 ring-white/5">
             
-            <!-- Progress Bar -->
-            <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-[5000ms] ease-linear w-full"
-                 :style="'width: ' + (toast.visible ? '0%' : '100%')"></div>
+            <!-- Progress Bar (Draining) -->
+            <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 transition-all ease-linear"
+                 :style="'width: ' + toast.progress + '%; transition-duration: 5000ms;'"></div>
 
-            <div class="p-4 flex items-start gap-3">
+            <div class="p-5 flex items-start gap-4">
                 <div class="flex-shrink-0 mt-0.5">
-                    <div class="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-indigo-400">
-                        <i class="fa-solid fa-bell"></i>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner">
+                        <i class="fa-solid fa-bell-concierge"></i>
                     </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-bold text-white leading-tight" x-text="toast.title"></h4>
-                    <p class="text-xs text-zinc-400 mt-1 leading-snug line-clamp-2" x-text="toast.message"></p>
+                    <h4 class="text-sm font-black text-white tracking-tight" x-text="toast.title"></h4>
+                    <p class="text-xs text-zinc-400 mt-1.5 leading-relaxed line-clamp-2" x-text="toast.message"></p>
                 </div>
-                <button @click="removeToast(toast.id)" class="text-zinc-500 hover:text-white transition">
-                    <i class="fa-solid fa-xmark"></i>
+                <button @click="removeToast(toast.tempId)" class="text-zinc-600 hover:text-white transition-colors p-1 -mr-1">
+                    <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
             
-            <a :href="toast.link" @click="markRead(toast.id)" x-show="toast.link" class="block bg-zinc-950/50 px-4 py-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:bg-zinc-950 transition text-center border-t border-zinc-800">
-                View Details <i class="fa-solid fa-arrow-right ml-1"></i>
+            <a :href="toast.link" @click="markReadAndRedirect(toast.id, toast.link)" x-show="toast.link" 
+               class="block bg-white/5 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-indigo-400 hover:text-white hover:bg-indigo-600 transition-all text-center border-t border-zinc-800/50">
+                Action Required <i class="fa-solid fa-chevron-right ml-2 text-[9px]"></i>
             </a>
         </div>
     </template>
@@ -47,71 +49,81 @@
             toasts: [],
             seenIds: new Set(),
             init() {
-                // Initialize seenIds from initial fetch if needed, 
-                // but strictly we only want *new* ones to toast.
-                // So first fetch populates state, subsequent fetches check for diff.
-                this.fetchNotifications(true);
-                
-                // Poll every 30 seconds (faster than 60s for responsiveness)
-                setInterval(() => this.fetchNotifications(false), 30000);
-            },
-            fetchNotifications(isInitial = false) {
+                // Pre-populate seenIds with existing unread notifications so we don't toast them on page load
                 fetch('/api/notifications')
                     .then(res => res.json())
                     .then(data => {
+                        data.notifications.forEach(n => this.seenIds.add(n.id));
                         this.notifications = data.notifications;
                         this.unreadCount = data.unread_count;
-
-                        // Update global/header unread count if it exists elsewhere
-                        // Dispatch event for other components (like header bell)
+                        
+                        // Sync with header
                         window.dispatchEvent(new CustomEvent('notifications-updated', { 
                             detail: { count: this.unreadCount, list: this.notifications } 
                         }));
+                    });
 
-                        // Process for toasts
-                        if (!isInitial) {
-                            data.notifications.forEach(n => {
-                                if (n.is_read == 0 && !this.seenIds.has(n.id)) {
-                                    this.addToast(n);
-                                }
-                            });
+                // Poll for NEW notifications
+                setInterval(() => this.checkForNewNotifications(), 15000); // Check every 15 seconds
+            },
+            checkForNewNotifications() {
+                fetch('/api/notifications')
+                    .then(res => res.json())
+                    .then(data => {
+                        let hasNew = false;
+                        data.notifications.forEach(n => {
+                            if (n.is_read == 0 && !this.seenIds.has(n.id)) {
+                                this.addToast(n);
+                                this.seenIds.add(n.id);
+                                hasNew = true;
+                            }
+                        });
+
+                        if (hasNew || data.unread_count !== this.unreadCount) {
+                            this.notifications = data.notifications;
+                            this.unreadCount = data.unread_count;
+                            window.dispatchEvent(new CustomEvent('notifications-updated', { 
+                                detail: { count: this.unreadCount, list: this.notifications } 
+                            }));
                         }
-
-                        // Update seen set
-                        data.notifications.forEach(n => this.seenIds.add(n.id));
                     });
             },
             addToast(notification) {
-                const id = Date.now() + Math.random();
-                const toast = { ...notification, id: id, visible: true };
+                const tempId = Date.now() + Math.random();
+                // We use 'progress: 100' initially, then set to 0 in x-init to trigger transition
+                const toast = { ...notification, tempId: tempId, visible: true, progress: 100 };
                 this.toasts.push(toast);
                 
-                // Auto dismiss
+                // Auto dismiss after 5 seconds
                 setTimeout(() => {
-                    this.removeToast(id);
+                    this.removeToast(tempId);
                 }, 5000);
             },
-            removeToast(id) {
-                const index = this.toasts.findIndex(t => t.id === id);
+            removeToast(tempId) {
+                const index = this.toasts.findIndex(t => t.tempId === tempId);
                 if (index > -1) {
                     this.toasts[index].visible = false;
-                    // Remove from DOM after animation
+                    // Fully remove from array after animation completes
                     setTimeout(() => {
-                        this.toasts = this.toasts.filter(t => t.id !== id);
-                    }, 300);
+                        this.toasts = this.toasts.filter(t => t.tempId !== tempId);
+                    }, 500);
                 }
             },
             clearAllToasts() {
-                this.toasts = [];
+                this.toasts.forEach(t => t.visible = false);
+                setTimeout(() => { this.toasts = []; }, 500);
             },
-            markRead(id) {
+            markReadAndRedirect(id, link) {
                 fetch(`/api/notifications/read/${id}`, { method: 'POST' });
-                // Optimistic UI update
-                this.unreadCount = Math.max(0, this.unreadCount - 1);
-                window.dispatchEvent(new CustomEvent('notifications-updated', { 
-                    detail: { count: this.unreadCount, list: this.notifications } 
-                }));
+                // We don't need to manually redirect if it's an <a> tag, 
+                // but we might want to refresh state before navigation
             }
         }
     }
 </script>
+
+<style>
+    /* Ensure the toast container doesn't block clicks to elements behind it */
+    .pointer-events-none { pointer-events: none; }
+    .pointer-events-auto { pointer-events: auto; }
+</style>
