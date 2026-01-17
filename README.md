@@ -65,6 +65,15 @@ We've completely reimagined the course creation workflow to be faster, cleaner, 
 - **System Health**: Monitor application logs and system integrity.
 - **Security Core**: Built-in CSRF protection, Rate Limiting, and Role-Based Access Control (RBAC).
 
+## 🔐 Security Layers
+
+ScratchLMS is built with a "Secure by Default" philosophy, implementing defense-in-depth strategies at the framework level:
+
+- **1. Authorization (RBAC)**: Centralized Policy logic ensures that only the rightful owners or administrators can modify resources (Courses, Lessons, Quizzes).
+- **2. Request Integrity (CSRF)**: Automated Double-Submit Cookie protection for all POST/PUT/DELETE requests. JavaScript fetch wrappers automatically inject the required `X-CSRF-TOKEN` headers.
+- **3. Traffic Control (Rate Limiting)**: Leaky bucket algorithm protects sensitive endpoints (e.g., Login, Quiz Submissions, Video Uploads) from brute-force and DoS attacks.
+- **4. Data Safety**: Strict usage of PDO Prepared Statements prevents SQL Injection. Input sanitization utilities strip malicious tags from user-generated content.
+
 ## 🧠 Smart Grading Engine (Powered by Scracha)
 
 ScratchLMS introduces a flexible grading system designed for modern learning needs:
