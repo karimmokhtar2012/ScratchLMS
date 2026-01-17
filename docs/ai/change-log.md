@@ -673,3 +673,10 @@
         - `resources/views/instructor/quiz_builder.php`: Converted modal body to flexbox with dynamic width transitions for side columns. Implemented a custom Markdown toolbar (Bold, Italic, Underline, Image) that appears on textarea focus.
     - **Rationale**: Maximize the writing space when the user is typing while keeping tools accessible, and provide necessary formatting options inline.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 13:00 (Africa/Cairo)
+    - **Goal**: Enable WYSIWYG text editing in Question Builder.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Replaced the question prompt textarea with a `contenteditable` div to render rich text natively. Updated the toolbar to use `document.execCommand` for direct visual styling instead of markdown syntax insertion.
+    - **Rationale**: Provide immediate visual feedback for bold, italics, and underlines, solving the user confusion around raw markdown syntax being visible during editing.
+    - **Tests run + results**: PHP syntax check passed.

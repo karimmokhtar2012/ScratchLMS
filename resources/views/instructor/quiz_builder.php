@@ -107,7 +107,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                                             </span>
                                             <span class="text-emerald-500 text-xs font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20"><?= $q['points'] ?> pts</span>
                                         </div>
-                                        <h3 class="text-white font-medium text-lg leading-snug mb-3"><?= htmlspecialchars($q['question_text']) ?></h3>
+                                        <h3 class="text-white font-medium text-lg leading-snug mb-3"><?= htmlspecialchars_decode($q['question_text']) ?></h3>
                                         
                                         <!-- Mini Preview (Collapsed) -->
                                         <div class="text-xs text-zinc-500 flex items-center gap-2">
@@ -159,7 +159,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 </div>
             </div>
 
-            <!-- Question Modal (Expandable Flex Layout) -->
+            <!-- Question Modal (Expanded & Fixed) -->
             <div x-show="showQuestionModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" x-transition.opacity style="display: none;">
                 <div @click.away="showQuestionModal = false" class="w-full max-w-[98%] xl:max-w-7xl h-[90vh] overflow-hidden rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative flex flex-col">
                     
@@ -188,15 +188,18 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                         </div>
                     </div>
 
-                    <!-- Modal Body (Flex with Transitions) -->
-                    <form :action="actionUrl" method="POST" @submit="submitting = true" class="flex-1 overflow-hidden flex w-full">
+                    <!-- Modal Body (3 Columns) -->
+                    <form :action="actionUrl" method="POST" @submit="submitting = true" class="flex-1 overflow-hidden grid grid-cols-12">
                         <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                         <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
                         <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
                         <input type="hidden" name="type" x-model="type">
+                        
+                        <!-- Hidden input to store rich text content -->
+                        <input type="hidden" name="question_text" :value="question_text">
 
-                        <!-- LEFT COLUMN: Guide & Settings -->
-                        <div class="border-r border-zinc-800 bg-zinc-900/20 flex flex-col overflow-y-auto transition-all duration-500 ease-in-out"
+                        <!-- LEFT COLUMN: Guide & Settings (Span 3) -->
+                        <div class="col-span-3 border-r border-zinc-800 bg-zinc-900/20 flex flex-col p-6 gap-6 overflow-y-auto transition-all duration-500 ease-in-out"
                              :class="isFocused ? 'w-0 opacity-0 px-0' : 'w-[25%] opacity-100 px-6 py-6 gap-6'">
                             
                             <!-- 1. Type Info -->
@@ -260,14 +263,20 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                                         <button type="button" @click="formatText('italic')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Italic"><i class="fa-solid fa-italic text-xs"></i></button>
                                         <button type="button" @click="formatText('underline')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Underline"><i class="fa-solid fa-underline text-xs"></i></button>
                                         <div class="w-px h-4 bg-zinc-700 mx-1"></div>
-                                        <button type="button" @click="formatText('image')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Insert Image"><i class="fa-regular fa-image text-xs"></i></button>
+                                        <button type="button" @click="formatText('insertImage', 'https://placehold.co/600x400')" class="w-7 h-7 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition" title="Insert Image"><i class="fa-regular fa-image text-xs"></i></button>
                                     </div>
                                 </div>
 
-                                <textarea name="question_text" id="questionPrompt" x-model="question_text" required rows="2"
-                                          @focus="isFocused = true"
-                                          class="w-full bg-transparent text-2xl font-bold text-white placeholder-zinc-800 border-none focus:ring-0 p-0 resize-none leading-snug"
-                                          placeholder="Type your assessment question here..."></textarea>
+                                <!-- Rich Text Content Editable Div -->
+                                <div 
+                                    contenteditable="true" 
+                                    x-ref="editor"
+                                    @input="question_text = $el.innerHTML"
+                                    @focus="isFocused = true"
+                                    @blur="/* Optional: sync on blur */"
+                                    class="w-full bg-transparent text-2xl font-bold text-white placeholder-zinc-800 border-none focus:outline-none focus:ring-0 p-0 resize-none leading-snug min-h-[3.5rem] empty:before:content-[attr(placeholder)] empty:before:text-zinc-700"
+                                    placeholder="Type your assessment question here..."
+                                ></div>
                             </div>
 
                             <!-- Interactive Answer Area -->
@@ -602,34 +611,10 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 }
             },
 
-            formatText(command) {
-                const textarea = document.getElementById('questionPrompt');
-                if (!textarea) return;
-
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const text = textarea.value;
-                const selected = text.substring(start, end);
-                
-                let insert = '';
-                let offset = 0;
-
-                switch(command) {
-                    case 'bold': insert = `**${selected || 'bold'}**`; offset = 2; break;
-                    case 'italic': insert = `*${selected || 'italic'}*`; offset = 1; break;
-                    case 'underline': insert = `<u>${selected || 'underline'}</u>`; offset = 3; break;
-                    case 'image': insert = `![Image](https://placehold.co/600x400)`; break; // Mock for now
-                }
-
-                this.question_text = text.substring(0, start) + insert + text.substring(end);
-                
-                // Restore cursor and state
-                this.$nextTick(() => {
-                    textarea.focus();
-                    textarea.selectionStart = start + offset;
-                    textarea.selectionEnd = start + insert.length - offset;
-                    this.isFocused = true;
-                });
+            formatText(command, value = null) {
+                document.execCommand(command, false, value);
+                this.question_text = this.$refs.editor.innerHTML;
+                this.$refs.editor.focus();
             },
 
             addOption() { this.options.push({ text: '', is_correct: false }); },
@@ -641,6 +626,7 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 this.actionUrl = '/instructor/question/add';
                 this.type = 'single_choice';
                 this.question_text = '';
+                if(this.$refs.editor) this.$refs.editor.innerHTML = '';
                 this.points = 1;
                 this.explanation = '';
                 this.tf_correct = 1;
@@ -662,7 +648,11 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 this.mode = 'edit';
                 this.actionUrl = '/instructor/question/update/' + q.id;
                 this.type = q.type;
-                this.question_text = q.question_text;
+                this.question_text = q.question_text; // Logic here might need to strip html if we were using textarea, but now we assume html
+                
+                // Decode entities for the editor if necessary
+                // In a real app, you might check if it contains HTML tags or is plain text
+                
                 this.points = q.points;
                 this.explanation = q.explanation || '';
                 this.grading_policy = q.grading_policy || 'auto';
@@ -685,6 +675,13 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 }
 
                 this.showQuestionModal = true;
+                
+                // Initialize editor content
+                this.$nextTick(() => {
+                    if(this.$refs.editor) {
+                        this.$refs.editor.innerHTML = this.question_text;
+                    }
+                });
             },
 
             cancelEdit() {
