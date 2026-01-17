@@ -571,7 +571,7 @@
     - **Goal**: Fix missing toast pop-ups on page reload.
     - **Files Changed**:
         - `resources/views/partials/toast_notifications.php`: Updated `init` to toast fresh (<10s) notifications even on initial load; reduced poll interval to 5s.
-    - **Rationale**: Ensure users receive feedback even if the action caused a page redirect.
+    - **Rationale**: Ensure users see feedback even if the action caused a page redirect.
     - **Tests run + results**: PHP syntax check passed.
 
 - 2026-01-17 07:00 (Africa/Cairo)
@@ -586,4 +586,11 @@
     - **Files Changed**:
         - `resources/views/partials/toast_notifications.php`: Increased auto-dismiss timeout and progress bar duration to 15s.
     - **Rationale**: Allow users more time to read and interact with incoming alerts.
+    - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 07:30 (Africa/Cairo)
+    - **Goal**: Add audio feedback to toast notifications.
+    - **Files Changed**:
+        - `resources/views/partials/toast_notifications.php`: Added `Audio` object and play logic.
+    - **Rationale**: Improve user awareness of new alerts.
     - **Tests run + results**: PHP syntax check passed.

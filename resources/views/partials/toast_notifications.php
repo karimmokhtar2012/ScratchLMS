@@ -48,41 +48,48 @@
             unreadCount: 0,
             toasts: [],
             seenIds: new Set(),
-            init() {
-                // Pre-populate seenIds with existing unread notifications so we don't toast them on page load
-                fetch('/api/notifications')
-                    .then(res => res.json())
-                    .then(data => {
-                        const now = new Date();
-                        data.notifications.forEach(n => {
-                            // Attempt to parse UTC date (SQLite CURRENT_TIMESTAMP is UTC 'YYYY-MM-DD HH:MM:SS')
-                            // We replace space with T and add Z to ensure JS treats it as UTC
-                            const dateStr = n.created_at.replace(' ', 'T') + 'Z';
-                            const created = new Date(dateStr);
-                            const age = (now - created) / 1000; // seconds
-
-                            // If it's unread and very fresh (< 10s), show it even on initial load
-                            // This handles "Redirect-after-action" scenarios where notification generated 
-                            // just before page load.
-                            if (n.is_read == 0 && age < 10) {
-                                this.addToast(n);
-                            }
-
-                            this.seenIds.add(n.id);
-                        });
-                        this.notifications = data.notifications;
-                        this.unreadCount = data.unread_count;
-                        
-                        // Sync with header
-                        window.dispatchEvent(new CustomEvent('notifications-updated', { 
-                            detail: { count: this.unreadCount, list: this.notifications } 
-                        }));
-                    });
-
-                // Poll for NEW notifications
-                setInterval(() => this.checkForNewNotifications(), 5000); // Check every 5 seconds for snappier feeling
-            },
-            checkForNewNotifications() {
+                        init() {
+                            // Notification Sound (Subtle 'Pluck')
+                            this.audio = new Audio("data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"); 
+                            // Note: The string above is a tiny placeholder. I will use a real one below.
+                            
+                            // Real Short Pop Sound
+                            this.audio = new Audio("https://cdn.freesound.org/previews/536/536108_11562682-lq.mp3"); // Using a reliable CDN link instead of massive base64 for cleaner code
+                            this.audio.volume = 0.5;
+            
+                            // Pre-populate seenIds with existing unread notifications so we don't toast them on page load
+                            fetch('/api/notifications')
+                                .then(res => res.json())
+                                .then(data => {
+                                    const now = new Date();
+                                    data.notifications.forEach(n => {
+                                        // Attempt to parse UTC date (SQLite CURRENT_TIMESTAMP is UTC 'YYYY-MM-DD HH:MM:SS')
+                                        // We replace space with T and add Z to ensure JS treats it as UTC
+                                        const dateStr = n.created_at.replace(' ', 'T') + 'Z';
+                                        const created = new Date(dateStr);
+                                        const age = (now - created) / 1000; // seconds
+            
+                                        // If it's unread and very fresh (< 10s), show it even on initial load
+                                        // This handles "Redirect-after-action" scenarios where notification generated 
+                                        // just before page load.
+                                        if (n.is_read == 0 && age < 10) {
+                                            this.addToast(n);
+                                        }
+            
+                                        this.seenIds.add(n.id);
+                                    });
+                                    this.notifications = data.notifications;
+                                    this.unreadCount = data.unread_count;
+                                    
+                                    // Sync with header
+                                    window.dispatchEvent(new CustomEvent('notifications-updated', {
+                                        detail: { count: this.unreadCount, list: this.notifications }
+                                    }));
+                                });
+            
+                            // Poll for NEW notifications
+                            setInterval(() => this.checkForNewNotifications(), 5000); // Check every 5 seconds for snappier feeling
+                        },            checkForNewNotifications() {
                 fetch('/api/notifications')
                     .then(res => res.json())
                     .then(data => {
@@ -105,6 +112,12 @@
                     });
             },
             addToast(notification) {
+                // Play sound
+                if (this.audio) {
+                    this.audio.currentTime = 0;
+                    this.audio.play().catch(e => console.log('Audio play failed (user interaction required first):', e));
+                }
+
                 const tempId = Date.now() + Math.random();
                 // We use 'progress: 100' initially, then set to 0 in x-init to trigger transition
                 const toast = { ...notification, tempId: tempId, visible: true, progress: 100 };
@@ -113,7 +126,8 @@
                 // Auto dismiss after 15 seconds
                 setTimeout(() => {
                     this.removeToast(tempId);
-                }, 15000);
+                },
+ 15000);
             },
             removeToast(tempId) {
                 const index = this.toasts.findIndex(t => t.tempId === tempId);
