@@ -598,7 +598,7 @@
             }
         });
     </script>
-    <script src="/assets/js/player.js?v=<?= time() ?>"></script>
+    <script src="/assets/js/player.min.js?v=<?= time() ?>"></script>
     <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
 </html>

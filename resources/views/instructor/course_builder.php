@@ -52,7 +52,7 @@
     </div>
 
     <!-- Chunked Uploader Script -->
-    <script src="/assets/js/uploader.js"></script>
+    <script src="/assets/js/uploader.min.js"></script>
 
     <!-- Curriculum Builder -->
     <div>
