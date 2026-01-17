@@ -98,3 +98,28 @@ A successful response with a JSON payload for grading might look like this:
   }
 }
 ```
+
+## Additional API Capabilities
+
+### Chat & Responses Endpoints
+*   **Chat Completions (`/chat/completions`)**: The standard endpoint for conversational interaction. Requires `messages` and `model`. Supports text output or structured JSON via `response_format`.
+*   **Responses (`/responses`)**: A beta endpoint for single-turn inputs. Requires `input` and `model`. Supports text and structured output.
+
+### Models
+*   **List Models**: `GET /openai/v1/models` returns a JSON list of active models, including IDs (`llama-3.1-8b-instant`), context window sizes, and ownership.
+
+### Batches & Fine-tuning
+*   **Batches**: Asynchronous processing for large volumes of non-urgent requests via JSONL files. Useful for cost optimization. Managed via `batches/create`, `retrieve`, `list`, and `cancel`.
+*   **Fine-tuning**: Customize models using the `fine-tuning/create` endpoint (`POST /openai/v1/fine_tuning/jobs`).
+
+### Content Moderation & Safety
+*   **Safeguards**: Use `GPT-OSS-Safeguard 20B` or `Llama Guard 4` models to classify and filter harmful content in inputs or outputs. These are accessed via standard chat completion requests.
+
+### Structured Outputs & Prompt Caching
+*   **Structured Outputs**: Guarantee JSON schema adherence.
+    *   **Strict Mode (`strict: true`)**: 100% adherence, no invalid JSON. Restricted to specific models.
+    *   **Best-Effort (`strict: false`)**: General attempt to match schema. Broader model support.
+*   **Prompt Caching**: Automatic optimization for requests sharing common prefixes (e.g., system prompts). Cached tokens (valid for 2 hours) do not count toward rate limits and incur no extra cost. Place static content at the start of the prompt for best results.
+
+### Model Permissions
+*   **Access Control**: Organizations can restrict model usage via "Only Allow" or "Only Block" policies at the organization or project level to enforce compliance or budget constraints. Attempts to use blocked models return a 403 error.
