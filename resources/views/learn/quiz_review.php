@@ -55,6 +55,16 @@
                     <div x-show="reviewIndex === <?= $index ?>" x-transition.opacity class="space-y-6">
                         <div class="mb-4">
                             <h4 class="text-2xl font-medium text-white leading-relaxed"><?= htmlspecialchars($q['question_text']) ?></h4>
+                            <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                                <span class="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-200">
+                                    Score: <?= htmlspecialchars((string)($q['final_score'] ?? 0)) ?> / <?= (int) $q['points'] ?>
+                                </span>
+                                <?php if (!empty($q['ai_rationale']) && !empty($q['allow_student_ai_view'])): ?>
+                                    <span class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-200">
+                                        AI Review Enabled
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         
                         <div class="space-y-3">
@@ -136,7 +146,14 @@
                                     <div class="text-sm text-zinc-300">
                                         <?= htmlspecialchars((string)($q['user_answer'] ?? '')) ?>
                                     </div>
-                                    <div class="text-xs text-amber-400 mt-4">Manual review required.</div>
+                                    <?php if (!empty($q['ai_rationale']) && !empty($q['allow_student_ai_view'])): ?>
+                                        <div class="mt-4 p-3 rounded-lg border border-indigo-700/40 bg-indigo-900/20 text-sm text-indigo-100">
+                                            <div class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-1">AI Review</div>
+                                            <div class="text-indigo-100"><?= htmlspecialchars($q['ai_rationale']) ?></div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-xs text-amber-400 mt-4">Manual review required.</div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         </div>

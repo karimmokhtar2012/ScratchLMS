@@ -532,6 +532,66 @@ class QuizRunnerController extends Controller
 
                     }
 
+                    // Attach grading outcomes (AI/manual) and per-question score
+                    $gradingRows = $db->fetchAll("SELECT question_id, status, ai_score, ai_feedback, ai_rationale, final_score FROM grading_queue WHERE attempt_id = :aid", [
+                        ':aid' => $attemptId
+                    ]);
+                    $gradingByQuestion = [];
+                    foreach ($gradingRows as $gr) {
+                        $gradingByQuestion[(int) $gr['question_id']] = $gr;
+                    }
+
+                    foreach ($questions as &$q) {
+                        $g = $gradingByQuestion[(int) $q['id']] ?? null;
+                        $q['ai_rationale'] = $g['ai_rationale'] ?? null;
+                        $q['ai_feedback'] = $g['ai_feedback'] ?? null;
+                        $q['final_score'] = null;
+                        $q['allow_student_ai_view'] = ($g && ($g['status'] === 'approved'));
+
+                        if ($g && isset($g['final_score']) && $g['status'] === 'approved') {
+                            $q['final_score'] = (float) $g['final_score'];
+                            continue;
+                        }
+
+                        // Auto-scored question score (basic correctness check)
+                        if ($q['type'] === 'single_choice' || $q['type'] === 'true_false') {
+                            $correct = $q['correct_answers'][0] ?? null;
+                            $q['final_score'] = ($correct !== null && $q['user_answer'] == $correct) ? (float) $q['points'] : 0.0;
+                        } elseif ($q['type'] === 'multi_choice') {
+                            $ua = is_array($q['user_answer']) ? $q['user_answer'] : [];
+                            $ca = is_array($q['correct_answers']) ? $q['correct_answers'] : [];
+                            sort($ua);
+                            sort($ca);
+                            $q['final_score'] = ($ua === $ca) ? (float) $q['points'] : 0.0;
+                        } elseif ($q['type'] === 'fill_blank') {
+                            $ua = is_string($q['user_answer']) ? trim($q['user_answer']) : '';
+                            $match = false;
+                            foreach ($q['correct_answers'] as $cand) {
+                                if (strtolower(trim((string) $cand)) === strtolower($ua)) {
+                                    $match = true;
+                                    break;
+                                }
+                            }
+                            $q['final_score'] = $match ? (float) $q['points'] : 0.0;
+                        } elseif ($q['type'] === 'matching') {
+                            $ua = is_array($q['user_answer']) ? $q['user_answer'] : [];
+                            $allMatch = true;
+                            foreach ($q['correct_answers'] as $pair) {
+                                $left = $pair['left_id'] ?? null;
+                                $right = $pair['right_id'] ?? null;
+                                if ($left === null || $right === null || !isset($ua[$left]) || (int) $ua[$left] !== (int) $right) {
+                                    $allMatch = false;
+                                    break;
+                                }
+                            }
+                            $q['final_score'] = $allMatch ? (float) $q['points'] : 0.0;
+                        } elseif (in_array($q['type'], ['short_text'], true)) {
+                            $ua = $q['user_answer'];
+                            $correct = $q['correct_answers'][0] ?? null;
+                            $q['final_score'] = ($correct !== null && $ua == $correct) ? (float) $q['points'] : 0.0;
+                        }
+                    }
+
             
 
                     $this->view('learn.quiz_review', ['reviewData' => $questions, 'attempt' => $attempt]);

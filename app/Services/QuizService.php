@@ -252,6 +252,8 @@ class QuizService
             foreach ($manualQueue as $q) {
                 $aiScore = null;
                 $aiFeedback = null;
+                $aiRationale = null;
+                $aiRationaleVersion = null;
                 $status = 'pending_review';
                 $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
                 
@@ -260,20 +262,26 @@ class QuizService
                     if ($aiResult !== null) {
                         $aiScore = $aiResult['score'];
                         $aiFeedback = $aiResult['feedback'];
+                        $aiRationale = $aiResult['rationale'] ?? null;
+                        $aiRationaleVersion = $aiResult['rationale_version'] ?? null;
                         $status = 'ai_scored';
                     } else {
                         $aiScore = round($q['points'] * 0.6, 2);
                         $aiFeedback = 'AI pre-score placeholder. Manual review required.';
+                        $aiRationale = 'AI rationale unavailable. Manual review required.';
+                        $aiRationaleVersion = 'v1';
                         $status = 'ai_scored';
                     }
                 }
                 
-                $this->db->query("INSERT INTO grading_queue (attempt_id, question_id, status, ai_score, ai_feedback) VALUES (:aid, :qid, :status, :ai_score, :ai_feedback)", [
+                $this->db->query("INSERT INTO grading_queue (attempt_id, question_id, status, ai_score, ai_feedback, ai_rationale, ai_rationale_version) VALUES (:aid, :qid, :status, :ai_score, :ai_feedback, :ai_rationale, :ai_rationale_version)", [
                     ':aid' => $attemptId,
                     ':qid' => $q['id'],
                     ':status' => $status,
                     ':ai_score' => $aiScore,
-                    ':ai_feedback' => $aiFeedback
+                    ':ai_feedback' => $aiFeedback,
+                    ':ai_rationale' => $aiRationale,
+                    ':ai_rationale_version' => $aiRationaleVersion
                 ]);
             }
         }
@@ -566,7 +574,7 @@ class QuizService
         $messages = [
             [
                 'role' => 'system',
-                'content' => 'Grade the student answer. Respond ONLY with JSON: {"score": number, "feedback": string}.'
+                'content' => 'Grade the answer. Refer to "the answer" not "the student". Be concise. Respond ONLY with JSON: {"score": number, "feedback": string, "rationale": string}.'
             ],
             [
                 'role' => 'user',
@@ -634,7 +642,9 @@ class QuizService
 
         return [
             'score' => (float) $json['score'],
-            'feedback' => (string) ($json['feedback'] ?? '')
+            'feedback' => (string) ($json['feedback'] ?? ''),
+            'rationale' => (string) ($json['rationale'] ?? ($json['feedback'] ?? '')),
+            'rationale_version' => 'v1'
         ];
     }
 
