@@ -69,6 +69,7 @@ class OnboardingController extends Controller
             $_SESSION['user_name'] = $fields['preferred_name'];
         }
 
+        header('Content-Type: application/json');
         echo json_encode(['success' => true, 'redirect' => '/']);
         exit;
     }

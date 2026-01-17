@@ -526,6 +526,7 @@
                         ...this.form,
                         dob: this.formatDob()
                     };
+                    console.log('Submitting onboarding...', payload);
                     fetch('/onboarding/save', {
                         method: 'POST',
                         headers: { 
@@ -535,17 +536,23 @@
                         body: JSON.stringify(payload)
                     })
                     .then(res => {
-                        if (!res.ok) throw new Error('Network response was not ok');
+                        console.log('Response status:', res.status);
+                        if (!res.ok) throw new Error('Network response was not ok: ' + res.statusText);
                         return res.json();
                     })
                     .then(data => {
-                        setTimeout(() => {
-                            window.location.href = data.redirect;
-                        }, 2000);
+                        console.log('Response data:', data);
+                        if (data.redirect) {
+                            setTimeout(() => {
+                                window.location.href = data.redirect;
+                            }, 2000);
+                        } else {
+                            console.error('No redirect URL in response');
+                        }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
-                        // Optional: Handle error UI here (e.g. go back a step)
+                        console.error('Onboarding Error:', error);
+                        alert('Something went wrong. Please check the console.');
                     });
                 }
             }
