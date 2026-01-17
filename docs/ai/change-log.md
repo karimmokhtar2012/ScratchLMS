@@ -509,3 +509,11 @@
     - **Rationale**: Full coverage of all question types and grading scenarios as requested.
     - **DB Notes**: N/A.
     - **Tests run + results**: Seed script passed.
+
+- 2026-01-17 05:30 (Africa/Cairo)
+    - **Goal**: Fix virtual course seeding to include all 5 quizzes.
+    - **Files Changed**:
+        - `database/seed_test_trading_course.php`: Updated to create separate 'quiz' type lessons for each quiz, ensuring they appear in the course playlist. Added Lesson 4 and 5 content.
+    - **Rationale**: Ensure full test coverage as requested. Previous seed attached quizzes to video lessons which are hidden in the current UI logic.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: Seed script executed successfully.
