@@ -617,3 +617,10 @@
         - `resources/views/instructor/quiz_builder.php`: Redesigned sidebar inputs with icons, custom select styling, and helper text.
     - **Rationale**: Improve aesthetic appeal and clarity for instructors.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 09:00 (Africa/Cairo)
+    - **Goal**: Implement "Full Power" visual redesign for Quiz Builder Question Add section.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Replaced standard form with a visual grid type selector, glassmorphism editor, and enhanced inputs for all question types.
+    - **Rationale**: Elevate the authoring experience with a modern, expressive, and professional UI as requested.
+    - **Tests run + results**: PHP syntax check passed.
