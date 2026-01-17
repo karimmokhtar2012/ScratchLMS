@@ -725,4 +725,11 @@
     - **Rationale**: Align progression setup with course settings so time/progress drip modes are actually configurable without visiting each lesson separately.
     - **Security**: Instructor-only updates; validates lessons belong to the course before writing rules.
     - **DB Notes**: Uses existing `lesson_drip_rules` table; no schema changes.
-    - **Tests run + results**: `php -l on modified files.
+    - **Tests run + results**: `php -l` on modified files.
+
+- 2026-01-17 15:30 (Africa/Cairo)
+    - **Goal**: Enhance Course Settings UI/UX and fix Progression layout errors.
+    - **Files Changed**:
+        - `resources/views/instructor/edit_course.php`: Relocated 'Progression' section to the main column for better visibility. Redesigned Drip Rules into a clear, row-based list with suffix inputs. Applied consistent glassmorphism styling to all inputs.
+    - **Rationale**: Resolve layout breakage caused by the complex Drip table being in a narrow sidebar, and prevent logical errors in prerequisite selection.
+    - **Tests run + results**: `php -l` passed. Visual verification of layout.
