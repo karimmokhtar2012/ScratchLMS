@@ -814,3 +814,28 @@
     - **Security**: N/A.
     - **DB Notes**: Plan includes future schema changes for `content_items`, `content_item_rules`, `content_prerequisites`, and `content_progress`.
     - **Tests run + results**: Plan approved and posted to GitHub.
+
+- 2026-01-17 22:45 (Africa/Cairo)
+    - **Goal**: Implement Architectural Resolution Plan for Issue #38 (Unified Content Items Model).
+    - **Files Changed**:
+        - `database/migrate_content_items.php`: New migration for Plan A schema.
+        - `app/Domain/Courses/Course.php`: Added `contentItems` method.
+        - `app/Http/Controllers/LearnController.php`: Refactored to support item-centric navigation and visual grouping.
+        - `app/Http/Controllers/QuizRunnerController.php`: Updated progress tracking to use `content_progress`.
+        - `app/Services/CourseProgressService.php`: Updated progress calculation and locking to support `content_items`.
+        - `resources/views/learn/player.php`: Updated UI to render grouped content items.
+        - `public/assets/js/player.js`: Updated to track item-level progress.
+        - `routes/web.php`: Added `/learn/{courseId}/item/{itemId}` route.
+    - **Rationale**: Decoupled quizzes from lessons, establishing them as first-class content items. Supported visual pairing via `display_group_id` to preserve UX.
+    - **Security**: Enrollment checks maintained for all item-level access.
+    - **DB Notes**: Migrated to new `content_items` and `content_progress` schema.
+    - **Tests run + results**: Seeded "Trading Mastery" with grouped/ungrouped scenarios; verified `content_items` seeding and playlist structure.
+
+- 2026-01-17 22:45 (EET)
+    - **Goal**: Expand Trading Mastery seed data to cover grouped/ungrouped quiz scenarios for Plan A UX testing.
+    - **Files Changed**:
+        - `database/seed_test_trading_course.php`: Added standalone lesson/quiz and section test entries, plus optional `content_items` seeding with `display_group_id`.
+    - **Rationale**: Provide repeatable seed data to validate grouped vs ungrouped item rendering and section tests in the new content model.
+    - **Security**: N/A.
+    - **DB Notes**: Adds seeded lessons/quizzes; optionally seeds `content_items` when the table and columns exist.
+    - **Tests run + results**: Not run (seed script only).

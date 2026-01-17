@@ -291,36 +291,49 @@ class QuizRunnerController extends Controller
         try {
             $result = $this->quizService->submitAttempt($attemptId, $userId);
             
-            // If passed, trigger xAPI completion log
+            // If passed, trigger progress update
             if ($result['is_passed'] && ($result['grading_status'] ?? 'final') === 'final') {
-                // Update Progress Logic
                 $db = \App\Core\Database::getInstance();
                 
-                // Fetch Lesson ID from Quiz
-                $quiz = $db->fetchAll("SELECT lesson_id FROM quizzes WHERE id = :qid", [':qid' => $result['quiz_id']])[0] ?? null;
+                // 1. Fetch Item/Lesson Context
+                $quizContext = $db->fetchAll("SELECT q.lesson_id, c.id as course_id 
+                                             FROM quizzes q 
+                                             JOIN lessons l ON q.lesson_id = l.id 
+                                             JOIN modules m ON l.module_id = m.id 
+                                             JOIN courses c ON m.course_id = c.id 
+                                             WHERE q.id = :qid", [':qid' => $result['quiz_id']])[0] ?? null;
                 
-                if ($quiz) {
-                    $lessonId = $quiz['lesson_id'];
+                if ($quizContext) {
+                    $lessonId = $quizContext['lesson_id'];
+                    $courseId = $quizContext['course_id'];
+
+                    // New Model Progress (content_items)
+                    $item = $db->fetchAll("SELECT id FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $result['quiz_id']])[0] ?? null;
+                    if ($item) {
+                        $db->query("INSERT OR REPLACE INTO content_progress (user_id, item_id, status, completed_at, score, attempts) 
+                                    VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP, :score, (SELECT attempts + 1 FROM quiz_attempts WHERE id = :aid))", [
+                            ':uid' => $userId,
+                            ':iid' => $item['id'],
+                            ':score' => $result['score'],
+                            ':aid' => $attemptId
+                        ]);
+                    }
+
+                    // Legacy progress
                     $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
                         ':uid' => $userId,
                         ':lid' => $lessonId
                     ]);
 
                     // Trigger Course Progress Update
-                    $sqlCourse = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
-                    $res = $db->fetchAll($sqlCourse, [':lid' => $lessonId]);
-                    $courseId = $res[0]['course_id'] ?? 0;
-
-                    if ($courseId) {
-                        $progressService = new \App\Services\CourseProgressService();
-                        $progressService->updateProgress($userId, $courseId);
-                    }
+                    $progressService = new \App\Services\CourseProgressService();
+                    $progressService->updateProgress($userId, $courseId);
                     
                     // Log xAPI
                     $db->query("INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, 'completed', :meta)", [
                         ':uid' => $userId,
                         ':lid' => $lessonId,
-                        ':meta' => json_encode(['score' => $result['score']])
+                        ':meta' => json_encode(['score' => $result['score'], 'quiz_id' => $result['quiz_id']])
                     ]);
                 }
             }

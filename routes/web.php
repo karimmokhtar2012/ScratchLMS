@@ -96,7 +96,8 @@ $router->post('/upload/chunk', [UploadController::class, 'uploadChunk']);
 
 // Learning Player Routes
 $router->get('/learn/([^/]+)', [LearnController::class, 'show']); // Resume Course
-$router->get('/learn/([^/]+)/lesson/([^/]+)', [LearnController::class, 'show']); // Specific Lesson
+$router->get('/learn/([^/]+)/lesson/([^/]+)', [LearnController::class, 'show']); // Specific Lesson (Legacy)
+$router->get('/learn/([^/]+)/item/([^/]+)', [LearnController::class, 'showItem']); // Specific Item (New)
 $router->post('/learn/track', [LearnController::class, 'track']);
 
 // Quiz Runner (Student)

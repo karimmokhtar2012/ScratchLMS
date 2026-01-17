@@ -5,6 +5,36 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use App\Core\Database;
 
 $db = Database::getInstance();
+$driver = $db->getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+$contentItemColumns = [
+    'course_id',
+    'module_id',
+    'item_type',
+    'item_id',
+    'position',
+    'display_group_id',
+    'created_at',
+];
+$hasContentItems = false;
+
+if ($driver === 'sqlite') {
+    $tableCheck = $db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name='content_items'");
+    if (!empty($tableCheck)) {
+        $columns = $db->fetchAll("PRAGMA table_info('content_items')");
+        $columnNames = array_column($columns, 'name');
+        $missingColumns = array_diff($contentItemColumns, $columnNames);
+        $hasContentItems = empty($missingColumns);
+    }
+} else {
+    $tableCheck = $db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'content_items'");
+    if (!empty($tableCheck)) {
+        $columns = $db->fetchAll("SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'content_items'");
+        $columnNames = array_column($columns, 'column_name');
+        $missingColumns = array_diff($contentItemColumns, $columnNames);
+        $hasContentItems = empty($missingColumns);
+    }
+}
 
 echo "🧪 Seeding Virtual Test Course: Trading Mastery...\n";
 
@@ -30,6 +60,10 @@ $db->query("INSERT INTO courses (id, instructor_id, title, slug, description, pr
 $moduleId = 500;
 $db->query("DELETE FROM modules WHERE id = $moduleId");
 $db->query("INSERT INTO modules (id, course_id, title, sort_order) VALUES ($moduleId, $courseId, 'Market Fundamentals', 0)");
+
+$sectionModuleId = 501;
+$db->query("DELETE FROM modules WHERE id = $sectionModuleId");
+$db->query("INSERT INTO modules (id, course_id, title, sort_order) VALUES ($sectionModuleId, $courseId, 'Section Tests', 1)");
 
 // 4. Create Lessons & Quizzes
 
@@ -208,8 +242,81 @@ $opts5tf = json_encode([['id' => 1, 'text' => 'True'], ['id' => 0, 'text' => 'Fa
 $db->query("INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers) 
             VALUES ($q5, 'true_false', 'You should trade with money you cannot afford to lose.', 30, :opts, '[0]')", [':opts' => $opts5tf]);
 
+// --- Topic 6: Market Recap (Ungrouped Lesson -> Standalone Quiz) ---
+$l6 = 511;
+$db->query("DELETE FROM lessons WHERE id = $l6");
+$db->query("INSERT INTO lessons (id, module_id, instructor_id, title, type, content_text, sort_order) 
+            VALUES ($l6, $moduleId, $instructorId, 'Lesson 6: Market Recap', 'article', '<h2>Market Recap</h2><p>Key takeaways before the final test.</p>', 11)");
+
+$l6_q = 512; $q6 = 512;
+$db->query("DELETE FROM lessons WHERE id = $l6_q");
+$db->query("INSERT INTO lessons (id, module_id, instructor_id, title, type, sort_order) 
+            VALUES ($l6_q, $moduleId, $instructorId, 'Standalone Quiz: Market Recap', 'quiz', 12)");
+
+$db->query("DELETE FROM quizzes WHERE id = $q6");
+$db->query("INSERT INTO quizzes (id, lesson_id, passing_score, status) VALUES ($q6, $l6_q, 70, 'published')");
+$db->query("DELETE FROM questions WHERE quiz_id = $q6");
+
+$opts6 = json_encode([['id' => 1, 'text' => 'Liquidity'], ['id' => 2, 'text' => 'Leverage'], ['id' => 3, 'text' => 'Latency']]);
+$db->query("INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers) 
+            VALUES ($q6, 'single_choice', 'Which concept affects execution speed the most?', 20, :opts, '[3]')", [':opts' => $opts6]);
+
+// --- Section Test (Ungrouped) ---
+$sectionTestLesson = 513;
+$db->query("DELETE FROM lessons WHERE id = $sectionTestLesson");
+$db->query("INSERT INTO lessons (id, module_id, instructor_id, title, type, sort_order) 
+            VALUES ($sectionTestLesson, $sectionModuleId, $instructorId, 'Section Test: Market Fundamentals', 'quiz', 1)");
+
+$sectionTestQuiz = 513;
+$db->query("DELETE FROM quizzes WHERE id = $sectionTestQuiz");
+$db->query("INSERT INTO quizzes (id, lesson_id, passing_score, status) VALUES ($sectionTestQuiz, $sectionTestLesson, 75, 'published')");
+$db->query("DELETE FROM questions WHERE quiz_id = $sectionTestQuiz");
+
+$optsSection = json_encode([['id' => 1, 'text' => 'Trend'], ['id' => 2, 'text' => 'Range'], ['id' => 3, 'text' => 'Breakdown']]);
+$db->query("INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers) 
+            VALUES ($sectionTestQuiz, 'single_choice', 'A market with higher highs and higher lows is in a...', 25, :opts, '[1]')", [':opts' => $optsSection]);
+
+if ($hasContentItems) {
+    $db->query("DELETE FROM content_items WHERE course_id = $courseId");
+
+    $groupMarketBasics = 9001;
+    $createdAt = date('Y-m-d H:i:s');
+    $contentItems = [
+        ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l1, 'position' => 1, 'display_group_id' => $groupMarketBasics],
+        ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q1, 'position' => 2, 'display_group_id' => $groupMarketBasics],
+        ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l2, 'position' => 3, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q2, 'position' => 4, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l3, 'position' => 5, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q3, 'position' => 6, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l4, 'position' => 7, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q4, 'position' => 8, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l5, 'position' => 9, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q5, 'position' => 10, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'lesson', 'item_id' => $l6, 'position' => 11, 'display_group_id' => null],
+        ['module_id' => $moduleId, 'item_type' => 'quiz', 'item_id' => $q6, 'position' => 12, 'display_group_id' => null],
+        ['module_id' => $sectionModuleId, 'item_type' => 'quiz', 'item_id' => $sectionTestQuiz, 'position' => 1, 'display_group_id' => null],
+    ];
+
+    foreach ($contentItems as $item) {
+        $db->query(
+            "INSERT INTO content_items (course_id, module_id, item_type, item_id, position, display_group_id, created_at)
+             VALUES (:course_id, :module_id, :item_type, :item_id, :position, :display_group_id, :created_at)",
+            [
+                ':course_id' => $courseId,
+                ':module_id' => $item['module_id'],
+                ':item_type' => $item['item_type'],
+                ':item_id' => $item['item_id'],
+                ':position' => $item['position'],
+                ':display_group_id' => $item['display_group_id'],
+                ':created_at' => $createdAt,
+            ]
+        );
+    }
+} else {
+    echo "Note: content_items table not found or missing columns. Skipping item grouping seed.\n";
+}
+
 
 echo "✅ Virtual Course 'Trading Mastery' seeded successfully!\n";
 echo "   Course ID: $courseId\n";
 echo "   Instructor Email: trading_test@example.com\n";
-

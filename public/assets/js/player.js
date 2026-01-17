@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let html = `<i class="fa-solid fa-circle-check text-xl"></i> <div>${message}</div>`;
         
-        if (NEXT_LESSON_ID) {
+        if (typeof NEXT_ITEM_URL !== 'undefined' && NEXT_ITEM_URL) {
+            html += `<a href="${NEXT_ITEM_URL}" class="ml-4 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs transition border border-white/20">Next Item &rarr;</a>`;
+        } else if (typeof NEXT_LESSON_ID !== 'undefined' && NEXT_LESSON_ID) {
             html += `<a href="/learn/${COURSE_ID}/lesson/${NEXT_LESSON_ID}" class="ml-4 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs transition border border-white/20">Next Lesson &rarr;</a>`;
         }
 
@@ -57,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({
                 lesson_id: LESSON_ID,
+                item_id: typeof ITEM_ID !== 'undefined' ? ITEM_ID : null,
                 verb: verb,
                 meta: meta
             })

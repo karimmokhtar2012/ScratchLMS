@@ -23,7 +23,16 @@ class LearnController extends Controller
 
     public function show(string $courseId, ?string $lessonId = null): void
     {
-        $courseId = (int) $courseId;
+        $this->loadPlayer((int) $courseId, $lessonId ? (int) $lessonId : null, 'lesson');
+    }
+
+    public function showItem(string $courseId, string $itemId): void
+    {
+        $this->loadPlayer((int) $courseId, (int) $itemId, 'item');
+    }
+
+    private function loadPlayer(int $courseId, ?int $targetId, string $targetType): void
+    {
         $userId = $_SESSION['user_id'];
 
         // 1. Security Check: Enrollment
@@ -37,107 +46,161 @@ class LearnController extends Controller
         // 2. Fetch Course Data
         $courseModel = new Course();
         $course = $courseModel->find($courseId);
-        
         $modules = $courseModel->modules($courseId);
-        $moduleModel = new Module();
         
-        // Build Playlist & Find Current Lesson
-        $flatLessons = [];
-        foreach ($modules as &$module) {
-            $module['lessons'] = $moduleModel->lessons($module['id']);
-            foreach ($module['lessons'] as $l) {
-                $flatLessons[] = $l;
+        // 3. Fetch Content Items (The New Model)
+        $contentItems = $courseModel->contentItems($courseId);
+        
+        // Build Playlist Hierarchy & Flat List
+        $flatItems = [];
+        $playlist = [];
+        
+        if (!empty($contentItems)) {
+            // New Item-Centric Logic
+            $moduleMap = [];
+            foreach ($modules as $m) {
+                $moduleMap[$m['id']] = $m;
+                $moduleMap[$m['id']]['items'] = [];
             }
-        }
-
-        // 3. Determine Lesson to Play
-        $currentLesson = null;
-        if ($lessonId) {
-            // Find specific lesson
-            foreach ($flatLessons as $l) {
-                if ($l['id'] == $lessonId) {
-                    $currentLesson = $l;
-                    break;
+            
+            foreach ($contentItems as $item) {
+                $flatItems[] = $item;
+                if (isset($moduleMap[$item['module_id']])) {
+                    $moduleMap[$item['module_id']]['items'][] = $item;
                 }
             }
+            $playlist = array_values($moduleMap);
         } else {
-            // Resume logic: Find first uncompleted lesson
-            $completedIds = $this->getCompletedLessonIds($userId);
-            foreach ($flatLessons as $l) {
-                if (!in_array($l['id'], $completedIds)) {
-                    $currentLesson = $l;
+            // Legacy Lesson-Centric Logic Fallback
+            $moduleModel = new Module();
+            foreach ($modules as &$module) {
+                $module['lessons'] = $moduleModel->lessons($module['id']);
+                foreach ($module['lessons'] as $l) {
+                    $l['item_type'] = 'lesson';
+                    $l['item_id'] = $l['id'];
+                    $flatItems[] = $l;
+                }
+                $module['items'] = $module['lessons'];
+            }
+            $playlist = $modules;
+        }
+
+        // 4. Determine Current Item
+        $currentItem = null;
+        if ($targetId) {
+            foreach ($flatItems as $item) {
+                if ($targetType === 'item' && isset($item['id']) && $item['id'] == $targetId) {
+                    $currentItem = $item;
+                    break;
+                } elseif ($targetType === 'lesson' && $item['item_type'] === 'lesson' && $item['item_id'] == $targetId) {
+                    $currentItem = $item;
                     break;
                 }
             }
-            // If all completed, or none found, default to first
-            if (!$currentLesson && !empty($flatLessons)) {
-                $currentLesson = $flatLessons[0];
+        }
+
+        // Resume logic if no target or not found
+        if (!$currentItem) {
+            $completedIds = $this->getCompletedItemIds($userId, $courseId);
+            foreach ($flatItems as $item) {
+                $isCompleted = false;
+                foreach ($completedIds as $c) {
+                    if ($c['item_type'] === $item['item_type'] && $c['item_id'] === $item['item_id']) {
+                        $isCompleted = true;
+                        break;
+                    }
+                }
+                if (!$isCompleted) {
+                    $currentItem = $item;
+                    break;
+                }
+            }
+            if (!$currentItem && !empty($flatItems)) {
+                $currentItem = $flatItems[0];
             }
         }
 
-        if (!$currentLesson) {
-            // Empty course? Redirect back
+        if (!$currentItem) {
             header('Location: /course/' . $courseId);
             exit;
         }
 
-        // 3.5 Check Content Flow (Linear vs Free)
+        // 5. Locking Logic (Placeholder for updated service)
         $progressService = new \App\Services\CourseProgressService();
-        if ($progressService->isLessonLocked($userId, $courseId, $currentLesson['id'])) {
-            $_SESSION['flash_error'] = 'This lesson is locked. Please complete the previous lesson first.';
-            
-            // Redirect to the last completed lesson or the first one if none
-            // Simple fallback: just refresh page without lesson ID (which defaults to first/resume logic)
-            // But we already calculated resume logic above. If we are here, user specifically requested a locked lesson.
-            // So we redirect to the "Resume" lesson calculated in step 3 (if no ID was passed) or re-calc.
-            // Let's just redirect to course home for simplicity, or re-run resume logic.
+        $isLocked = false;
+        if ($currentItem['item_type'] === 'lesson') {
+            $isLocked = $progressService->isLessonLocked($userId, $courseId, (int) $currentItem['item_id']);
+        }
+        
+        if ($isLocked) {
+            $_SESSION['flash_error'] = 'This item is locked.';
             header('Location: /learn/' . $courseId);
             exit;
         }
 
-        // 4. Calculate Prev/Next
-        $prevLesson = null;
-        $nextLesson = null;
+        // 6. Calculate Prev/Next
+        $prevItem = null;
+        $nextItem = null;
         $found = false;
-        foreach ($flatLessons as $l) {
+        foreach ($flatItems as $item) {
             if ($found) {
-                $nextLesson = $l;
+                $nextItem = $item;
                 break;
             }
-            if ($l['id'] === $currentLesson['id']) {
+            if ($item['item_type'] === $currentItem['item_type'] && $item['item_id'] === $currentItem['item_id']) {
                 $found = true;
             } else {
-                $prevLesson = $l;
+                $prevItem = $item;
             }
         }
 
-        // 5. Get Completed Status for Playlist UI
-        $completedLessonIds = $this->getCompletedLessonIds($userId);
-        $lockedLessonIds = [];
-        foreach ($flatLessons as $lesson) {
-            if ($progressService->isLessonLocked($userId, $courseId, (int) $lesson['id'])) {
-                $lockedLessonIds[] = (int) $lesson['id'];
-            }
-        }
-
-        // 6. If it's a quiz, fetch the Quiz ID
+        // 7. Get Progress for UI
+        $completedItemIds = $this->getCompletedItemIds($userId, $courseId);
+        
+        // Fetch underlying lesson data for rendering if it's a lesson or quiz
+        $currentLesson = null;
         $quizId = null;
-        if ($currentLesson['type'] === 'quiz') {
-            $sqlQuiz = "SELECT id FROM quizzes WHERE lesson_id = :lid";
-            $resQuiz = $this->db->fetchAll($sqlQuiz, [':lid' => $currentLesson['id']]);
-            $quizId = $resQuiz[0]['id'] ?? null;
+        if ($currentItem['item_type'] === 'lesson') {
+            $currentLesson = $this->db->fetchAll("SELECT * FROM lessons WHERE id = :id", [':id' => $currentItem['item_id']])[0] ?? null;
+        } elseif ($currentItem['item_type'] === 'quiz') {
+            $quiz = $this->db->fetchAll("SELECT * FROM quizzes WHERE id = :id", [':id' => $currentItem['item_id']])[0] ?? null;
+            if ($quiz) {
+                $quizId = $quiz['id'];
+                $currentLesson = $this->db->fetchAll("SELECT * FROM lessons WHERE id = :id", [':id' => $quiz['lesson_id']])[0] ?? null;
+            }
         }
 
         $this->view('learn.player', [
             'course' => $course,
-            'modules' => $modules,
+            'modules' => $playlist,
+            'currentItem' => $currentItem,
             'currentLesson' => $currentLesson,
             'quizId' => $quizId,
-            'prevLesson' => $prevLesson,
-            'nextLesson' => $nextLesson,
-            'completedLessonIds' => $completedLessonIds,
-            'lockedLessonIds' => $lockedLessonIds
+            'prevItem' => $prevItem,
+            'nextItem' => $nextItem,
+            'completedItems' => $completedItemIds,
+            'lockedItemIds' => [] // TODO: Implement item-level locking
         ]);
+    }
+
+    private function getCompletedItemIds(int $userId, int $courseId): array
+    {
+        // Legacy check for lessons
+        $sqlLessons = "SELECT 'lesson' as item_type, lesson_id as item_id FROM completed_lessons WHERE user_id = :uid";
+        $lessons = $this->db->fetchAll($sqlLessons, [':uid' => $userId]);
+        
+        // New model check (content_progress)
+        $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name='content_progress'");
+        if (!empty($tableCheck)) {
+            $sqlProgress = "SELECT ci.item_type, ci.item_id 
+                            FROM content_progress cp 
+                            JOIN content_items ci ON cp.item_id = ci.id 
+                            WHERE cp.user_id = :uid AND cp.status = 'completed'";
+            $progress = $this->db->fetchAll($sqlProgress, [':uid' => $userId]);
+            return array_merge($lessons, $progress);
+        }
+        
+        return $lessons;
     }
 
     public function track(): void
@@ -146,26 +209,31 @@ class LearnController extends Controller
 
         $input = json_decode(file_get_contents('php://input'), true);
         $lessonId = (int) ($input['lesson_id'] ?? 0);
+        $itemId = (int) ($input['item_id'] ?? 0);
         $verb = $input['verb'] ?? '';
         $userId = $_SESSION['user_id'];
 
-        if (!$lessonId || !$verb) {
+        if ((!$lessonId && !$itemId) || !$verb) {
             http_response_code(400);
             return;
         }
 
         // 1. Security Check: Find Course and Verify Enrollment
-        $sqlCourse = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
-        $res = $this->db->fetchAll($sqlCourse, [':lid' => $lessonId]);
+        $courseId = 0;
+        if ($itemId) {
+            $res = $this->db->fetchAll("SELECT course_id FROM content_items WHERE id = :id", [':id' => $itemId]);
+            $courseId = (int) ($res[0]['course_id'] ?? 0);
+        } elseif ($lessonId) {
+            $sqlCourse = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
+            $res = $this->db->fetchAll($sqlCourse, [':lid' => $lessonId]);
+            $courseId = (int) ($res[0]['course_id'] ?? 0);
+        }
         
-        if (empty($res)) {
-            // Lesson not found or not assigned to a course
+        if (!$courseId) {
             http_response_code(404);
-            echo json_encode(['error' => 'Lesson not found in any course']);
+            echo json_encode(['error' => 'Item/Lesson not found in any course']);
             exit;
         }
-
-        $courseId = (int) $res[0]['course_id'];
 
         try {
             Authorization::requireEnrollment($userId, $courseId);
@@ -175,19 +243,33 @@ class LearnController extends Controller
             exit;
         }
 
-        // 2. Authorized: Log xAPI
-        $sqlLog = "INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, :verb, :meta)";
-        $this->db->query($sqlLog, [
-            ':uid' => $userId, 
-            ':lid' => $lessonId, 
-            ':verb' => $verb, 
-            ':meta' => json_encode($input['meta'] ?? [])
-        ]);
+        // 2. Authorized: Log xAPI (Legacy support)
+        if ($lessonId) {
+            $sqlLog = "INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, :verb, :meta)";
+            $this->db->query($sqlLog, [
+                ':uid' => $userId, 
+                ':lid' => $lessonId, 
+                ':verb' => $verb, 
+                ':meta' => json_encode($input['meta'] ?? [])
+            ]);
+        }
 
         // 3. Authorized: Mark Completed
         if ($verb === 'completed') {
-            $sqlComp = "INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)";
-            $this->db->query($sqlComp, [':uid' => $userId, ':lid' => $lessonId]);
+            // New model progress
+            if ($itemId) {
+                $this->db->query("INSERT OR REPLACE INTO content_progress (user_id, item_id, status, completed_at) 
+                                  VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP)", [
+                    ':uid' => $userId,
+                    ':iid' => $itemId
+                ]);
+            }
+            
+            // Legacy progress
+            if ($lessonId) {
+                $sqlComp = "INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)";
+                $this->db->query($sqlComp, [':uid' => $userId, ':lid' => $lessonId]);
+            }
             
             // Trigger Course Progress Update
             $progressService = new \App\Services\CourseProgressService();
