@@ -659,3 +659,10 @@
         - `resources/views/instructor/quiz_builder.php`: Restructured the modal content into a grid. Moved directions and improved "Points/Explanation" inputs to the left column. Centered the main editor. Stacked type selector on the right.
     - **Rationale**: Optimize screen real estate within the modal, providing a more balanced and professional editing environment where context (directions) and configuration (points) frame the content.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 12:00 (Africa/Cairo)
+    - **Goal**: Fix layout errors and improve scaling in the "Add Question" modal.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Expanded modal width to `max-w-[98%]`. Fixed "Points" input overflow. Removed restrictive `calc()` heights from the right column to fix text display issues. Improved text sizes and spacing.
+    - **Rationale**: Ensure all content is visible and legible without layout glitches or cramped elements, creating a polished user experience.
+    - **Tests run + results**: PHP syntax check passed.
