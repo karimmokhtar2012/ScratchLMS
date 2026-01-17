@@ -186,5 +186,6 @@
         </div>
     </main>
 
+    <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
 </html>

@@ -457,15 +457,22 @@
         </div>
     </main>
 
+    <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
+
     <script>
         function notificationSystem() {
             return {
                 notifications: [],
                 unreadCount: 0,
                 init() {
+                    // Initial fetch for the header state (independent of toast system's initial fetch)
                     this.fetchNotifications();
-                    // Poll every 60 seconds
-                    setInterval(() => this.fetchNotifications(), 60000);
+                    
+                    // Listen for updates from the Toast system (which handles polling)
+                    window.addEventListener('notifications-updated', (e) => {
+                        this.notifications = e.detail.list;
+                        this.unreadCount = e.detail.count;
+                    });
                 },
                 fetchNotifications() {
                     fetch('/api/notifications')
