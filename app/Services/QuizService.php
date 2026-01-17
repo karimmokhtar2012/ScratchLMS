@@ -218,6 +218,9 @@ class QuizService
                 if (!$isCorrect && $this->shouldUseAiGrading($q)) {
                     $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
                     $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                    if ($aiResult) {
+                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
+                    }
                 }
             } elseif ($q['type'] === 'matching') {
                 $options = json_decode($q['options'] ?? '[]', true);
@@ -228,6 +231,9 @@ class QuizService
                 } elseif ($this->shouldUseAiGrading($q)) {
                     $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
                     $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                    if ($aiResult) {
+                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
+                    }
                 }
             } elseif (in_array($q['type'], ['essay', 'video_submission'], true)) {
                 if ($q['type'] === 'video_submission' && is_string($userAns) && $userAns !== '' && !$this->isValidUrl($userAns)) {
@@ -247,42 +253,28 @@ class QuizService
         $gradingStatus = $hasManual ? 'pending' : 'final';
         $isPassed = (!$hasManual && $percentage >= $attempt['passing_score']) ? 1 : 0;
 
-        // 4. Update Database
-        $update = "UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status, completed_at = CURRENT_TIMESTAMP, answers = :answers WHERE id = :id";
-        $this->db->query($update, [
-            ':score' => round($percentage), 
-            ':passed' => $isPassed, 
-            ':status' => $gradingStatus,
-            ':answers' => json_encode($userAnswers),
-            ':id' => $attemptId
-        ]);
-
+        // 4. Process Manual Queue & AI Pre-scoring
         if ($hasManual) {
             foreach ($manualQueue as $q) {
                 $aiScore = null;
                 $aiFeedback = null;
                 $status = 'pending_review';
                 $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
+                
                 if ($q['type'] === 'essay' && $policy === 'ai') {
                     $aiResult = $this->requestAiScore($q, $userAnswers[$q['id']] ?? null, []);
                     if ($aiResult !== null) {
                         $aiScore = $aiResult['score'];
                         $aiFeedback = $aiResult['feedback'];
                         $status = 'ai_scored';
-
-                        // Store detailed AI result for essay as well
                         $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
-                        // Update answers immediately for essay to persist this details
-                        $this->db->query("UPDATE quiz_attempts SET answers = :ans WHERE id = :id", [
-                            ':ans' => json_encode($userAnswers),
-                            ':id' => $attemptId
-                        ]);
                     } else {
                         $aiScore = round($q['points'] * 0.6, 2);
                         $aiFeedback = 'AI pre-score placeholder. Manual review required.';
                         $status = 'ai_scored';
                     }
                 }
+                
                 $this->db->query("INSERT INTO grading_queue (attempt_id, question_id, status, ai_score, ai_feedback) VALUES (:aid, :qid, :status, :ai_score, :ai_feedback)", [
                     ':aid' => $attemptId,
                     ':qid' => $q['id'],
@@ -292,6 +284,16 @@ class QuizService
                 ]);
             }
         }
+
+        // 5. Final Database Update
+        $update = "UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status, completed_at = CURRENT_TIMESTAMP, answers = :answers WHERE id = :id";
+        $this->db->query($update, [
+            ':score' => round($percentage), 
+            ':passed' => $isPassed, 
+            ':status' => $gradingStatus,
+            ':answers' => json_encode($userAnswers),
+            ':id' => $attemptId
+        ]);
 
         return [
             'score' => round($percentage),
@@ -351,12 +353,25 @@ class QuizService
                 }
             } elseif ($q['type'] === 'fill_blank') {
                 $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
+                if (!$isCorrect && $this->shouldUseAiGrading($q)) {
+                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
+                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                    if ($aiResult) {
+                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
+                    }
+                }
             } elseif ($q['type'] === 'matching') {
                 $options = json_decode($q['options'] ?? '[]', true);
                 $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
             } elseif ($q['type'] === 'short_text') {
                 if (!empty($correctKey) && $userAns == $correctKey[0]) {
                     $isCorrect = true;
+                } elseif ($this->shouldUseAiGrading($q)) {
+                    $aiResult = $this->requestAiScore($q, $userAns, $correctKey);
+                    $isCorrect = $this->aiPasses($aiResult, (float) $q['points']);
+                    if ($aiResult) {
+                        $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
+                    }
                 }
             }
 
@@ -369,10 +384,11 @@ class QuizService
         $gradingStatus = $manualComplete ? 'final' : 'pending';
         $isPassed = ($gradingStatus === 'final' && $percentage >= $attempt['passing_score']) ? 1 : 0;
 
-        $this->db->query("UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status WHERE id = :id", [
+        $this->db->query("UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status, answers = :answers WHERE id = :id", [
             ':score' => round($percentage),
             ':passed' => $isPassed,
             ':status' => $gradingStatus,
+            ':answers' => json_encode($userAnswers),
             ':id' => $attemptId
         ]);
 
@@ -384,6 +400,178 @@ class QuizService
     }
     
     // ...
+
+    private function resolveGradingPolicy(?string $policy, string $type): string
+    {
+        if (in_array($type, ['fill_blank', 'matching'], true)) {
+            if (in_array($policy, ['strict', 'fuzzy', 'both'], true)) {
+                return $policy;
+            }
+            return 'both';
+        }
+
+        if ($type === 'essay') {
+            return $policy === 'manual' ? 'manual' : 'ai';
+        }
+
+        if ($type === 'video_submission') {
+            return 'manual';
+        }
+
+        return $policy ?: 'auto';
+    }
+
+    private function gradeFillBlank(mixed $userAns, array $correctKey, string $policy): bool
+    {
+        if (!is_string($userAns)) {
+            return false;
+        }
+
+        foreach ($correctKey as $candidate) {
+            $candidate = (string) $candidate;
+            if ($policy === 'strict') {
+                if ($this->isStrictTextMatch($userAns, $candidate)) {
+                    return true;
+                }
+            } elseif ($policy === 'fuzzy') {
+                if ($this->isFuzzyTextMatch($userAns, $candidate)) {
+                    return true;
+                }
+            } else {
+                if ($this->isStrictTextMatch($userAns, $candidate) || $this->isFuzzyTextMatch($userAns, $candidate)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function gradeMatching(mixed $userAns, array $correctKey, array $options, string $policy): bool
+    {
+        if (!is_array($userAns) || !is_array($correctKey)) {
+            return false;
+        }
+
+        if ($this->isMatchingStrict($userAns, $correctKey)) {
+            return true;
+        }
+
+        if ($policy === 'strict') {
+            return false;
+        }
+
+        return $this->isMatchingFuzzy($userAns, $correctKey, $options);
+    }
+
+    private function isMatchingStrict(array $userAns, array $correctKey): bool
+    {
+        foreach ($correctKey as $pair) {
+            $leftId = $pair['left_id'] ?? null;
+            $rightId = $pair['right_id'] ?? null;
+            if ($leftId === null || $rightId === null) {
+                return false;
+            }
+            if (!isset($userAns[$leftId]) || (int)$userAns[$leftId] !== (int)$rightId) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isMatchingFuzzy(array $userAns, array $correctKey, array $options): bool
+    {
+        $rightTextById = [];
+        foreach ($options as $pair) {
+            if (isset($pair['right_id'])) {
+                $rightTextById[(int) $pair['right_id']] = (string) ($pair['right_text'] ?? '');
+            }
+        }
+
+        foreach ($correctKey as $pair) {
+            $leftId = $pair['left_id'] ?? null;
+            $rightId = $pair['right_id'] ?? null;
+            if ($leftId === null || $rightId === null) {
+                return false;
+            }
+            if (!isset($userAns[$leftId])) {
+                return false;
+            }
+            $userValue = $userAns[$leftId];
+            if (is_numeric($userValue)) {
+                return false;
+            }
+            $correctText = $rightTextById[(int) $rightId] ?? '';
+            if (!$this->isFuzzyTextMatch((string) $userValue, $correctText)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isStrictTextMatch(string $userAns, string $candidate): bool
+    {
+        return strtolower(trim($userAns)) === strtolower(trim($candidate));
+    }
+
+    private function isFuzzyTextMatch(string $userAns, string $candidate): bool
+    {
+        $normalizedUser = $this->normalizeForFuzzy($userAns);
+        $normalizedCandidate = $this->normalizeForFuzzy($candidate);
+
+        if ($normalizedUser === '' || $normalizedCandidate === '') {
+            return false;
+        }
+
+        if ($normalizedUser === $normalizedCandidate) {
+            return true;
+        }
+
+        if (str_replace(' ', '', $normalizedUser) === str_replace(' ', '', $normalizedCandidate)) {
+            return true;
+        }
+
+        similar_text($normalizedUser, $normalizedCandidate, $percent);
+        return $percent >= 85;
+    }
+
+    private function normalizeForFuzzy(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9]+/i', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+        return trim($value);
+    }
+
+    private function isValidUrl(string $url): bool
+    {
+        $url = trim($url);
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        return in_array($scheme, ['http', 'https'], true);
+    }
+
+    private function shouldUseAiGrading(array $question): bool
+    {
+        $key = getenv('GROQ_API_KEY') ?: ($_ENV['GROQ_API_KEY'] ?? null);
+        if (!$key) {
+            return false;
+        }
+        return !empty($question['ai_rubric']);
+    }
+
+    private function aiPasses(?array $aiResult, float $points): bool
+    {
+        if (!$aiResult) {
+            return false;
+        }
+        $threshold = max(1.0, $points * 0.7);
+        return $aiResult['score'] >= $threshold;
+    }
 
     private function requestAiScore(array $question, mixed $userAnswer, array $correctAnswers): ?array
     {
@@ -428,7 +616,6 @@ class QuizService
         $raw = curl_exec($ch);
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
 
         if ($raw === false) {
             $this->logAi("cURL Error: " . $error);
@@ -447,10 +634,23 @@ class QuizService
         }
 
         $data = json_decode($raw, true);
-        $text = $data['output_text'] ?? '';
-        if (!$text && isset($data['output'][0]['content'][0]['text'])) {
-            $text = $data['output'][0]['content'][0]['text'];
+        $text = '';
+        
+        if (isset($data['output_text'])) {
+            $text = $data['output_text'];
+        } elseif (isset($data['output']) && is_array($data['output'])) {
+            foreach ($data['output'] as $outBlock) {
+                if (isset($outBlock['content']) && is_array($outBlock['content'])) {
+                    foreach ($outBlock['content'] as $contentItem) {
+                        if (($contentItem['type'] ?? '') === 'output_text' && isset($contentItem['text'])) {
+                            $text = $contentItem['text'];
+                            break 2;
+                        }
+                    }
+                }
+            }
         }
+
         $json = $this->extractJson($text);
         if (!$json || !isset($json['score'])) {
             $this->logAi("Failed to extract JSON from response. Text: " . ($isDebug ? $text : '[Redacted]'));
