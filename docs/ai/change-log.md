@@ -491,3 +491,13 @@
     - **Security**: No change.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-17 05:00 (Africa/Cairo)
+    - **Goal**: Add virtual trading course for comprehensive testing.
+    - **Files Changed**:
+        - `database/seed_test_trading_course.php`: Created seed script for "Trading Mastery" course.
+        - `database/add_short_text_type.php`: Added `short_text` to question types (migration run and deleted).
+        - `database/fix_grading_queue_fk_v2.php`: Fixed broken grading_queue FK (migration run and deleted).
+    - **Rationale**: Provide a robust testbed for all question types and AI grading.
+    - **DB Notes**: `questions` schema updated, `grading_queue` schema repaired.
+    - **Tests run + results**: Seed script executed successfully.
