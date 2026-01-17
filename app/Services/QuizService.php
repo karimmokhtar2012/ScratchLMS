@@ -269,7 +269,7 @@ class QuizService
                         $aiScore = $aiResult['score'];
                         $aiFeedback = $aiResult['feedback'];
                         $status = 'ai_scored';
-                        
+
                         // Store detailed AI result for essay as well
                         $userAnswers[$q['id'] . '_ai_result'] = $aiResult;
                         // Update answers immediately for essay to persist this details
@@ -303,19 +303,84 @@ class QuizService
 
     public function recalculateAttemptScore(int $attemptId): array
     {
-        // ... (existing recalculate logic seems fine, it uses grading_queue for essays)
-        // For auto-graded items, it re-runs grading.
-        // We should ensure recalculate also respects/stores AI results if we want them persistent on regrade.
-        // But for now, let's focus on submitAttempt.
-        // I will just return the start of recalculate for context or leave it alone if not requested.
-        return parent::recalculateAttemptScore($attemptId); // Wait, I cannot call parent on self.
-        // I'll leave recalculate alone as the prompt didn't strictly require it, but consistency suggests it should match.
-        // However, recalculate is mostly for manual overrides.
-        
-        // Let's implement the specific request for submitAttempt loop changes for auditing.
-        // I need to update the loop logic in submitAttempt to capture the AI result.
-        
-        // ...
+        $attempt = $this->db->fetchAll("SELECT qa.*, q.passing_score FROM quiz_attempts qa JOIN quizzes q ON qa.quiz_id = q.id WHERE qa.id = :id", [':id' => $attemptId])[0] ?? null;
+        if (!$attempt) {
+            throw new \Exception('Attempt not found');
+        }
+
+        $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
+        $questions = $this->db->fetchAll("SELECT id, type, correct_answers, points, grading_policy, options FROM questions WHERE quiz_id = :qid", [':qid' => $attempt['quiz_id']]);
+        $manualScores = $this->db->fetchAll("SELECT question_id, final_score, status FROM grading_queue WHERE attempt_id = :aid", [':aid' => $attemptId]);
+        $manualMap = [];
+        $manualComplete = true;
+        foreach ($manualScores as $row) {
+            $manualMap[(int)$row['question_id']] = $row;
+            if ($row['status'] === 'pending_review' || $row['status'] === 'ai_scored') {
+                $manualComplete = false;
+            }
+        }
+
+        $totalPoints = 0;
+        $earnedPoints = 0;
+
+        foreach ($questions as $q) {
+            $totalPoints += $q['points'];
+            $userAns = $userAnswers[$q['id']] ?? null;
+            $correctKey = json_decode($q['correct_answers'] ?? '[]', true);
+            $policy = $this->resolveGradingPolicy($q['grading_policy'] ?? null, $q['type']);
+            $isCorrect = false;
+
+            if (in_array($q['type'], ['essay', 'video_submission'], true)) {
+                if (isset($manualMap[$q['id']]) && $manualMap[$q['id']]['final_score'] !== null) {
+                    $earnedPoints += (float) $manualMap[$q['id']]['final_score'];
+                }
+                continue;
+            }
+
+            if ($q['type'] === 'single_choice' || $q['type'] === 'true_false') {
+                if (!empty($correctKey) && $userAns == $correctKey[0]) {
+                    $isCorrect = true;
+                }
+            } elseif ($q['type'] === 'multi_choice') {
+                if (is_array($userAns) && is_array($correctKey)) {
+                    sort($userAns);
+                    sort($correctKey);
+                    if ($userAns == $correctKey) {
+                        $isCorrect = true;
+                    }
+                }
+            } elseif ($q['type'] === 'fill_blank') {
+                $isCorrect = $this->gradeFillBlank($userAns, $correctKey, $policy);
+            } elseif ($q['type'] === 'matching') {
+                $options = json_decode($q['options'] ?? '[]', true);
+                $isCorrect = $this->gradeMatching($userAns, $correctKey, $options, $policy);
+            } elseif ($q['type'] === 'short_text') {
+                if (!empty($correctKey) && $userAns == $correctKey[0]) {
+                    $isCorrect = true;
+                }
+            }
+
+            if ($isCorrect) {
+                $earnedPoints += $q['points'];
+            }
+        }
+
+        $percentage = $totalPoints > 0 ? ($earnedPoints / $totalPoints) * 100 : 0;
+        $gradingStatus = $manualComplete ? 'final' : 'pending';
+        $isPassed = ($gradingStatus === 'final' && $percentage >= $attempt['passing_score']) ? 1 : 0;
+
+        $this->db->query("UPDATE quiz_attempts SET score = :score, is_passed = :passed, grading_status = :status WHERE id = :id", [
+            ':score' => round($percentage),
+            ':passed' => $isPassed,
+            ':status' => $gradingStatus,
+            ':id' => $attemptId
+        ]);
+
+        return [
+            'score' => round($percentage),
+            'is_passed' => (bool) $isPassed,
+            'grading_status' => $gradingStatus
+        ];
     }
     
     // ...

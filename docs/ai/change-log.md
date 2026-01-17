@@ -388,3 +388,12 @@
     - **Security**: Admin/master instructor access only.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l app/Http/Controllers/InstructorController.php`.
+
+- 2026-01-17 02:08 (Africa/Cairo)
+    - **Goal**: Fix AI grading regression in recalculation and stop polluting answer payloads.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Restored `recalculateAttemptScore()` logic and removed AI result writes to `quiz_attempts.answers`.
+    - **Rationale**: Prevent fatal errors on grading and keep answer storage clean.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`.
