@@ -687,3 +687,35 @@
         - `resources/views/instructor/quiz_builder.php`: Restored the complete modal structure, fixed closing tags, and verified the 3-column flex layout. Addressed scaling issues by expanding the modal and improving text readability.
     - **Rationale**: Resolve layout breakage caused by previous incomplete edits and ensure the modal renders correctly across different screen sizes.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 05:25 (Africa/Cairo)
+    - **Goal**: Expose AI rationale in instructor popup, show scores/rationale to students after approval, and enforce concise answer-focused AI tone.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Updated AI system prompt to avoid referring to “the student” and emphasize concise answer-focused rationale.
+        - `app/Http/Controllers/QuizRunnerController.php`: Attached grading outcomes to review data; computed per-question scores; gated AI rationale visibility to approved items.
+        - `resources/views/instructor/pending_requests.php`: Added “Show AI Review” toggle in grading rows.
+        - `resources/views/learn/quiz_review.php`: Shows per-question score and approved AI rationale to students during review.
+    - **Rationale**: Give instructors quick AI review visibility and let students see the approved rationale and their per-question scores.
+    - **Security**: AI rationale shown to students only after instructor approval; ownership checks unchanged.
+    - **DB Notes**: Uses existing `ai_rationale` columns.
+    - **Tests run + results**: `php -l` on modified PHP files.
+
+- 2026-01-17 05:45 (Africa/Cairo)
+    - **Goal**: Extend guided tours beyond the overview dashboard to key instructor pages.
+    - **Files Changed**:
+        - `resources/views/instructor/analytics.php`: Added tour hooks and Alpine-based guided tour with localStorage gating.
+        - `resources/views/instructor/grading_queue.php`: Added tour hooks (header, AI block, grading actions) and guided tour with empty-state handling.
+    - **Rationale**: Provide consistent onboarding across analytics and grading workflows.
+    - **Security**: Client-side tours only; no backend exposure.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` on modified PHP view files.
+
+- 2026-01-17 06:05 (Africa/Cairo)
+    - **Goal**: Make drip progression configurable from course settings (not just per-lesson).
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Load lessons+drip rules into course edit; save per-lesson drip rules when updating a course in drip modes.
+        - `resources/views/instructor/edit_course.php`: Added a Drip Rules table under Progression to set unlock days, after-lesson, and percent for each lesson.
+    - **Rationale**: Align progression setup with course settings so time/progress drip modes are actually configurable without visiting each lesson separately.
+    - **Security**: Instructor-only updates; validates lessons belong to the course before writing rules.
+    - **DB Notes**: Uses existing `lesson_drip_rules` table; no schema changes.
+    - **Tests run + results**: `php -l` on modified files.
