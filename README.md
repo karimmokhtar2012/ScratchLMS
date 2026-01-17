@@ -141,18 +141,21 @@ Visit `http://localhost:8000` in your browser.
 ```
 LMS/
 ├── app/
-│   ├── Core/           # Framework core (Router, Database, Model, Controller)
-│   ├── Domain/         # Domain entities (Courses, Users, Orders, etc.)
-│   ├── Http/           # Controllers, Middleware, Requests
-│   └── Services/       # Business logic services (QuizService, CourseProgressService)
-├── config/             # Application configuration
-├── database/           # SQLite DB, migrations, and seeders
-├── public/             # Web entry point (index.php), assets, uploads
+│   ├── Core/           # System core (Router, Database, CSRF, RateLimiter)
+│   ├── Domain/         # Domain Entities (Courses, Lessons, Quizzes, Users)
+│   ├── Http/           # Controllers, Middleware, Requests, and Responses
+│   ├── Policies/       # Authorization and Access Control Logic
+│   └── Services/       # Business Logic (Quiz Engine, Progress Calculation)
+├── config/             # Application & Database configuration
+├── database/           # SQLite database, Migrations, and Seeders
+├── docs/               # ADRs, AI Context, and Daily Progress Reports
+├── public/             # Web root (Entry point, Assets, User Uploads)
 ├── resources/
-│   ├── lang/           # Localization files
-│   └── views/          # HTML templates/views
+│   ├── lang/           # Localization (English/Arabic support)
+│   └── views/          # HTML templates (Instructor, Student, Admin)
 ├── routes/             # Route definitions (web.php)
-└── docs/               # Documentation and architectural decision records
+├── storage/            # Application logs and temporary files
+└── tests/              # Feature simulations and system audits
 ```
 
 ## 🤝 Contributing
