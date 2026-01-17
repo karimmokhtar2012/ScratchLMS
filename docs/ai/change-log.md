@@ -198,6 +198,26 @@
         - `app/Http/Controllers/InstructorController.php`: Added approval listing and issue actions.
         - `resources/views/instructor/certificate_approvals.php`: Added approvals UI.
         - `resources/views/layouts/app.php`: Wired sidebar link to approvals page.
+
+- 2026-01-17 19:29 (Africa/Cairo)
+    - **Goal**: Add LearnPress XML importer for courses, sections, lessons, and quiz stubs.
+    - **Files Changed**:
+        - `database/import_learnpress_courses.php`: New CLI importer for LearnPress WXR exports with section mapping and lesson fallbacks.
+    - **Rationale**: Provide a repeatable, safe import path for LearnPress course exports without manual entry.
+    - **Security**: Importer is offline-only and uses prepared statements.
+    - **DB Notes**: Inserts into `courses`, `modules`, `lessons`, and `quizzes` when run with `--apply`.
+    - **Tests run + results**: Not run (script not executed).
+    - **Follow-ups**: Run importer with the correct instructor mapping and video URL strategy.
+
+- 2026-01-17 19:32 (Africa/Cairo)
+    - **Goal**: Import LearnPress courses into the LMS database.
+    - **Files Changed**:
+        - `database/database.sqlite`: Added 6 courses, 39 modules, 596 lessons, 156 quiz lessons.
+    - **Rationale**: Populate LMS with exported LearnPress course content for immediate availability.
+    - **Security**: Import executed locally via CLI with prepared statements.
+    - **DB Notes**: New rows in `courses`, `modules`, `lessons`, `quizzes`.
+    - **Tests run + results**: `php database/import_learnpress_courses.php --file=database/export-courses-learnpress-20260117051433.xml --apply`.
+    - **Follow-ups**: Wire VdoCipher integration for `[vdo id]` lesson playback.
     - **Rationale**: Allow instructors to manually issue certificates for completed enrollments when auto-issue is off.
     - **Security**: Instructor ownership checks enforced before issuing certificates.
     - **DB Notes**: N/A.
@@ -734,10 +754,21 @@
     - **Rationale**: Resolve layout breakage caused by the complex Drip table being in a narrow sidebar, and prevent logical errors in prerequisite selection.
     - **Tests run + results**: `php -l` passed. Visual verification of layout.
 
-- 2026-01-17 16:30 (Africa/Cairo)
-    - **Goal**: Fix Undefined array key "type" warning in Course Settings.
+- 2026-01-17 18:30 (Africa/Cairo)
+    - **Goal**: Update homepage with new features (Scratcha AI, Quiz Engine), versioning, and LMS-centric terminology.
     - **Files Changed**:
-        - `app/Http/Controllers/InstructorController.php`: Updated SQL query in `settings` method to include the `type` column in the lessons selection.
-        - `resources/views/instructor/edit_course.php`: Added strict `isset()` checks to lesson loop output to safeguard against missing data.
-    - **Rationale**: The previous database query was omitting the `type` field, causing a warning when the view attempted to access it for labeling.
-    - **Tests run + results**: `php -l` checks passed. Warning resolved.
+        - `resources/views/home.php`: Redesigned for Scratcha AI, updated Quiz Engine layout, and refined student experience column.
+        - `resources/lang/en/messages.php`: Added localizations for Scratcha AI, Quiz Engine features, and updated versioning to V0.7 Beta.
+    - **Rationale**: Showcase the latest capabilities of the LMS (AI grading, varied question types, real-time toasts) and align messaging with a self-hosted LMS identity rather than a SaaS platform.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l` checks passed for view and lang files.
+    - **Follow-ups**: Monitor user feedback on the new AI section visuals.
+
+- 2026-01-17 18:45 (Africa/Cairo)
+    - **Goal**: Document architectural findings regarding lesson-centric data model.
+    - **Files Changed**: N/A (GitHub Issue created).
+    - **Rationale**: Captured technical debt/architectural constraints where quizzes are coupled to lessons, creating inconsistency for first-class entity expectations.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: GitHub issue #38 created via CLI.

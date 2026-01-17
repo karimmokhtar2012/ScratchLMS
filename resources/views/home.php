@@ -11,10 +11,10 @@
             </span>
             <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 text-white leading-tight">
                 <?= __('hero_title_line1') ?> <br>
-                <span class="gradient-text">2.0 is Here</span>
+                <span class="gradient-text">V0.7 Beta is Here</span>
             </h1>
             <p class="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                The ultimate platform for modern education just got better. Now with advanced builder tools, enhanced security, and smart certification.
+                The ultimate LMS for modern education just got better. Now with AI-powered grading, adaptive learning paths, and enterprise-grade security.
             </p>
             
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -146,7 +146,7 @@
         </div>
     </section>
 
-    <!-- New Feature Showcase (v1.4) -->
+    <!-- New Feature Showcase (V0.7 Beta) -->
     <section class="py-24 border-t border-white/5 relative overflow-hidden bg-zinc-950">
         <!-- Background Glow -->
         <div class="absolute top-1/2 left-0 w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[120px] -translate-y-1/2 -z-10"></div>
@@ -190,65 +190,240 @@
                 </div>
             </div>
 
-            <!-- Feature 2: Question Bank -->
+            <!-- Feature 2: Quiz Engine -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-24">
                 <div>
                     <div class="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 mb-6 border border-indigo-500/20">
-                        <i class="fa-solid fa-database text-xl"></i>
+                        <i class="fa-solid fa-microchip text-xl"></i>
                     </div>
                     <h3 class="text-3xl font-bold text-white mb-4"><?= __('feat_qbank_title') ?></h3>
-                    <p class="text-zinc-400 text-lg leading-relaxed mb-6">
+                    <p class="text-zinc-400 text-lg leading-relaxed mb-8">
                         <?= __('feat_qbank_desc') ?>
                     </p>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-3 py-1 rounded-full bg-zinc-800 text-xs font-mono text-zinc-400 border border-zinc-700"><?= __('feat_qbank_tag1') ?></span>
-                        <span class="px-3 py-1 rounded-full bg-zinc-800 text-xs font-mono text-zinc-400 border border-zinc-700"><?= __('feat_qbank_tag2') ?></span>
-                        <span class="px-3 py-1 rounded-full bg-zinc-800 text-xs font-mono text-zinc-400 border border-zinc-700"><?= __('feat_qbank_tag3') ?></span>
+                    
+                    <div class="space-y-4">
+                        <div class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4"><?= __('feat_quiz_types_title') ?></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl">
+                                <i class="fa-solid fa-circle-dot text-indigo-500"></i> <?= __('feat_quiz_type_mc') ?>
+                            </div>
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl">
+                                <i class="fa-solid fa-list-check text-indigo-500"></i> <?= __('feat_quiz_type_tf') ?>
+                            </div>
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl">
+                                <i class="fa-solid fa-keyboard text-indigo-500"></i> <?= __('feat_quiz_type_short') ?>
+                            </div>
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl">
+                                <i class="fa-solid fa-pen-to-square text-indigo-500"></i> <?= __('feat_quiz_type_fitb') ?>
+                            </div>
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl">
+                                <i class="fa-solid fa-puzzle-piece text-indigo-500"></i> <?= __('feat_quiz_type_match') ?>
+                            </div>
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl">
+                                <i class="fa-solid fa-robot text-purple-500"></i> <?= __('feat_quiz_type_essay') ?>
+                            </div>
+                            <div class="flex items-center gap-3 text-zinc-300 text-sm bg-zinc-900/50 border border-zinc-800 p-3 rounded-xl col-span-2">
+                                <i class="fa-solid fa-video text-rose-500"></i> <?= __('feat_quiz_type_video') ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="relative group">
                     <div class="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-                    <div class="relative bg-zinc-900 border border-zinc-800 rounded-2xl p-8 h-72 flex flex-col relative overflow-hidden">
-                        <div class="space-y-3">
-                            <div class="h-14 bg-zinc-800/50 rounded-xl border border-zinc-700/50 p-4 flex items-center gap-4">
-                                <div class="w-8 h-8 bg-indigo-500/20 rounded flex items-center justify-center text-indigo-400"><i class="fa-solid fa-code"></i></div>
-                                <div class="h-2 w-32 bg-zinc-700 rounded"></div>
+                    <div class="relative bg-zinc-900 border border-zinc-800 rounded-2xl p-8 min-h-[400px] flex flex-col justify-between overflow-hidden">
+                        
+                        <!-- Dynamic Feature List -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 bg-black/40 border border-zinc-800 rounded-2xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center text-red-500 border border-red-500/20">
+                                        <i class="fa-solid fa-shield-halved"></i>
+                                    </div>
+                                    <span class="text-white font-bold"><?= __('feat_quiz_feature_anticheat') ?></span>
+                                </div>
+                                <span class="text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded-md font-mono font-bold">ACTIVE</span>
                             </div>
-                            <div class="h-14 bg-zinc-800/50 rounded-xl border border-zinc-700/50 p-4 flex items-center gap-4 opacity-60">
-                                <div class="w-8 h-8 bg-purple-500/20 rounded flex items-center justify-center text-purple-400"><i class="fa-solid fa-server"></i></div>
-                                <div class="h-2 w-24 bg-zinc-700 rounded"></div>
+                            <div class="flex items-center justify-between p-4 bg-black/40 border border-zinc-800 rounded-2xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-500 border border-amber-500/20">
+                                        <i class="fa-solid fa-rotate-left"></i>
+                                    </div>
+                                    <span class="text-white font-bold"><?= __('feat_quiz_feature_retakes') ?></span>
+                                </div>
+                                <span class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded-md font-mono font-bold">SMART</span>
                             </div>
-                            <div class="h-14 bg-zinc-800/50 rounded-xl border border-zinc-700/50 p-4 flex items-center gap-4 opacity-30">
-                                <div class="w-8 h-8 bg-blue-500/20 rounded flex items-center justify-center text-blue-400"><i class="fa-solid fa-database"></i></div>
-                                <div class="h-2 w-40 bg-zinc-700 rounded"></div>
+                            <div class="flex items-center justify-between p-4 bg-black/40 border border-zinc-800 rounded-2xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-500 border border-indigo-500/20">
+                                        <i class="fa-solid fa-layer-group"></i>
+                                    </div>
+                                    <span class="text-white font-bold"><?= __('feat_quiz_feature_bank') ?></span>
+                                </div>
+                                <span class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded-md font-mono font-bold">SYNCED</span>
+                            </div>
+                            <div class="flex items-center justify-between p-4 bg-black/40 border border-zinc-800 rounded-2xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+                                        <i class="fa-solid fa-clipboard-check"></i>
+                                    </div>
+                                    <span class="text-white font-bold"><?= __('feat_quiz_feature_queue') ?></span>
+                                </div>
+                                <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-md font-mono font-bold">HYBRID</span>
                             </div>
                         </div>
-                        <div class="absolute bottom-6 right-6 rtl:left-6 rtl:right-auto">
-                            <div class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-2">
-                                <i class="fa-solid fa-file-import"></i> <?= __('feat_qbank_import') ?>
+
+                        <!-- Bottom Action Mockup -->
+                        <div class="mt-8 flex justify-end">
+                            <div class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-xs font-bold shadow-lg flex items-center gap-3 hover:bg-indigo-500 transition cursor-pointer">
+                                <i class="fa-solid fa-bolt"></i> RUN ENGINE TEST
                             </div>
                         </div>
+
+                        <!-- Abstract Background Detail -->
+                        <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl"></div>
                     </div>
                 </div>
             </div>
 
             <!-- Feature 3: Student Experience -->
             <div class="bg-zinc-900/30 border border-white/5 rounded-3xl p-8 md:p-12 text-center">
-                <h3 class="text-3xl font-bold text-white mb-6"><?= __('feat_student_exp_title') ?></h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                    <div class="bg-black/40 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-700 transition text-left">
-                        <i class="fa-solid fa-certificate text-3xl text-amber-500 mb-4"></i>
+                <h3 class="text-3xl font-bold text-white mb-8"><?= __('feat_student_exp_title') ?></h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                    <div class="bg-black/40 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-700 transition text-left group">
+                        <i class="fa-solid fa-certificate text-3xl text-amber-500 mb-4 group-hover:scale-110 transition"></i>
                         <h4 class="text-xl font-bold text-white mb-2"><?= __('feat_cert_title') ?></h4>
                         <p class="text-zinc-400 text-sm"><?= __('feat_cert_desc') ?></p>
                     </div>
-                    <div class="bg-black/40 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-700 transition text-left">
-                        <i class="fa-solid fa-book-bookmark text-3xl text-blue-500 mb-4"></i>
+                    <div class="bg-black/40 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-700 transition text-left group">
+                        <i class="fa-solid fa-book-bookmark text-3xl text-blue-500 mb-4 group-hover:scale-110 transition"></i>
                         <h4 class="text-xl font-bold text-white mb-2"><?= __('feat_notebook_title') ?></h4>
                         <p class="text-zinc-400 text-sm"><?= __('feat_notebook_desc') ?></p>
+                    </div>
+                    <div class="bg-black/40 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-700 transition text-left group">
+                        <i class="fa-solid fa-bell text-3xl text-indigo-500 mb-4 group-hover:scale-110 transition"></i>
+                        <h4 class="text-xl font-bold text-white mb-2"><?= __('feat_toast_title') ?></h4>
+                        <p class="text-zinc-400 text-sm"><?= __('feat_toast_desc') ?></p>
                     </div>
                 </div>
             </div>
 
+        </div>
+    </section>
+
+    <!-- Scratcha AI Section -->
+    <section class="py-24 bg-zinc-950 relative overflow-hidden border-t border-white/5">
+        <!-- AI Glow Effect -->
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] -z-10"></div>
+        
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div>
+                    <span class="inline-block py-1 px-3 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold uppercase tracking-widest mb-6">
+                        <?= __('sec_scratcha_badge') ?>
+                    </span>
+                    <h2 class="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
+                        <?= __('sec_scratcha_title') ?>
+                    </h2>
+                    <p class="text-zinc-400 text-lg leading-relaxed mb-8">
+                        <?= __('sec_scratcha_desc') ?>
+                    </p>
+
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-4 group">
+                            <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0 border border-purple-500/20 group-hover:bg-purple-500/20 transition">
+                                <i class="fa-solid fa-pen-nib text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-white font-bold text-lg"><?= __('feat_ai_essay_title') ?></h4>
+                                <p class="text-zinc-500 text-sm mt-1"><?= __('feat_ai_essay_desc') ?></p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4 group">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition">
+                                <i class="fa-solid fa-quote-left text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-white font-bold text-lg"><?= __('feat_ai_rationale_title') ?></h4>
+                                <p class="text-zinc-500 text-sm mt-1"><?= __('feat_ai_rationale_desc') ?></p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4 group">
+                            <div class="w-12 h-12 rounded-xl bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-400 shrink-0 border border-fuchsia-500/20 group-hover:bg-fuchsia-500/20 transition">
+                                <i class="fa-solid fa-list-check text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-white font-bold text-lg"><?= __('feat_ai_rubric_title') ?></h4>
+                                <p class="text-zinc-500 text-sm mt-1"><?= __('feat_ai_rubric_desc') ?></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <!-- AI Mockup Card -->
+                    <div class="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent"></div>
+                        
+                        <!-- AI Header -->
+                        <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-6">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+                                <i class="fa-solid fa-robot text-xl animate-pulse"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-white font-bold uppercase tracking-tight">Scratcha AI</h3>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                                    <span class="text-[10px] text-zinc-500 uppercase font-mono tracking-widest"><?= __('ai_mockup_analyzing') ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Logic Flow -->
+                        <div class="space-y-4">
+                            <div class="p-4 bg-black/40 rounded-xl border border-zinc-800">
+                                <div class="text-[10px] text-zinc-500 mb-2 uppercase font-bold tracking-widest"><?= __('ai_mockup_answer_label') ?></div>
+                                <p class="text-xs text-zinc-300 italic"><?= __('ai_mockup_answer_text') ?></p>
+                            </div>
+
+                            <div class="flex justify-center my-2">
+                                <div class="h-6 w-0.5 bg-gradient-to-b from-purple-500 to-transparent"></div>
+                            </div>
+
+                            <div class="p-4 bg-purple-500/5 rounded-xl border border-purple-500/20 relative">
+                                <div class="absolute -top-3 left-6 px-2 bg-zinc-900 border border-purple-500/30 rounded text-[9px] text-purple-400 font-bold uppercase"><?= __('ai_mockup_analysis_label') ?></div>
+                                <div class="flex justify-between items-center mb-3 mt-1">
+                                    <div class="flex gap-1">
+                                        <div class="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                                        <div class="w-1.5 h-1.5 bg-purple-500/50 rounded-full"></div>
+                                        <div class="w-1.5 h-1.5 bg-purple-500/20 rounded-full"></div>
+                                    </div>
+                                    <div class="text-xs font-bold text-white bg-purple-600 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(147,51,234,0.5)]"><?= __('ai_mockup_score') ?></div>
+                                </div>
+                                <p class="text-[11px] text-zinc-400 leading-relaxed">
+                                    <?= __('ai_mockup_analysis_text') ?>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Power Indicator -->
+                        <div class="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                            <div class="text-[10px] text-zinc-500 font-mono italic"><?= __('ai_mockup_engine') ?></div>
+                            <div class="flex gap-1.5">
+                                <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-duration:1s]"></div>
+                                <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.2s]"></div>
+                                <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.4s]"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Floating Badge -->
+                    <div class="absolute -bottom-6 -right-6 bg-white text-black px-6 py-4 rounded-2xl shadow-2xl transform -rotate-3 hover:rotate-0 transition duration-500 hidden md:block border-4 border-zinc-950">
+                        <div class="text-[10px] font-bold uppercase tracking-tighter mb-1 text-zinc-500"><?= __('ai_mockup_speed_label') ?></div>
+                        <div class="text-3xl font-black leading-none"><?= __('ai_mockup_speed_value') ?></div>
+                        <div class="text-[10px] font-bold text-indigo-600 uppercase mt-1"><?= __('ai_mockup_speed_unit') ?></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -259,7 +434,7 @@
                 <span class="text-cyan-400 font-mono text-xs font-bold tracking-widest uppercase mb-4 block">Unmatched Performance</span>
                 <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">Engineered for <span class="text-cyan-400">Speed</span></h2>
                 <p class="text-zinc-400 text-lg leading-relaxed mb-8">
-                    Built on a custom high-performance architecture, our platform delivers sub-50ms latency globally. Experience instant page loads, real-time sync, and zero buffering.
+                    Built on a custom high-performance architecture, our LMS delivers sub-50ms latency globally. Experience instant page loads, real-time sync, and zero buffering.
                 </p>
                 
                 <div class="space-y-6">
@@ -324,7 +499,7 @@
         </div>
     </section>
 
-    <!-- Smart Attempt Workflow (v1.4) -->
+    <!-- Smart Attempt Workflow (V0.7 Beta) -->
     <section class="py-24 bg-black relative overflow-hidden border-t border-white/5">
         <div class="max-w-7xl mx-auto px-6 relative z-10">
             <div class="text-center mb-20">
@@ -375,7 +550,7 @@
         </div>
     </section>
 
-    <!-- Anti-Cheat (v1.4) -->
+    <!-- Anti-Cheat (V0.7 Beta) -->
     <section class="py-24 bg-zinc-950 relative overflow-hidden border-t border-white/5">
         <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div class="relative">
