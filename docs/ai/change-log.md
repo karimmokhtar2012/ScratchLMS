@@ -652,3 +652,10 @@
         - `resources/views/instructor/quiz_builder.php`: Implemented a timeline-style question list, added a "Quiz Overview" summary card to the sidebar, and simplified the header.
     - **Rationale**: Create a cleaner visual hierarchy and provide better progress feedback (Total Points, Question Count) to the instructor.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 11:30 (Africa/Cairo)
+    - **Goal**: Redesign the "Add Question" modal with a 3-column layout.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Restructured the modal content into a grid. Moved directions and improved "Points/Explanation" inputs to the left column. Centered the main editor. Stacked type selector on the right.
+    - **Rationale**: Optimize screen real estate within the modal, providing a more balanced and professional editing environment where context (directions) and configuration (points) frame the content.
+    - **Tests run + results**: PHP syntax check passed.

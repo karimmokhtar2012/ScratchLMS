@@ -159,12 +159,12 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                 </div>
             </div>
 
-            <!-- Question Modal (Preserved) -->
+            <!-- Question Modal (3-Column Layout) -->
             <div x-show="showQuestionModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" x-transition.opacity style="display: none;">
-                <div @click.away="showQuestionModal = false" class="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative">
+                <div @click.away="showQuestionModal = false" class="w-full max-w-[95%] h-[90vh] overflow-hidden rounded-3xl shadow-2xl bg-zinc-950 border border-zinc-800 relative flex flex-col">
                     
                     <!-- Modal Header -->
-                    <div class="flex items-center justify-between p-6 border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-50 backdrop-blur-md">
+                    <div class="flex items-center justify-between p-6 border-b border-zinc-800 bg-zinc-900/50 z-50 backdrop-blur-md shrink-0">
                         <div class="flex items-center">
                             <div class="w-10 h-10 rounded-xl flex items-center justify-center mr-4 shadow-lg"
                                  :class="mode === 'edit' ? 'bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-blue-500 text-white shadow-blue-500/20'">
@@ -180,183 +180,220 @@ $totalPoints = array_sum(array_column($questions, 'points'));
                         </button>
                     </div>
 
-                    <div class="relative" x-ref="builderForm">
-                        <form :action="actionUrl" method="POST" @submit="submitting = true" class="bg-transparent">
-                            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                            <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
-                            <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
-                            <input type="hidden" name="type" x-model="type">
+                    <!-- Modal Body (3 Columns) -->
+                    <form :action="actionUrl" method="POST" @submit="submitting = true" class="flex-1 overflow-hidden grid grid-cols-12">
+                        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                        <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
+                        <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
+                        <input type="hidden" name="type" x-model="type">
 
-                            <!-- Type Selector -->
-                            <div class="px-6 py-6 border-b border-zinc-800/50 bg-black/40" x-show="mode === 'add'">
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <template x-for="(t, key) in questionTypes">
-                                        <button @click="type = key" type="button"
-                                                class="relative overflow-hidden group rounded-xl p-4 transition-all duration-300 border flex flex-col items-center justify-center gap-3 h-24"
-                                                :class="type === key 
-                                                    ? `bg-gradient-to-br from-${t.color}-900/80 to-${t.color}-600/20 border-${t.color}-500 ring-1 ring-${t.color}-400/50 shadow-lg shadow-${t.color}-900/50` 
-                                                    : `bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-600`">
-                                            <div x-show="type === key" class="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"></div>
-                                            <i class="fa-solid text-2xl relative z-10 transition-transform duration-300 group-hover:scale-110" :class="[`fa-${t.icon}`, type === key ? 'text-white drop-shadow-md' : `text-zinc-600 group-hover:text-${t.color}-400`]"></i>
-                                            <span class="text-[10px] font-bold uppercase tracking-widest relative z-10 transition-colors" :class="type === key ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'" x-text="t.label"></span>
-                                        </button>
-                                    </template>
-                                </div>
-                                <div class="mt-6 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-start gap-4">
+                        <!-- LEFT COLUMN: Guide & Settings (Span 3) -->
+                        <div class="col-span-3 border-r border-zinc-800 bg-zinc-900/30 overflow-y-auto p-6 space-y-6">
+                            
+                            <!-- 1. Type Info Box -->
+                            <div class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 flex flex-col gap-3">
+                                <div class="flex items-center gap-3">
                                     <div class="p-2.5 rounded-lg shrink-0 transition-colors duration-300" :class="`bg-${questionTypes[type].color}-500/10 text-${questionTypes[type].color}-400`">
                                         <i class="fa-solid text-lg" :class="`fa-${questionTypes[type].icon}`"></i>
                                     </div>
-                                    <div>
-                                        <h3 class="text-sm font-bold text-white mb-1" x-text="questionTypes[type].label"></h3>
-                                        <p class="text-xs text-zinc-400 mb-2 leading-relaxed" x-text="questionTypes[type].description"></p>
-                                        <div class="flex items-start gap-2 text-[11px] text-zinc-500 bg-black/20 px-3 py-2 rounded-lg border border-zinc-800/50">
-                                            <i class="fa-solid fa-lightbulb text-amber-500/70 mt-0.5"></i>
-                                            <span x-text="questionTypes[type].guide" class="leading-relaxed"></span>
-                                        </div>
-                                    </div>
+                                    <h3 class="text-sm font-bold text-white" x-text="questionTypes[type].label"></h3>
+                                </div>
+                                <p class="text-xs text-zinc-400 leading-relaxed" x-text="questionTypes[type].description"></p>
+                                <div class="flex items-start gap-2 text-[11px] text-zinc-500 bg-black/20 px-3 py-2 rounded-lg border border-zinc-800/50">
+                                    <i class="fa-solid fa-lightbulb text-amber-500/70 mt-0.5"></i>
+                                    <span x-text="questionTypes[type].guide" class="leading-relaxed"></span>
                                 </div>
                             </div>
 
-                            <!-- Question Text -->
-                            <div class="p-6 md:p-8 border-b border-zinc-800 relative bg-zinc-900/30">
-                                <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center">
-                                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span> Question Prompt
-                                </label>
-                                <textarea name="question_text" x-model="question_text" required rows="2"
-                                          class="w-full bg-transparent text-xl md:text-2xl font-medium text-white placeholder-zinc-700 border-none focus:ring-0 p-0 resize-none leading-relaxed"
-                                          placeholder="Type your question here..."></textarea>
-                                <div class="absolute bottom-0 left-0 h-[1px] bg-gradient-to-r from-blue-500/50 to-transparent w-full"></div>
+                            <hr class="border-zinc-800/50">
+
+                            <!-- 2. Settings (Moved from Footer) -->
+                            <div class="space-y-4">
+                                <label class="text-xs font-black text-zinc-500 uppercase tracking-widest">Grading Settings</label>
+                                
+                                <!-- Points Input -->
+                                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                                        Points Value
+                                        <i class="fa-solid fa-star text-amber-500 text-xs"></i>
+                                    </label>
+                                    <div class="flex items-center">
+                                        <button type="button" @click="points = Math.max(1, parseInt(points) - 1)" class="w-8 h-8 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"><i class="fa-solid fa-minus"></i></button>
+                                        <input type="number" name="points" x-model="points" min="1" class="flex-1 bg-transparent text-center text-white font-bold text-lg border-none focus:ring-0 p-0">
+                                        <button type="button" @click="points = parseInt(points) + 1" class="w-8 h-8 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 flex items-center justify-center transition"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+
+                                <!-- Explanation Input -->
+                                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
+                                        Explanation <span class="text-zinc-600 normal-case">(Optional)</span>
+                                    </label>
+                                    <textarea name="explanation" x-model="explanation" rows="4" class="w-full bg-black/20 border border-zinc-800 text-white text-xs rounded-lg p-3 focus:border-blue-500 transition resize-none" placeholder="Explain the correct answer..."></textarea>
+                                </div>
                             </div>
+                        </div>
 
-                            <!-- Answer Config -->
-                            <div class="p-6 md:p-8 bg-black/20">
-                                <!-- True/False -->
-                                <div x-show="type === 'true_false'" class="grid grid-cols-2 gap-4 max-w-lg">
-                                    <label class="cursor-pointer group relative">
-                                        <input type="radio" name="tf_correct" value="1" x-model="tf_correct" class="peer sr-only">
-                                        <div class="p-6 rounded-2xl border-2 border-zinc-800 bg-zinc-900 text-center transition-all duration-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:shadow-lg peer-checked:shadow-emerald-500/10 group-hover:border-zinc-700">
-                                            <i class="fa-solid fa-check text-2xl mb-2 text-zinc-600 peer-checked:text-emerald-400 transition-colors"></i>
-                                            <div class="font-bold text-zinc-400 peer-checked:text-white transition-colors">True</div>
-                                        </div>
+                        <!-- MIDDLE COLUMN: Content Editor (Span 7) -->
+                        <div class="col-span-7 flex flex-col h-full bg-black/20 relative">
+                            <div class="flex-1 overflow-y-auto">
+                                <!-- Question Text -->
+                                <div class="p-8 border-b border-zinc-800 relative bg-zinc-900/30">
+                                    <label class="block text-xs font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center">
+                                        <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 animate-pulse"></span> Question Prompt
                                     </label>
-                                    <label class="cursor-pointer group relative">
-                                        <input type="radio" name="tf_correct" value="0" x-model="tf_correct" class="peer sr-only">
-                                        <div class="p-6 rounded-2xl border-2 border-zinc-800 bg-zinc-900 text-center transition-all duration-300 peer-checked:border-red-500 peer-checked:bg-red-500/10 peer-checked:shadow-lg peer-checked:shadow-red-500/10 group-hover:border-zinc-700">
-                                            <i class="fa-solid fa-xmark text-2xl mb-2 text-zinc-600 peer-checked:text-red-400 transition-colors"></i>
-                                            <div class="font-bold text-zinc-400 peer-checked:text-white transition-colors">False</div>
-                                        </div>
-                                    </label>
+                                    <textarea name="question_text" x-model="question_text" required rows="3"
+                                              class="w-full bg-transparent text-2xl font-medium text-white placeholder-zinc-700 border-none focus:ring-0 p-0 resize-none leading-relaxed"
+                                              placeholder="Type your question here..."></textarea>
+                                    <div class="absolute bottom-0 left-0 h-[1px] bg-gradient-to-r from-blue-500/50 to-transparent w-full"></div>
                                 </div>
 
-                                <!-- Single/Multi Choice -->
-                                <div x-show="type === 'single_choice' || type === 'multi_choice'" class="space-y-3">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <label class="text-xs font-black text-zinc-500 uppercase tracking-widest">Options</label>
-                                        <span class="text-[10px] text-zinc-600 bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
-                                            <i class="fa-solid" :class="type === 'single_choice' ? 'fa-circle-dot' : 'fa-square-check'"></i>
-                                            <span x-text="type === 'single_choice' ? 'Select One Correct' : 'Select All Correct'"></span>
-                                        </span>
-                                    </div>
-                                    <template x-for="(opt, index) in options" :key="index">
-                                        <div class="flex items-center group">
-                                            <div class="relative mr-3">
-                                                <label x-show="type === 'single_choice'" class="cursor-pointer">
-                                                    <input type="radio" name="correct_option" :value="index" :checked="opt.is_correct" class="peer sr-only">
-                                                    <div class="w-6 h-6 rounded-full border-2 border-zinc-700 bg-zinc-900 peer-checked:border-indigo-500 peer-checked:bg-indigo-500 flex items-center justify-center transition-all">
-                                                        <i class="fa-solid fa-check text-[10px] text-white opacity-0 peer-checked:opacity-100"></i>
-                                                    </div>
-                                                </label>
-                                                <label x-show="type === 'multi_choice'" class="cursor-pointer">
-                                                    <input type="checkbox" :name="'is_correct[' + index + ']'" value="1" x-model="opt.is_correct" class="peer sr-only">
-                                                    <div class="w-6 h-6 rounded-md border-2 border-zinc-700 bg-zinc-900 peer-checked:border-purple-500 peer-checked:bg-purple-500 flex items-center justify-center transition-all">
-                                                        <i class="fa-solid fa-check text-[10px] text-white opacity-0 peer-checked:opacity-100"></i>
-                                                    </div>
-                                                </label>
+                                <!-- Answer Config -->
+                                <div class="p-8">
+                                    <!-- True/False -->
+                                    <div x-show="type === 'true_false'" class="grid grid-cols-2 gap-4 max-w-lg">
+                                        <label class="cursor-pointer group relative">
+                                            <input type="radio" name="tf_correct" value="1" x-model="tf_correct" class="peer sr-only">
+                                            <div class="p-6 rounded-2xl border-2 border-zinc-800 bg-zinc-900 text-center transition-all duration-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:shadow-lg peer-checked:shadow-emerald-500/10 group-hover:border-zinc-700">
+                                                <i class="fa-solid fa-check text-2xl mb-2 text-zinc-600 peer-checked:text-emerald-400 transition-colors"></i>
+                                                <div class="font-bold text-zinc-400 peer-checked:text-white transition-colors">True</div>
                                             </div>
-                                            <div class="flex-1 relative">
-                                                <input type="text" name="option_text[]" x-model="opt.text" class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-4 py-3 pl-4 pr-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition shadow-sm group-hover:border-zinc-700" placeholder="Option text...">
-                                                <button type="button" @click="removeOption(index)" x-show="options.length > 2" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-red-400 transition"><i class="fa-solid fa-trash-can"></i></button>
+                                        </label>
+                                        <label class="cursor-pointer group relative">
+                                            <input type="radio" name="tf_correct" value="0" x-model="tf_correct" class="peer sr-only">
+                                            <div class="p-6 rounded-2xl border-2 border-zinc-800 bg-zinc-900 text-center transition-all duration-300 peer-checked:border-red-500 peer-checked:bg-red-500/10 peer-checked:shadow-lg peer-checked:shadow-red-500/10 group-hover:border-zinc-700">
+                                                <i class="fa-solid fa-xmark text-2xl mb-2 text-zinc-600 peer-checked:text-red-400 transition-colors"></i>
+                                                <div class="font-bold text-zinc-400 peer-checked:text-white transition-colors">False</div>
                                             </div>
-                                        </div>
-                                    </template>
-                                    <button type="button" @click="addOption()" class="mt-4 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-white hover:border-zinc-600 transition flex items-center"><i class="fa-solid fa-plus mr-2"></i> Add Option</button>
-                                </div>
-
-                                <!-- Fill Blank -->
-                                <div x-show="type === 'fill_blank'" class="space-y-6">
-                                    <div class="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
-                                        <label class="block text-xs font-bold text-amber-500 uppercase tracking-widest mb-2">Accepted Answers</label>
-                                        <input type="text" name="fill_blank_answers" x-model="fill_blank_answers" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:border-amber-500 transition font-mono" placeholder="e.g., hypertext, hyper text (comma separated)">
-                                        <p class="text-[10px] text-zinc-500 mt-2">Students must type one of these exact phrases.</p>
+                                        </label>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Grading Match</label>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            <label class="cursor-pointer">
-                                                <input type="radio" name="grading_policy" value="both" x-model="grading_policy" class="peer sr-only">
-                                                <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Strict + Fuzzy</div>
-                                            </label>
-                                            <label class="cursor-pointer">
-                                                <input type="radio" name="grading_policy" value="strict" x-model="grading_policy" class="peer sr-only">
-                                                <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Strict Only</div>
-                                            </label>
-                                            <label class="cursor-pointer">
-                                                <input type="radio" name="grading_policy" value="fuzzy" x-model="grading_policy" class="peer sr-only">
-                                                <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Fuzzy Only</div>
-                                            </label>
-                                        </div>
-                                        <div class="mt-3 text-[11px] leading-relaxed text-zinc-500 bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
-                                            <template x-if="grading_policy === 'strict'"><span><strong class="text-amber-500">Strict Only:</strong> Students must match the answer exactly (case-insensitive). Spelling and punctuation must be precise. Recommended for codes, dates, or specific terms.</span></template>
-                                            <template x-if="grading_policy === 'both' || grading_policy === 'auto'"><span><strong class="text-amber-500">Strict + Fuzzy:</strong> Checks for an exact match first. If that fails, it uses AI fuzzy matching to allow for minor typos (~15% variance). Recommended default.</span></template>
-                                            <template x-if="grading_policy === 'fuzzy'"><span><strong class="text-amber-500">Fuzzy Only:</strong> Relies entirely on approximate string matching. Useful when you want to be very lenient with spelling, spacing, or punctuation errors.</span></template>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <!-- Matching -->
-                                <div x-show="type === 'matching'" class="space-y-4">
-                                    <label class="block text-xs font-bold text-pink-500 uppercase tracking-widest mb-2">Matching Pairs</label>
-                                    <div class="space-y-3">
-                                        <template x-for="(pair, idx) in matchingPairs" :key="idx">
-                                            <div class="flex items-center gap-3 group">
-                                                <div class="flex-1"><input type="text" :name="`match_left[${idx}]`" x-model="pair.left" class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg px-3 py-2 text-sm focus:border-pink-500 transition text-right" placeholder="Term"></div>
-                                                <div class="text-zinc-600"><i class="fa-solid fa-arrow-right-long"></i></div>
-                                                <div class="flex-1"><input type="text" :name="`match_right[${idx}]`" x-model="pair.right" class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg px-3 py-2 text-sm focus:border-pink-500 transition" placeholder="Definition"></div>
+                                    <!-- Single/Multi Choice -->
+                                    <div x-show="type === 'single_choice' || type === 'multi_choice'" class="space-y-3">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="text-xs font-black text-zinc-500 uppercase tracking-widest">Options</label>
+                                            <span class="text-[10px] text-zinc-600 bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
+                                                <i class="fa-solid" :class="type === 'single_choice' ? 'fa-circle-dot' : 'fa-square-check'"></i>
+                                                <span x-text="type === 'single_choice' ? 'Select One Correct' : 'Select All Correct'"></span>
+                                            </span>
+                                        </div>
+                                        <template x-for="(opt, index) in options" :key="index">
+                                            <div class="flex items-center group">
+                                                <div class="relative mr-3">
+                                                    <label x-show="type === 'single_choice'" class="cursor-pointer">
+                                                        <input type="radio" name="correct_option" :value="index" :checked="opt.is_correct" class="peer sr-only">
+                                                        <div class="w-6 h-6 rounded-full border-2 border-zinc-700 bg-zinc-900 peer-checked:border-indigo-500 peer-checked:bg-indigo-500 flex items-center justify-center transition-all">
+                                                            <i class="fa-solid fa-check text-[10px] text-white opacity-0 peer-checked:opacity-100"></i>
+                                                        </div>
+                                                    </label>
+                                                    <label x-show="type === 'multi_choice'" class="cursor-pointer">
+                                                        <input type="checkbox" :name="'is_correct[' + index + ']'" value="1" x-model="opt.is_correct" class="peer sr-only">
+                                                        <div class="w-6 h-6 rounded-md border-2 border-zinc-700 bg-zinc-900 peer-checked:border-purple-500 peer-checked:bg-purple-500 flex items-center justify-center transition-all">
+                                                            <i class="fa-solid fa-check text-[10px] text-white opacity-0 peer-checked:opacity-100"></i>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                                <div class="flex-1 relative">
+                                                    <input type="text" name="option_text[]" x-model="opt.text" class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl px-4 py-3 pl-4 pr-10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition shadow-sm group-hover:border-zinc-700" placeholder="Option text...">
+                                                    <button type="button" @click="removeOption(index)" x-show="options.length > 2" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-red-400 transition"><i class="fa-solid fa-trash-can"></i></button>
+                                                </div>
                                             </div>
                                         </template>
+                                        <button type="button" @click="addOption()" class="mt-4 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-white hover:border-zinc-600 transition flex items-center"><i class="fa-solid fa-plus mr-2"></i> Add Option</button>
                                     </div>
-                                    <button type="button" @click="addMatchPair()" class="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/30 transition flex items-center"><i class="fa-solid fa-plus mr-2"></i> Add Pair</button>
-                                </div>
 
-                                <!-- Essay/Short Text -->
-                                <div x-show="['short_text', 'essay'].includes(type)" class="space-y-6">
-                                    <div class="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-2xl">
-                                        <label class="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2"><i class="fa-solid fa-robot mr-1"></i> AI Grading Instructions</label>
-                                        <textarea name="ai_rubric" x-model="ai_rubric" rows="3" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition text-sm" placeholder="Tell the AI exactly what to look for. Example: 'Answer must mention photosynthesis and sunlight.'"></textarea>
-                                        <p class="text-[10px] text-zinc-500 mt-2">Leave blank for generic evaluation.</p>
+                                    <!-- Fill Blank -->
+                                    <div x-show="type === 'fill_blank'" class="space-y-6">
+                                        <div class="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
+                                            <label class="block text-xs font-bold text-amber-500 uppercase tracking-widest mb-2">Accepted Answers</label>
+                                            <input type="text" name="fill_blank_answers" x-model="fill_blank_answers" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:border-amber-500 transition font-mono" placeholder="e.g., hypertext, hyper text (comma separated)">
+                                            <p class="text-[10px] text-zinc-500 mt-2">Students must type one of these exact phrases.</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Grading Match</label>
+                                            <div class="grid grid-cols-3 gap-2">
+                                                <label class="cursor-pointer">
+                                                    <input type="radio" name="grading_policy" value="both" x-model="grading_policy" class="peer sr-only">
+                                                    <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Strict + Fuzzy</div>
+                                                </label>
+                                                <label class="cursor-pointer">
+                                                    <input type="radio" name="grading_policy" value="strict" x-model="grading_policy" class="peer sr-only">
+                                                    <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Strict Only</div>
+                                                </label>
+                                                <label class="cursor-pointer">
+                                                    <input type="radio" name="grading_policy" value="fuzzy" x-model="grading_policy" class="peer sr-only">
+                                                    <div class="text-center py-2 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-bold peer-checked:bg-amber-500/20 peer-checked:text-amber-400 peer-checked:border-amber-500/50 transition">Fuzzy Only</div>
+                                                </label>
+                                            </div>
+                                            <div class="mt-3 text-[11px] leading-relaxed text-zinc-500 bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <template x-if="grading_policy === 'strict'"><span><strong class="text-amber-500">Strict Only:</strong> Students must match the answer exactly (case-insensitive).</span></template>
+                                                <template x-if="grading_policy === 'both' || grading_policy === 'auto'"><span><strong class="text-amber-500">Strict + Fuzzy:</strong> Checks for exact match, then falls back to AI fuzzy matching.</span></template>
+                                                <template x-if="grading_policy === 'fuzzy'"><span><strong class="text-amber-500">Fuzzy Only:</strong> Relies entirely on approximate matching.</span></template>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Matching -->
+                                    <div x-show="type === 'matching'" class="space-y-4">
+                                        <label class="block text-xs font-bold text-pink-500 uppercase tracking-widest mb-2">Matching Pairs</label>
+                                        <div class="space-y-3">
+                                            <template x-for="(pair, idx) in matchingPairs" :key="idx">
+                                                <div class="flex items-center gap-3 group">
+                                                    <div class="flex-1"><input type="text" :name="`match_left[${idx}]`" x-model="pair.left" class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg px-3 py-2 text-sm focus:border-pink-500 transition text-right" placeholder="Term"></div>
+                                                    <div class="text-zinc-600"><i class="fa-solid fa-arrow-right-long"></i></div>
+                                                    <div class="flex-1"><input type="text" :name="`match_right[${idx}]`" x-model="pair.right" class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg px-3 py-2 text-sm focus:border-pink-500 transition" placeholder="Definition"></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <button type="button" @click="addMatchPair()" class="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/30 transition flex items-center"><i class="fa-solid fa-plus mr-2"></i> Add Pair</button>
+                                    </div>
+
+                                    <!-- Essay/Short Text -->
+                                    <div x-show="['short_text', 'essay'].includes(type)" class="space-y-6">
+                                        <div class="bg-indigo-500/5 border border-indigo-500/20 p-5 rounded-2xl">
+                                            <label class="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2"><i class="fa-solid fa-robot mr-1"></i> AI Grading Instructions</label>
+                                            <textarea name="ai_rubric" x-model="ai_rubric" rows="3" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition text-sm" placeholder="Tell the AI exactly what to look for..."></textarea>
+                                            <p class="text-[10px] text-zinc-500 mt-2">Leave blank for generic evaluation.</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Footer -->
-                            <div class="bg-zinc-900/50 p-6 border-t border-zinc-800 flex flex-col md:flex-row gap-6 items-end md:items-center justify-between sticky bottom-0 z-50 backdrop-blur-md">
-                                <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                                    <div class="w-full md:w-32">
-                                        <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Points</label>
-                                        <input type="number" name="points" x-model="points" min="1" class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-3 py-2 text-center font-bold focus:border-blue-500 transition">
-                                    </div>
-                                    <div class="w-full md:w-64">
-                                        <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Explanation (Optional)</label>
-                                        <input type="text" name="explanation" x-model="explanation" class="w-full bg-zinc-950 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm focus:border-blue-500 transition" placeholder="Shown after answer...">
-                                    </div>
-                                </div>
-                                <button type="submit" :disabled="submitting" class="w-full md:w-auto px-8 py-3 rounded-xl font-bold text-white shadow-lg transform hover:-translate-y-0.5 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center" :class="mode === 'edit' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 shadow-blue-500/20'">
+                            <!-- Footer Sticky -->
+                            <div class="p-6 border-t border-zinc-800 bg-zinc-950 flex justify-end shrink-0">
+                                <button type="submit" :disabled="submitting" class="px-10 py-3 rounded-xl font-bold text-white shadow-lg transform hover:-translate-y-0.5 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center" :class="mode === 'edit' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/20' : 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 shadow-blue-500/20'">
                                     <span x-show="!submitting" class="flex items-center"><i class="fa-solid mr-2" :class="mode === 'edit' ? 'fa-floppy-disk' : 'fa-plus'"></i> <span x-text="mode === 'edit' ? 'Update Question' : 'Add Question'"></span></span>
                                     <span x-show="submitting"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
                                 </button>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN: Type Selector (Span 2) -->
+                        <div class="col-span-2 border-l border-zinc-800 bg-zinc-900/30 overflow-y-auto p-4 space-y-3">
+                            <label class="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2">Question Type</label>
+                            <template x-for="(t, key) in questionTypes">
+                                <button @click="type = key" type="button"
+                                        class="w-full relative overflow-hidden group rounded-xl p-3 transition-all duration-300 border flex items-center gap-3"
+                                        :class="type === key 
+                                            ? `bg-gradient-to-r from-${t.color}-900/80 to-${t.color}-600/20 border-${t.color}-500 ring-1 ring-${t.color}-400/50 shadow-lg shadow-${t.color}-900/20` 
+                                            : `bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-600`">
+                                    
+                                    <!-- Shimmer Overlay (Active) -->
+                                    <div x-show="type === key" 
+                                         class="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"></div>
+
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-black/40 border border-zinc-700/50 text-lg transition-colors group-hover:border-zinc-600"
+                                         :class="type === key ? 'text-white border-transparent bg-transparent' : `text-${t.color}-500`">
+                                        <i class="fa-solid" :class="`fa-${t.icon}`"></i>
+                                    </div>
+                                    
+                                    <span class="text-xs font-bold uppercase tracking-wide text-left flex-1 transition-colors"
+                                          :class="type === key ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'" 
+                                          x-text="t.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
