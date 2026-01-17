@@ -325,38 +325,64 @@
                         <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
 
                         <!-- Status Group -->
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Visibility</label>
-                            <div class="relative">
-                                <select name="status" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition appearance-none cursor-pointer">
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center">
+                                <i class="fa-solid fa-eye mr-1.5"></i> Visibility Status
+                            </label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-zinc-500 group-hover:text-indigo-400 transition">
+                                    <i class="fa-solid fa-globe"></i>
+                                </div>
+                                <select name="status" class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl pl-11 pr-10 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition appearance-none cursor-pointer hover:bg-zinc-800/50">
                                     <option value="draft" <?= ($quiz['status'] ?? 'draft') === 'draft' ? 'selected' : '' ?>>Draft (Hidden)</option>
                                     <option value="published" <?= ($quiz['status'] ?? '') === 'published' ? 'selected' : '' ?>>Published (Live)</option>
-                                    <option value="upcoming" <?= ($quiz['status'] ?? '') === 'upcoming' ? 'selected' : '' ?>>Upcoming</option>
+                                    <option value="upcoming" <?= ($quiz['status'] ?? '') === 'upcoming' ? 'selected' : '' ?>>Upcoming (Scheduled)</option>
                                 </select>
                                 <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-zinc-500">
                                     <i class="fa-solid fa-chevron-down text-xs"></i>
                                 </div>
                             </div>
+                            <p class="text-[10px] text-zinc-600 px-1">Controls whether students can access this quiz.</p>
                         </div>
+
+                        <div class="border-t border-zinc-800/50 my-4"></div>
 
                         <!-- Constraints Group -->
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Time (Min)</label>
-                                <input type="number" name="time_limit" value="<?= $quiz['time_limit'] ?>" min="0" 
-                                    class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-3 py-3 text-center font-mono focus:border-indigo-500 transition">
+                                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center">
+                                    <i class="fa-regular fa-clock mr-1.5"></i> Time Limit
+                                </label>
+                                <div class="relative group">
+                                    <input type="number" name="time_limit" value="<?= $quiz['time_limit'] ?>" min="0" 
+                                        class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl pl-3 pr-10 py-3 text-center font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition hover:bg-zinc-800/50">
+                                    <span class="absolute right-3 top-3.5 text-zinc-500 text-xs font-bold pointer-events-none">min</span>
+                                </div>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Pass (%)</label>
-                                <input type="number" name="passing_score" value="<?= $quiz['passing_score'] ?>" min="0" max="100" 
-                                    class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-3 py-3 text-center font-mono focus:border-indigo-500 transition">
+                                <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center">
+                                    <i class="fa-solid fa-trophy mr-1.5"></i> Pass Mark
+                                </label>
+                                <div class="relative group">
+                                    <input type="number" name="passing_score" value="<?= $quiz['passing_score'] ?>" min="0" max="100" 
+                                        class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl pl-3 pr-8 py-3 text-center font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition hover:bg-zinc-800/50">
+                                    <span class="absolute right-3 top-3.5 text-zinc-500 text-xs font-bold pointer-events-none">%</span>
+                                </div>
                             </div>
                         </div>
 
                         <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Attempts Allowed</label>
-                            <input type="number" name="allowed_attempts" value="<?= $quiz['allowed_attempts'] ?>" min="0" 
-                                class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:border-indigo-500 transition" placeholder="0 for unlimited">
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center">
+                                <i class="fa-solid fa-rotate-right mr-1.5"></i> Allowed Attempts
+                            </label>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-zinc-500 group-hover:text-indigo-400 transition">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                </div>
+                                <input type="number" name="allowed_attempts" value="<?= $quiz['allowed_attempts'] ?>" min="0" 
+                                    class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl pl-11 pr-4 py-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition hover:bg-zinc-800/50" placeholder="0">
+                            </div>
+                            <p class="text-[10px] text-zinc-600 px-1">Set to 0 for unlimited retakes.</p>
                         </div>
 
                         <hr class="border-zinc-800">

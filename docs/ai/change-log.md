@@ -610,3 +610,10 @@
         - `resources/views/instructor/quiz_builder.php`: Redesigned layout (Settings on right), added Edit Question functionality.
     - **Rationale**: Improve usability and aesthetics for instructors.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 08:30 (Africa/Cairo)
+    - **Goal**: Polish Quiz Configuration UI.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Redesigned sidebar inputs with icons, custom select styling, and helper text.
+    - **Rationale**: Improve aesthetic appeal and clarity for instructors.
+    - **Tests run + results**: PHP syntax check passed.
