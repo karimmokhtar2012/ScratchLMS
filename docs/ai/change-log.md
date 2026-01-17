@@ -447,11 +447,11 @@
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` passed.
 
-- 2026-01-17 03:10 (Africa/Cairo)
-    - **Goal**: Finalize AI isolation and close resources.
+- 2026-01-17 03:30 (Africa/Cairo)
+    - **Goal**: Add Groq AI reasoning documentation.
     - **Files Changed**:
-        - `app/Services/QuizService.php`: Removed AI metadata writes to `quiz_attempts.answers`, kept AI calls out of `recalculateAttemptScore`, and restored `curl_close()` after API calls.
-    - **Rationale**: Keep answers clean, make recalc deterministic, and prevent cURL handle leaks.
-    - **Security**: Logs remain redacted unless `APP_DEBUG=true`.
+        - `docs/ai/groq-reasoning-report.md`: Created detailed report on Groq API response schema, JSON extraction, and usage.
+    - **Rationale**: Provide engineering reference for AI integration.
+    - **Security**: N/A.
     - **DB Notes**: N/A.
-    - **Tests run + results**: `php -l app/Services/QuizService.php`.
+    - **Tests run + results**: N/A.
