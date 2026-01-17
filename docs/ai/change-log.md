@@ -464,3 +464,12 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: N/A.
+
+- 2026-01-17 04:00 (Africa/Cairo)
+    - **Goal**: Update Groq documentation with Quickstart, compatibility, and rate limits.
+    - **Files Changed**:
+        - `docs/ai/groq-reasoning-report.md`: Added detailed sections on Quickstart, OpenAI Compatibility, Responses API (Beta), and Rate Limits.
+    - **Rationale**: Provide a complete engineering reference for integrating and managing Groq API usage.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: N/A.

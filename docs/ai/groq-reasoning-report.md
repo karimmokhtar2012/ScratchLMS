@@ -123,3 +123,28 @@ A successful response with a JSON payload for grading might look like this:
 
 ### Model Permissions
 *   **Access Control**: Organizations can restrict model usage via "Only Allow" or "Only Block" policies at the organization or project level to enforce compliance or budget constraints. Attempts to use blocked models return a 403 error.
+
+## Integration & Constraints
+
+### Quickstart
+*   **Setup**: Generate an API key from the console and export it as `GROQ_API_KEY`.
+*   **Client**: Use the official `groq` Python library or standard HTTP clients.
+*   **Third-party**: Compatible with Vercel AI SDK, LiteLLM, and LangChain.
+
+### OpenAI Compatibility
+*   **Base URL**: `https://api.groq.com/openai/v1`
+*   **Client Drop-in**: Pass your Groq API key to the `api_key` parameter of OpenAI client libraries.
+*   **Limitations**:
+    *   `logprobs`, `logit_bias`, `top_logprobs` not supported.
+    *   `temperature` must be `> 0`.
+    *   Audio features (`vtt`/`srt`) not supported.
+
+### Responses API (Beta)
+*   **Advanced Features**: Supports text/image inputs, function calling, and Model Context Protocol (MCP).
+*   **Metrics**: Get detailed timing (prompt/queue/completion) via `Groq-Beta: inference-metrics` header.
+*   **Missing Features**: No support for `previous_response_id` (state), `store`, or reusable prompts.
+
+### Rate Limits
+*   **Structure**: Limits enforced per Minute (RPM, TPM), Day (RPD, TPD), and Audio Seconds (ASH, ASD).
+*   **Behavior**: Exceeding limits returns `429 Too Many Requests`.
+*   **Monitoring**: Check response headers (`x-ratelimit-remaining-*`) and the account limits page to manage usage. Cached tokens do not count against limits.
