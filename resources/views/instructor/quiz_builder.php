@@ -163,47 +163,6 @@
             <!-- Builder Form -->
             <div class="relative" x-ref="builderForm">
                 
-                <!-- 1. Visual Type Selector -->
-                <div class="mb-8" x-show="mode === 'add'">
-                    <h2 class="text-xs font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
-                        <i class="fa-solid fa-layer-group mr-2"></i> Select Question Type
-                    </h2>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <!-- Helper to generate type cards -->
-                        <template x-for="(t, key) in {
-                            single_choice: { label: 'Single Choice', icon: 'fa-circle-dot', color: 'indigo', desc: 'Select one correct answer' },
-                            multi_choice: { label: 'Multi Choice', icon: 'fa-square-check', color: 'purple', desc: 'Select multiple answers' },
-                            true_false: { label: 'True / False', icon: 'fa-toggle-on', color: 'emerald', desc: 'Binary choice' },
-                            fill_blank: { label: 'Fill in Blank', icon: 'fa-font', color: 'amber', desc: 'Type missing words' },
-                            matching: { label: 'Matching', icon: 'fa-shuffle', color: 'pink', desc: 'Pair items together' },
-                            short_text: { label: 'Short Text', icon: 'fa-quote-left', color: 'cyan', desc: 'Brief written response' },
-                            essay: { label: 'Essay', icon: 'fa-paragraph', color: 'slate', desc: 'Long detailed answer' },
-                            video_submission: { label: 'Video', icon: 'fa-video', color: 'red', desc: 'Upload or link video' }
-                        }">
-                            <button @click="type = key" 
-                                    class="relative group p-4 rounded-2xl border transition-all duration-300 text-left overflow-hidden h-28 flex flex-col justify-between"
-                                    :class="type === key 
-                                        ? `bg-${t.color}-500/10 border-${t.color}-500 ring-1 ring-${t.color}-500/50` 
-                                        : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700'">
-                                
-                                <!-- Glow Effect -->
-                                <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br opacity-20 blur-2xl transition-opacity duration-500"
-                                     :class="`from-${t.color}-400 to-transparent group-hover:opacity-40`"></div>
-
-                                <div class="relative z-10">
-                                    <i class="fa-solid text-xl mb-2" :class="[`fa-${t.icon}`, type === key ? `text-${t.color}-400` : 'text-zinc-500 group-hover:text-zinc-300']"></i>
-                                    <div class="font-bold text-sm leading-tight transition-colors"
-                                         :class="type === key ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'" 
-                                         x-text="t.label"></div>
-                                </div>
-                                <div class="relative z-10 text-[10px] leading-tight opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0"
-                                     :class="type === key ? `text-${t.color}-200` : 'text-zinc-500'"
-                                     x-text="t.desc"></div>
-                            </button>
-                        </template>
-                    </div>
-                </div>
-
                 <!-- Edit Mode Header -->
                 <div x-show="mode === 'edit'" class="mb-6 flex items-center justify-between bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl">
                     <div class="flex items-center">
@@ -227,8 +186,41 @@
                     <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                     <input type="hidden" name="quiz_id" value="<?= $quiz['id'] ?>">
                     <input type="hidden" name="lesson_id" value="<?= $lesson_id ?>">
-                    <!-- Hidden input to sync type for form submission -->
                     <input type="hidden" name="type" x-model="type">
+
+                    <!-- Type Selector Toolbar -->
+                    <div class="px-6 py-6 border-b border-zinc-800/50 bg-black/40" x-show="mode === 'add'">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <template x-for="(t, key) in {
+                                single_choice: { label: 'Single Choice', icon: 'circle-dot', color: 'blue' },
+                                multi_choice: { label: 'Multi Choice', icon: 'list-check', color: 'purple' },
+                                true_false: { label: 'True / False', icon: 'check-double', color: 'emerald' },
+                                fill_blank: { label: 'Fill Blank', icon: 'keyboard', color: 'amber' },
+                                matching: { label: 'Matching', icon: 'right-left', color: 'pink' },
+                                short_text: { label: 'Short Text', icon: 'comment', color: 'cyan' },
+                                essay: { label: 'Essay', icon: 'align-left', color: 'indigo' },
+                                video_submission: { label: 'Video', icon: 'film', color: 'red' }
+                            }">
+                                <button @click="type = key" type="button"
+                                        class="relative overflow-hidden group rounded-xl p-4 transition-all duration-300 border flex flex-col items-center justify-center gap-3 h-24"
+                                        :class="type === key 
+                                            ? `bg-gradient-to-br from-${t.color}-900/80 to-${t.color}-600/20 border-${t.color}-500 ring-1 ring-${t.color}-400/50 shadow-lg shadow-${t.color}-900/50` 
+                                            : `bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-600`">
+                                    
+                                    <!-- Shimmer Overlay (Active) -->
+                                    <div x-show="type === key" 
+                                         class="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0"></div>
+
+                                    <i class="fa-solid text-2xl relative z-10 transition-transform duration-300 group-hover:scale-110" 
+                                       :class="[`fa-${t.icon}`, type === key ? 'text-white drop-shadow-md' : `text-zinc-600 group-hover:text-${t.color}-400`]"></i>
+                                    
+                                    <span class="text-[10px] font-bold uppercase tracking-widest relative z-10 transition-colors"
+                                          :class="type === key ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'" 
+                                          x-text="t.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
 
                     <!-- Top Bar: Question Text -->
                     <div class="p-6 md:p-8 border-b border-zinc-800 relative bg-zinc-900/30">
@@ -529,6 +521,7 @@
 </div>
 
 <style>
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
     .toggle-checkbox:checked { right: 0; border-color: #6366f1; }
     .toggle-checkbox:checked + .toggle-label { background-color: #6366f1; }
     .toggle-checkbox { right: 50%; transition: all 0.3s; }

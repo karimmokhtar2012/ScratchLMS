@@ -624,3 +624,10 @@
         - `resources/views/instructor/quiz_builder.php`: Replaced standard form with a visual grid type selector, glassmorphism editor, and enhanced inputs for all question types.
     - **Rationale**: Elevate the authoring experience with a modern, expressive, and professional UI as requested.
     - **Tests run + results**: PHP syntax check passed.
+
+- 2026-01-17 09:30 (Africa/Cairo)
+    - **Goal**: Refine Question Type Selector Icons.
+    - **Files Changed**:
+        - `resources/views/instructor/quiz_builder.php`: Updated icon classes to standard FontAwesome 6 Free names (circle-dot, list-check, etc.) for better compatibility.
+    - **Rationale**: Ensure icons render correctly and look distinct.
+    - **Tests run + results**: PHP syntax check passed.
