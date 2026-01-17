@@ -446,3 +446,12 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: `php -l` passed.
+
+- 2026-01-17 03:10 (Africa/Cairo)
+    - **Goal**: Finalize AI isolation and close resources.
+    - **Files Changed**:
+        - `app/Services/QuizService.php`: Removed AI metadata writes to `quiz_attempts.answers`, kept AI calls out of `recalculateAttemptScore`, and restored `curl_close()` after API calls.
+    - **Rationale**: Keep answers clean, make recalc deterministic, and prevent cURL handle leaks.
+    - **Security**: Logs remain redacted unless `APP_DEBUG=true`.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: `php -l app/Services/QuizService.php`.
