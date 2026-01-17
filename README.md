@@ -11,12 +11,12 @@ A high-performance, lightweight Learning Management System (LMS) built from scra
 - **Smart Grading**: Automatically scores subjective answers like essays and short text with high accuracy.
 - **Contextual Rationale**: Provides instructors with a detailed "Why?" for every AI-suggested score, which can be transparently shared with students.
 - **Rubric Awareness**: Follows instructor-defined rubrics to ensure grading consistency across hundreds of students.
-- **Adaptive Feedback**: (Coming Soon) Offers personalized study tips based on quiz performance.
+- **Adaptive Feedback**: Offers personalized study tips based on quiz performance (Coming Soon).
 
 ### 🎨 Instructor Studio Redesign
 We've completely reimagined the course creation workflow to be faster, cleaner, and more powerful.
 - **Visual Quiz Builder**: A new timeline-based interface for crafting assessments.
-- **WYSIWYG Editor**: A rich-text question editor with live preview for Bold, Italic, Underline, and Images.
+- **WYSIWYG Editor**: A visual question editor with live styling for Bold, Italic, Underline, and Images.
 - **Collapsible Workspace**: A professional 3-column layout (Settings | Editor | Formats) that adapts to your focus.
 - **Unified Approvals**: A single command center for managing Quiz Retakes, Manual Grading, and Certificate Issuance.
 
@@ -33,11 +33,11 @@ We've completely reimagined the course creation workflow to be faster, cleaner, 
 
 ## 🕰️ Version 0.5 - 0.1 (Early January 2026)
 
-- **v0.5 (Jan 14)**: **Data Integrity & Tracking**: Fixed critical foreign key constraints for progress tracking and xAPI logs. Standardized database migrations.
-- **v0.4 (Jan 12)**: **Instructor Analytics**: Dashboard for viewing enrollment stats, completion rates, and quiz averages.
-- **v0.3 (Jan 10)**: **Student Experience**: Implemented the "Immersive Player" for distraction-free learning, auto-resume, and note-taking.
-- **v0.2 (Jan 08)**: **Core Commerce**: Added Shopping Cart, Checkout flow, and initial Order management.
-- **v0.1 (Jan 05)**: **Foundation**: Initial MVC framework setup, User Authentication (Login/Register), and basic Course/Lesson CRUD.
+- **v0.5**: **Data Integrity & Tracking**: Fixed foreign key constraints for progress tracking and xAPI logs.
+- **v0.4**: **Instructor Analytics**: Dashboard for viewing enrollment stats and quiz performance.
+- **v0.3**: **Student Experience**: Implemented the Immersive Player, auto-resume, and note-taking.
+- **v0.2**: **Core Commerce**: Added Shopping Cart and Checkout flow.
+- **v0.1**: **Foundation**: Initial MVC framework setup and User Authentication.
 
 ---
 
@@ -46,20 +46,18 @@ We've completely reimagined the course creation workflow to be faster, cleaner, 
 ### 🎓 For Students
 - **Immersive Learning Player**: Distraction-free video playback with lesson navigation and auto-resume.
 - **Adaptive Quizzes**: Interactive assessments supporting multiple choice, true/false, fill-in-the-blank, matching, essay, and video submissions.
-- **Progress Tracking**: Real-time course progress calculation with visual indicators.
+- **Real-time Feedback**: View per-question scores and approved **Scracha** AI rationales immediately after instructor review.
 - **Notes System**: Take private notes timestamped to specific lessons.
-- **Certificates**: Auto-generated certificates upon completion, with support for manual instructor issuance.
-- **Dashboard**: Centralized hub for enrolled courses, pending retakes, notifications, and achievements.
+- **Global Notifications**: Instant feedback via **Toast Notifications** with audio alerts for grading results and course updates.
+- **Dashboard**: Centralized hub for enrolled courses, notifications, and achievements.
 
 ### 👨‍🏫 For Instructors
-- **Course Builder**: Drag-and-drop curriculum management (Modules & Lessons) with bulk reordering.
-- **Advanced Quiz Engine**: 
-    - **Grading Policies**: Configure Strict (exact match), Fuzzy (typo-tolerant), or Manual (instructor review) grading per question.
-    - **Question Bank**: Reusable repository of questions for rapid quiz assembly.
-    - **Manual Grading Queue**: Dedicated workflow for reviewing essays and video submissions with **Scracha** AI assistance.
-- **Unified Approvals**: Streamlined dashboard for managing quiz retake requests and certificate issuance.
-- **Rich Media Support**: Upload and manage video lessons, resources, and attachments.
-- **Analytics**: Track student enrollment, progress, and quiz performance.
+- **Visual Quiz Builder**: Craft assessments using a modern timeline interface with a 3-column collapsible editor.
+- **Advanced Grading Queue**: Dedicated workflow for reviewing subjective answers with **Scracha** AI-assisted scoring and rationales.
+- **Drip Content Management**: Configure unlock rules (Days, Completion %, Sequence) directly from the course settings.
+- **Course Builder**: Drag-and-drop curriculum management with a global **Lesson Library**.
+- **Unified Approvals**: streamlined dashboard for managing quiz retake requests and manual certificate issuance.
+- **Analytics**: Track student enrollment, progress, and detailed quiz performance.
 
 ### 🛡️ For Administrators
 - **User Management**: Bulk actions for enrolling, unenrolling, and managing user roles.
@@ -67,13 +65,13 @@ We've completely reimagined the course creation workflow to be faster, cleaner, 
 - **System Health**: Monitor application logs and system integrity.
 - **Security Core**: Built-in CSRF protection, Rate Limiting, and Role-Based Access Control (RBAC).
 
-## 🧠 Smart Grading Engine
+## 🧠 Smart Grading Engine (Powered by Scracha)
 
 ScratchLMS introduces a flexible grading system designed for modern learning needs:
 
 - **Strict Mode**: Requires exact matches (case-insensitive). Ideal for coding terms or precise answers.
-- **Fuzzy Match**: Uses similarity algorithms (e.g., Levenshtein distance) to accept answers with minor typos (85%+ match).
-- **AI-Assisted Grading (Scracha)**: Pre-scores subjective responses to assist instructors, who can then "Accept" or modify the score based on the AI's rationale.
+- **Fuzzy Match**: Uses similarity algorithms to accept answers with minor typos (85%+ match).
+- **AI-Assisted Grading**: **Scracha** pre-scores subjective responses and provides a detailed rationale to assist instructors.
 - **Manual Review**: Flags subjective answers (Essays, Video URLs) for instructor approval before finalizing the quiz attempt.
 
 ## 🗺️ Adaptive Learning Paths
@@ -82,19 +80,16 @@ Instructors can define the student journey through flexible "Content Flow" setti
 
 - **Linear Sequencing**: Enforce a step-by-step progression. Students must complete the current lesson before unlocking the next.
 - **Free Exploration**: Allow students to jump between lessons and modules freely.
-- **Drip Content**: Schedule content release based on enrollment duration or specific dates (Integrated in Course Settings).
-
-### 🛒 E-Commerce
-- **Shopping Cart**: Fully functional cart system.
-- **Checkout Flow**: Secure checkout process for course purchases.
-- **Coupons**: Discount code support.
+- **Drip Content**: Schedule content release based on enrollment duration, specific dates, or completion milestones.
 
 ## 🛠️ Technology Stack
 
 - **Language**: PHP 8.1+
 - **Database**: SQLite (Zero-config, file-based database)
+- **AI Engine**: **Scracha** (Built on Groq Llama 3.1 70B architecture)
 - **Architecture**: Custom Model-View-Controller (MVC)
 - **Frontend**: Vanilla JS, HTML5, Tailwind CSS (Dark Mode Native), Alpine.js
+- **Audio/UI**: Reusable Toast System with embedded Base64 audio feedback.
 - **Dependencies**: Managed via Composer (Minimal external dependencies)
 
 ## 📋 Prerequisites
