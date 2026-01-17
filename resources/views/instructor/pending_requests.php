@@ -7,6 +7,9 @@
             <p class="text-zinc-400 mt-2">Approve quiz retakes and issue certificates when manual review is required.</p>
         </div>
         <div class="flex items-center gap-4">
+            <a href="/instructor/grading" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/20 transition flex items-center">
+                <i class="fa-solid fa-pen-to-square mr-2"></i> Grading Queue
+            </a>
             <div class="bg-surface border border-zinc-800 rounded-xl px-5 py-3 text-center">
                 <div class="text-xl font-bold text-amber-400"><?= count($attemptRequests) ?></div>
                 <div class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Quiz Requests</div>
@@ -223,8 +226,20 @@
                                     </a>
                                 </td>
                                 <td class="px-6 py-4 text-sm">
-                                    <div class="flex flex-col gap-1 items-start">
+                                    <div class="flex flex-col gap-2 items-start">
                                         <span class="text-zinc-400"><?= $item['ai_score'] !== null ? $item['ai_score'] : '—' ?></span>
+                                        <?php if (!empty($item['ai_feedback'])): ?>
+                                            <details class="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-400 leading-snug">
+                                                <summary class="cursor-pointer text-indigo-300 font-semibold">Show AI Review</summary>
+                                                <div class="mt-2 text-zinc-300"><?= htmlspecialchars($item['ai_feedback']) ?></div>
+                                                <?php if (!empty($item['ai_rationale'])): ?>
+                                                    <div class="mt-2 text-[10px] text-zinc-300">
+                                                        <span class="font-semibold text-indigo-300">Why this score:</span>
+                                                        <span><?= htmlspecialchars($item['ai_rationale']) ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </details>
+                                        <?php endif; ?>
                                         <?php if ($item['ai_score'] !== null): ?>
                                             <form action="/instructor/grading/score" method="post">
                                                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">

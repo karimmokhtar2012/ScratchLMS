@@ -809,12 +809,31 @@ class InstructorController extends Controller
         }
         $certificateApprovals = $db->fetchAll($sqlCerts, $isPrivileged ? [] : [':uid' => $userId]);
 
+        $this->view('instructor.pending_requests', [
+            'attemptRequests' => $attemptRequests,
+            'certificateApprovals' => $certificateApprovals
+        ]);
+    }
+
+    public function gradingQueue(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
+
         $sqlGrading = "SELECT g.id as grading_id,
                               g.attempt_id,
                               g.question_id,
                               g.status,
                               g.ai_score,
                               g.ai_feedback,
+                              g.ai_rationale,
                               g.final_score,
                               u.id as user_id,
                               u.name,
@@ -846,9 +865,7 @@ class InstructorController extends Controller
             $item['submission_text'] = $answers[$item['question_id']] ?? 'No submission found';
         }
 
-        $this->view('instructor.pending_requests', [
-            'attemptRequests' => $attemptRequests,
-            'certificateApprovals' => $certificateApprovals,
+        $this->view('instructor.grading_queue', [
             'gradingQueue' => $gradingQueue
         ]);
     }

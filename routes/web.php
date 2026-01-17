@@ -74,6 +74,7 @@ $router->post('/instructor/module/delete/([^/]+)', [InstructorController::class,
 $router->post('/instructor/lesson/delete/([^/]+)', [InstructorController::class, 'deleteLesson']);
 $router->post('/instructor/course/([^/]+)/enroll-student', [InstructorController::class, 'enrollStudent']);
 $router->get('/instructor/requests', [InstructorController::class, 'pendingRequests']);
+$router->get('/instructor/grading', [InstructorController::class, 'gradingQueue']);
 $router->post('/instructor/modules/reorder', [InstructorController::class, 'reorderModules']);
 $router->post('/instructor/lessons/reorder', [InstructorController::class, 'reorderLessons']);
 $router->get('/instructor/lesson/([^/]+)/edit', [InstructorController::class, 'editLesson']);
