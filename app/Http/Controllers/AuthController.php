@@ -26,8 +26,9 @@ class AuthController extends Controller
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
 
-        $userModel = new User();
-        $user = $userModel->findByEmail($email);
+        // Use UserService to get user with roles in single query (eliminates N+1)
+        $userService = new \App\Services\UserService();
+        $user = $userService->getUserByEmailWithRoles($email);
 
         if ($user && password_verify($password, $user['password'])) {
             if (session_status() === PHP_SESSION_NONE) {
@@ -41,14 +42,7 @@ class AuthController extends Controller
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['can_switch_role'] = $user['can_switch_role'] ?? 0;
-
-            // Fetch and store roles
-            $db = \App\Core\Database::getInstance();
-            $sqlRoles = "SELECT r.slug FROM roles r 
-                         JOIN role_user ru ON r.id = ru.role_id 
-                         WHERE ru.user_id = :uid";
-            $roles = $db->fetchAll($sqlRoles, [':uid' => $user['id']]);
-            $_SESSION['user_roles'] = array_column($roles, 'slug');
+            $_SESSION['user_roles'] = $user['roles']; // Already loaded via single query
 
             // Check Onboarding Status
             $isOnboarded = $user['is_onboarded'] ?? 0;
@@ -78,51 +72,20 @@ class AuthController extends Controller
             return;
         }
 
-        $name = $_POST['name'] ?? '';
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
-
-        if (empty($name) || empty($email) || empty($password)) {
-            $this->view('auth.register', ['error' => 'All fields are required']);
-            return;
-        }
-
-        $userModel = new User();
-        if ($userModel->findByEmail($email)) {
-            $this->view('auth.register', ['error' => 'Email already registered']);
-            return;
-        }
-
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-        $userId = $userModel->create(['name' => $name, 'email' => $email, 'password' => $hashedPassword]);
+        // Use UserService for registration (handles validation, role assignment, notifications)
+        $userService = new \App\Services\UserService();
+        $userId = $userService->register([
+            'name' => $_POST['name'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? ''
+        ]);
 
         if ($userId) {
-            // Assign 'student' role by default
-            $db = \App\Core\Database::getInstance();
-            $sqlRole = "SELECT id FROM roles WHERE slug = 'student'";
-            $resRole = $db->fetchAll($sqlRole);
-            $studentRoleId = $resRole[0]['id'] ?? 3; // Default to 3 (student) if not found
-
-            $db->query("INSERT INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
-                ':uid' => $userId,
-                ':rid' => $studentRoleId
-            ]);
-
-            // Welcome Notification
-            (new \App\Domain\Notifications\Notification())->create([
-                'user_id' => $userId,
-                'type' => 'system',
-                'title' => 'Welcome to ScratchLMS',
-                'message' => "We're glad you're here! Start exploring courses now.",
-                'link' => '/courses'
-            ]);
-
             header('Location: /login');
             exit;
         }
 
-        $this->view('auth.register', ['error' => 'Registration failed']);
+        $this->view('auth.register', ['error' => 'Registration failed. Please check your input and try again.']);
     }
 
     public function logout(): void
