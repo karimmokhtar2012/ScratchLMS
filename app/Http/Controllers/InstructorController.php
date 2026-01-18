@@ -515,13 +515,30 @@ class InstructorController extends Controller
 
              // 2. Insert Structure (ContentItem)
              $contentItemModel = new \App\Domain\Courses\ContentItem();
-             $contentItemModel->createItem([
-                 'course_id' => (int)$moduleCheck['course_id'],
-                 'module_id' => $moduleId,
-                 'item_type' => 'lesson',
-                 'item_id' => $lessonId,
-                 'display_group_id' => null
-             ]);
+             
+             if ($type === 'quiz') {
+                 // Create Quiz Entity
+                 $db->query("INSERT INTO quizzes (lesson_id) VALUES (:lid)", [':lid' => $lessonId]);
+                 $quizId = $db->getConnection()->lastInsertId();
+
+                 // Content Item points to Quiz
+                 $contentItemModel->createItem([
+                     'course_id' => (int)$moduleCheck['course_id'],
+                     'module_id' => $moduleId,
+                     'item_type' => 'quiz',
+                     'item_id' => $quizId,
+                     'display_group_id' => null
+                 ]);
+             } else {
+                 // Standard Lesson
+                 $contentItemModel->createItem([
+                     'course_id' => (int)$moduleCheck['course_id'],
+                     'module_id' => $moduleId,
+                     'item_type' => 'lesson',
+                     'item_id' => $lessonId,
+                     'display_group_id' => null
+                 ]);
+             }
              
              $_SESSION['flash_success'] = 'Lesson added.';
         }
