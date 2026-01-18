@@ -7,10 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function showToast(message, type = 'success', nextUrl = null) {
         const toast = document.createElement('div');
         const colorClass = type === 'success' ? 'bg-emerald-600' : 'bg-blue-600';
-        toast.className = `fixed bottom-8 right-8 ${colorClass} text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-500 translate-y-20 opacity-0 z-50 font-bold flex items-center gap-4`;
-        
+        toast.className = `fixed bottom-4 inset-x-4 md:inset-x-auto md:bottom-8 md:right-8 ${colorClass} text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-500 translate-y-20 opacity-0 z-50 font-bold flex items-center gap-4 border border-white/10`;
+
         let html = `<i class="fa-solid fa-circle-check text-xl"></i> <div>${message}</div>`;
-        
+
         const resolvedNextUrl = nextUrl
             || (typeof NEXT_ITEM_URL !== 'undefined' ? NEXT_ITEM_URL : null)
             || (typeof ITEM_STATE !== 'undefined' && ITEM_STATE && ITEM_STATE.nextItemUrl ? ITEM_STATE.nextItemUrl : null);
@@ -39,13 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function markSidebarComplete() {
         const currentPath = window.location.pathname;
         const activeLink = document.querySelector(`a[href="${currentPath}"]`);
-        
+
         if (activeLink) {
-            const iconContainer = activeLink.querySelector('div'); 
+            const iconContainer = activeLink.querySelector('div');
             if (iconContainer) {
                 iconContainer.className = "mt-0.5 flex-shrink-0";
                 iconContainer.innerHTML = `<div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-xs animate-bounce"><i class="fa-solid fa-check"></i></div>`;
-                
+
                 const title = activeLink.querySelector('.font-medium');
                 if (title) title.classList.add('line-through', 'decoration-zinc-700', 'text-zinc-500');
             }
@@ -67,24 +67,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 meta: meta
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Tracked:', verb, data);
-            
-            if (data.status === 'success' && verb === 'completed') {
-                markSidebarComplete();
-                showToast('Lesson Completed!', 'success', data.next_item_url || null);
-                
-                if (markCompleteBtn) {
-                    markCompleteBtn.disabled = true;
-                    markCompleteBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Completed';
-                    markCompleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            .then(response => response.json())
+            .then(data => {
+                console.log('Tracked:', verb, data);
+
+                if (data.status === 'success' && verb === 'completed') {
+                    markSidebarComplete();
+                    showToast('Lesson Completed!', 'success', data.next_item_url || null);
+
+                    if (markCompleteBtn) {
+                        markCompleteBtn.disabled = true;
+                        markCompleteBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Completed';
+                        markCompleteBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                } else if (data.error) {
+                    console.error('Server Error:', data.error);
                 }
-            } else if (data.error) {
-                console.error('Server Error:', data.error);
-            }
-        })
-        .catch(err => console.error('Tracking Error:', err));
+            })
+            .catch(err => console.error('Tracking Error:', err));
     }
 
     // 4. Standard Video Events
@@ -117,12 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 5. YouTube IFrame API Logic
     if (youtubeContainer) {
         // Global for Notes access
-        window.ytPlayer = null; 
+        window.ytPlayer = null;
         let hasStarted = false;
         let hasHalfway = false;
         const videoId = youtubeContainer.dataset.videoId;
 
-        window.onYouTubeIframeAPIReady = function() {
+        window.onYouTubeIframeAPIReady = function () {
             window.ytPlayer = new YT.Player('youtube-player', {
                 height: '100%',
                 width: '100%',
@@ -184,11 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Notes Feature Logic ---
-    const noteForm = document.getElementById('note-form');
-    const noteContent = document.getElementById('note-content');
-    const timeDisplay = document.getElementById('current-time-display');
-    const timestampBtn = document.getElementById('timestamp-btn');
-    const notesList = document.getElementById('notes-list');
+    const noteForms = [document.getElementById('note-form'), document.getElementById('mobile-note-form')];
+    const noteTimeDisplays = [document.getElementById('current-time-display'), document.getElementById('mobile-current-time-display')];
+    const timestampBtns = [document.getElementById('timestamp-btn'), document.getElementById('mobile-timestamp-btn')];
+    const notesLists = [document.getElementById('notes-list'), document.getElementById('mobile-notes-list')];
 
     let currentTimestamp = 0;
 
@@ -205,43 +204,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Check YouTube
         if (window.ytPlayer && typeof window.ytPlayer.getCurrentTime === 'function') {
-             return window.ytPlayer.getCurrentTime();
+            return window.ytPlayer.getCurrentTime();
         }
         // Fallback for paused standard video
         if (video) return video.currentTime;
-        
+
         return 0;
     }
 
     // Update timestamp display loop
     setInterval(() => {
         currentTimestamp = getPlayerTime();
-        if(timeDisplay) timeDisplay.textContent = formatTime(currentTimestamp);
+        const formatted = formatTime(currentTimestamp);
+        noteTimeDisplays.forEach(el => { if (el) el.textContent = formatted; });
     }, 1000);
 
     // Insert Timestamp into text
-    if(timestampBtn) {
-        timestampBtn.addEventListener('click', () => {
-            const timeStr = `[${formatTime(currentTimestamp)}] `;
-            noteContent.value += timeStr;
-            noteContent.focus();
-        });
-    }
+    timestampBtns.forEach((btn, index) => {
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const timeStr = `[${formatTime(currentTimestamp)}] `;
+                // Find corresponding input (desktop -> desktop, mobile -> mobile)
+                // We know index 0 is desktop, 1 is mobile based on array definition above.
+                // Or simplified: find the relative textarea.
+                const form = btn.closest('form');
+                const textarea = form.querySelector('textarea');
+                if (textarea) {
+                    textarea.value += timeStr;
+                    textarea.focus();
+                }
+            });
+        }
+    });
 
     // Load Notes
     function fetchNotes() {
-        if (!notesList) return;
         fetch(`/notes/lesson/${LESSON_ID}`)
             .then(res => res.json())
             .then(notes => {
-                if (notes.length === 0) {
-                    notesList.innerHTML = `<div class="text-center py-8 text-zinc-600 text-xs">
+                const html = notes.length === 0 ?
+                    `<div class="text-center py-8 text-zinc-600 text-xs">
                         <i class="fa-solid fa-pencil mb-2 block text-lg"></i>
                         No notes yet. Start writing!
-                    </div>`;
-                    return;
-                }
-                notesList.innerHTML = notes.map(note => `
+                    </div>` :
+                    notes.map(note => `
                     <div class="bg-zinc-950 border border-zinc-800 p-3 rounded-lg group animate-fade-in">
                         <div class="flex justify-between items-start mb-1">
                             <span class="text-xs font-bold text-indigo-400 font-mono cursor-pointer hover:underline" onclick="seekTo(${note.timestamp})">${note.timestamp ? formatTime(note.timestamp) : '0:00'}</span>
@@ -250,11 +256,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">${escapeHtml(note.content)}</p>
                     </div>
                 `).join('');
+
+                notesLists.forEach(list => {
+                    if (list) list.innerHTML = html;
+                });
             });
     }
 
     // Seek to timestamp helper
-    window.seekTo = function(seconds) {
+    window.seekTo = function (seconds) {
         if (video) {
             video.currentTime = seconds;
             video.play();
@@ -265,50 +275,54 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Save Note
-    if(noteForm) {
-        noteForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const content = noteContent.value.trim();
-            if (!content) return;
+    noteForms.forEach(form => {
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const textarea = form.querySelector('textarea');
+                const content = textarea.value.trim();
+                if (!content) return;
 
-            const submitBtn = noteForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerText;
-            submitBtn.disabled = true;
-            submitBtn.innerText = 'Saving...';
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerText;
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Saving...';
 
-            fetch('/notes/store', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': window.CSRF_TOKEN
-                },
-                body: JSON.stringify({
-                    lesson_id: LESSON_ID,
-                    content: content,
-                    timestamp: Math.floor(currentTimestamp)
+                fetch('/notes/store', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': window.CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        lesson_id: LESSON_ID,
+                        content: content,
+                        timestamp: Math.floor(currentTimestamp)
+                    })
                 })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    noteContent.value = '';
-                    fetchNotes();
-                    showToast('Note saved', 'success');
-                } else {
-                    console.error('Save Note Error:', data);
-                    showToast(data.message || 'Failed to save note', 'error');
-                }
-            })
-            .catch(err => {
-                console.error('Network Error:', err);
-                showToast('Network error saving note', 'error');
-            })
-            .finally(() => {
-                submitBtn.disabled = false;
-                submitBtn.innerText = originalText;
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Clear all forms
+                            noteForms.forEach(f => { if (f) f.querySelector('textarea').value = ''; });
+                            fetchNotes();
+                            showToast('Note saved', 'success');
+                        } else {
+                            console.error('Save Note Error:', data);
+                            showToast(data.message || 'Failed to save note', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Network Error:', err);
+                        showToast('Network error saving note', 'error');
+                    })
+                    .finally(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = originalText;
+                    });
             });
-        });
-    }
+        }
+    });
 
     // Initial Load
     fetchNotes();
@@ -324,9 +338,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Global delete function
-    window.deleteNote = function(id) {
-        if(!confirm('Delete note?')) return;
-        fetch(`/notes/delete/${id}`, { 
+    window.deleteNote = function (id) {
+        if (!confirm('Delete note?')) return;
+        fetch(`/notes/delete/${id}`, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest', // Important for Controller detection
@@ -335,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
             .then(res => res.json())
             .then(data => {
-                if(data.status === 'success') {
+                if (data.status === 'success') {
                     fetchNotes();
                     showToast('Note deleted', 'success');
                 } else {

@@ -162,3 +162,20 @@
     - **Security**: N/A.
     - **DB Notes**: N/A.
     - **Tests run + results**: Daily report generated.
+- 2026-01-18 20:56 (Africa/Cairo)
+    - **Goal**: Implement expanded Mobile Responsive Design for V1.0 readiness.
+    - **Files Changed**:
+        - `resources/views/layouts/app.php`: Fixed z-index layering for sidebar (z-50) and flash messages (z-60).
+        - `resources/views/auth/login.php`: Added mobile-visible logo block.
+        - `resources/views/auth/register.php`: Added mobile-visible logo block.
+        - `resources/views/onboarding/index.php`: Updated container height to `min-h-screen` on mobile to prevent cutoff.
+        - `resources/views/cart/index.php`: Refactored item list to stack vertically on mobile (flex-col).
+        - `resources/views/learn/player.php`: Added mobile sidebar "Content/Notes" tab switcher and Notes UI.
+        - `public/assets/js/player.js`: Updated Logic to handle dual Note forms (desktop/mobile) and repositioned toasts.
+        - `resources/views/instructor/course_builder.php`: added "Move Up/Down" buttons for mobile reordering.
+        - `resources/views/dashboard.php`: Optimized stats grid to 2 columns on mobile.
+        - `app/Core/Database/Grammar/PostgresGrammar.php`: Fixed SQL syntax errors (compileCheckIn, compileBoolean).
+    - **Rationale**: Ensure a premium, consistent user experience across small screens for all critical flows (Auth, Onboarding, Learning, Dashboard).
+    - **Security**: N/A
+    - **DB Notes**: Fixed `DB_PORT` in `.env` and Postgres grammar issues to ensure backend stability for UI testing.
+    - **Tests run + results**: Manual verification on mobile viewports for all modified pages. Validated Player notes syncing between desktop/mobile forms.
