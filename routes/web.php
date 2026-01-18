@@ -71,7 +71,8 @@ $router->post('/instructor/module/add', [InstructorController::class, 'addModule
 $router->post('/instructor/module/update/([^/]+)', [InstructorController::class, 'updateModule']);
 $router->post('/instructor/lesson/add', [InstructorController::class, 'addLesson']);
 $router->post('/instructor/module/delete/([^/]+)', [InstructorController::class, 'deleteModule']);
-$router->post('/instructor/lesson/delete/([^/]+)', [InstructorController::class, 'deleteLesson']);
+$router->post('/instructor/lesson/delete/([^/]+)', [InstructorController::class, 'deleteLesson']); // Legacy/Direct payload
+$router->post('/instructor/content-item/delete/([^/]+)', [InstructorController::class, 'deleteContentItem']); // New Structural Delete
 $router->post('/instructor/course/([^/]+)/enroll-student', [InstructorController::class, 'enrollStudent']);
 $router->get('/instructor/requests', [InstructorController::class, 'pendingRequests']);
 $router->get('/instructor/grading', [InstructorController::class, 'gradingQueue']);

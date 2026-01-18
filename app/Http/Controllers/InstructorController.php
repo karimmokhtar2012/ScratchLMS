@@ -137,13 +137,14 @@ class InstructorController extends Controller
         // Fetch lessons + existing drip rules for this course (for UI helpers)
         $db = \App\Core\Database::getInstance();
         $lessons = $db->fetchAll(
-            "SELECT l.id, l.title, l.type, m.sort_order as module_sort, l.sort_order as lesson_sort,
+            "SELECT l.id, l.title, l.type, m.sort_order as module_sort, ci.position as lesson_sort,
                     r.unlock_after_days, r.unlock_after_lesson_id, r.unlock_after_percent
-             FROM lessons l
-             JOIN modules m ON l.module_id = m.id
+             FROM content_items ci
+             JOIN lessons l ON ci.item_type = 'lesson' AND ci.item_id = l.id
+             JOIN modules m ON ci.module_id = m.id
              LEFT JOIN lesson_drip_rules r ON r.lesson_id = l.id
-             WHERE m.course_id = :cid
-             ORDER BY m.sort_order ASC, l.sort_order ASC",
+             WHERE ci.course_id = :cid
+             ORDER BY m.sort_order ASC, ci.position ASC",
             [':cid' => $courseId]
         );
 
@@ -1195,14 +1196,57 @@ class InstructorController extends Controller
             
             // Verify ownership of both lesson and target module
             $lesson = $db->fetchAll("SELECT instructor_id FROM lessons WHERE id = :id", [':id' => $lessonId])[0] ?? null;
-            
-            $module = $db->fetchAll("SELECT c.instructor_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :id", [':id' => $moduleId])[0] ?? null;
+            $module = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :id", [':id' => $moduleId])[0] ?? null;
 
             if ($lesson && $module && $lesson['instructor_id'] == $userId && $module['instructor_id'] == $userId) {
+                // 1. Move Payload (Legacy sync)
                 $db->query("UPDATE lessons SET module_id = :mid WHERE id = :lid", [
                     ':mid' => $moduleId,
                     ':lid' => $lessonId
                 ]);
+
+                // 2. Move Content Items (Structure)
+                // We need to move the lesson item AND any grouped items (like attached quizzes)
+                $contentItemModel = new \App\Domain\Courses\ContentItem();
+                
+                // Find the main lesson item
+                $lessonItem = $db->fetchAll("SELECT id, display_group_id FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
+
+                if ($lessonItem) {
+                    // Update lesson item
+                    // Calculate position: append to end
+                    $sqlPos = "SELECT MAX(position) as max_pos FROM content_items WHERE course_id = :cid AND module_id = :mid";
+                    $res = $db->fetchAll($sqlPos, [':cid' => $module['course_id'], ':mid' => $moduleId]);
+                    $newPos = ($res[0]['max_pos'] ?? 0) + 1;
+
+                    $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE id = :id", [
+                        ':mid' => $moduleId,
+                        ':cid' => $module['course_id'],
+                        ':pos' => $newPos,
+                        ':id' => $lessonItem['id']
+                    ]);
+
+                    // Update grouped items (e.g. Quizzes)
+                    if (!empty($lessonItem['display_group_id'])) {
+                        $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE display_group_id = :gid AND id != :lid", [
+                            ':mid' => $moduleId,
+                            ':cid' => $module['course_id'],
+                            ':pos' => $newPos + 1, // Basic logic: put it right after. 
+                            ':gid' => $lessonItem['display_group_id'],
+                            ':lid' => $lessonItem['id']
+                        ]);
+                    }
+                } else {
+                    // Legacy/Library Lesson without Item? Create one.
+                    $contentItemModel->createItem([
+                        'course_id' => (int)$module['course_id'],
+                        'module_id' => $moduleId,
+                        'item_type' => 'lesson',
+                        'item_id' => $lessonId,
+                        'display_group_id' => null
+                    ]);
+                }
+
                 $_SESSION['flash_success'] = 'Lesson added to course successfully.';
             } else {
                 $_SESSION['flash_error'] = 'Invalid operation.';
@@ -1256,7 +1300,7 @@ class InstructorController extends Controller
             $src = $db->fetchAll("SELECT * FROM lessons WHERE id = :id", [':id' => $sourceLessonId])[0] ?? null;
             
             if ($src) {
-                // 2. Duplicate
+                // 2. Duplicate Payload
                 $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order)
                         VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur, 999)";
                 
@@ -1270,12 +1314,70 @@ class InstructorController extends Controller
                     ':att' => $src['attachment_url'],
                     ':dur' => $src['duration']
                 ]);
+                $newLessonId = $db->getConnection()->lastInsertId();
                 
+                // 3. Create Content Item
+                $contentItemModel = new \App\Domain\Courses\ContentItem();
+                $contentItemModel->createItem([
+                    'course_id' => $courseId,
+                    'module_id' => $targetModuleId,
+                    'item_type' => 'lesson',
+                    'item_id' => $newLessonId,
+                    'display_group_id' => null
+                ]);
+
+                // TODO: Copy Quizzes if attached? (Out of scope for now, but good for future)
+
                 $_SESSION['flash_success'] = 'Lesson imported successfully.';
             }
         }
 
         header("Location: /instructor/course/$courseId/edit");
+        exit;
+    }
+
+    public function deleteContentItem(string $id): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+
+        $contentItemId = (int) $id;
+        $db = \App\Core\Database::getInstance();
+
+        // 1. Fetch Item to Identify Payload
+        $item = $db->fetchAll("SELECT * FROM content_items WHERE id = :id", [':id' => $contentItemId])[0] ?? null;
+        if (!$item) {
+            header('Location: /dashboard');
+            exit;
+        }
+
+        // 2. Check Access via Course
+        try {
+            Authorization::requireInstructor($_SESSION['user_id'], (int)$item['course_id']);
+        } catch (\Exception $e) {
+            header('Location: /dashboard');
+            exit;
+        }
+
+        // 3. Delegate to Payload Deletion Logic
+        if ($item['item_type'] === 'lesson') {
+            // Delete Lesson Payload (which deletes the content item too via my previous fix, or we delete here)
+            // Ideally re-use deleteLesson logic but by ID.
+            // Let's call deleteLesson with the payload ID.
+            $this->deleteLesson((string)$item['item_id']); 
+            return;
+        } elseif ($item['item_type'] === 'quiz') {
+            // Quizzes might be attached to lessons or standalone.
+            // If standalone, we delete the quiz payload.
+            // If attached (has display_group_id matching a lesson), we should probably warn, but for now we delete it.
+            $db->query("DELETE FROM quizzes WHERE id = :id", [':id' => $item['item_id']]);
+            $db->query("DELETE FROM content_items WHERE id = :id", [':id' => $contentItemId]);
+            $_SESSION['flash_success'] = 'Quiz deleted.';
+            header("Location: /instructor/course/{$item['course_id']}/edit");
+            exit;
+        }
+
+        $_SESSION['flash_error'] = 'Unknown item type.';
+        header("Location: /instructor/course/{$item['course_id']}/edit");
         exit;
     }
 
@@ -1303,10 +1405,19 @@ class InstructorController extends Controller
         }
 
         if ($hasAccess) {
-            // 1. Delete Structure (ContentItem)
+            // 1. Clean up attached Quiz Content Items
+            // Quizzes attached to this lesson (via legacy FK) will be deleted by DB CASCADE, 
+            // but their content_items rows will remain unless we delete them manually.
+            $attachedQuizzes = $db->fetchAll("SELECT id FROM quizzes WHERE lesson_id = :lid", [':lid' => $lessonId]);
+            foreach ($attachedQuizzes as $q) {
+                $db->query("DELETE FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $q['id']]);
+            }
+
+            // 2. Delete Lesson Content Item (Structure)
             $db->query("DELETE FROM content_items WHERE item_type = 'lesson' AND item_id = :id", [':id' => $lessonId]);
             
-            // 2. Delete Content (Payload)
+            // 3. Delete Lesson Payload (Content)
+            // This triggers ON DELETE CASCADE for the `quizzes` table rows, ensuring data integrity.
             $db->query("DELETE FROM lessons WHERE id = :id", [':id' => $lessonId]);
             
             $_SESSION['flash_success'] = 'Lesson deleted.';

@@ -65,7 +65,8 @@ class ContentItem extends Model
                            WHEN ci.item_type = 'lesson' THEN l.type 
                            WHEN ci.item_type = 'quiz' THEN 'quiz'
                            ELSE 'unknown'
-                       END as type
+                       END as type,
+                       q.lesson_id as quiz_lesson_id
                 FROM content_items ci
                 LEFT JOIN lessons l ON ci.item_type = 'lesson' AND ci.item_id = l.id
                 LEFT JOIN quizzes q ON ci.item_type = 'quiz' AND ci.item_id = q.id
