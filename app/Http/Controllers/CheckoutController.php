@@ -99,8 +99,8 @@ class CheckoutController extends Controller
                     'price_at_purchase' => $course['price']
                 ]);
 
-                // Enroll User (Directly since order is 'paid')
-                $db->insertIgnore('enrollments', [
+                // Enroll User (Directly since order is 'paid') - database-agnostic
+                $db->insertOrIgnore('enrollments', [
                     'user_id' => $userId,
                     'course_id' => $course['id']
                 ]);

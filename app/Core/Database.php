@@ -4,53 +4,25 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Database\Connection;
+use App\Core\Database\Grammar\Grammar;
 use PDO;
-use PDOException;
 use RuntimeException;
 
+/**
+ * Database singleton.
+ * Provides a single shared database connection throughout the application.
+ * 
+ * Supports multiple database drivers: SQLite, MySQL, PostgreSQL.
+ */
 class Database
 {
     private static ?Database $instance = null;
-    private PDO $connection;
+    private Connection $connection;
 
     private function __construct()
     {
-        $config = require __DIR__ . '/../../config/database.php';
-
-        if (($config['driver'] ?? '') === 'sqlite') {
-            $dsn = 'sqlite:' . $config['database'];
-            $username = null;
-            $password = null;
-        } else {
-            $dsn = sprintf(
-                'mysql:host=%s;dbname=%s;charset=%s',
-                $config['host'],
-                $config['dbname'],
-                $config['charset'] ?? 'utf8mb4'
-            );
-            $username = $config['username'];
-            $password = $config['password'];
-        }
-
-        try {
-            $this->connection = new PDO(
-                $dsn,
-                $username,
-                $password,
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ]
-            );
-
-            // Enable Foreign Keys for SQLite
-            if (($config['driver'] ?? '') === 'sqlite') {
-                $this->connection->exec('PRAGMA foreign_keys = ON;');
-            }
-        } catch (PDOException $e) {
-            throw new RuntimeException("Database Connection Error: " . $e->getMessage());
-        }
+        $this->connection = new Connection();
     }
 
     // Prevent cloning
@@ -62,6 +34,9 @@ class Database
         throw new RuntimeException("Cannot unserialize a singleton.");
     }
 
+    /**
+     * Get the singleton instance.
+     */
     public static function getInstance(): self
     {
         if (self::$instance === null) {
@@ -71,99 +46,134 @@ class Database
         return self::$instance;
     }
 
+    /**
+     * Get the underlying PDO connection.
+     */
     public function getConnection(): PDO
+    {
+        return $this->connection->getPdo();
+    }
+
+    /**
+     * Get the Connection wrapper instance.
+     */
+    public function connection(): Connection
     {
         return $this->connection;
     }
 
+    /**
+     * Get the SQL grammar for the current database type.
+     * Use this for database-specific SQL generation.
+     */
+    public function getGrammar(): Grammar
+    {
+        return $this->connection->getGrammar();
+    }
+
+    /**
+     * Get the current database driver name.
+     */
+    public function getDriverName(): string
+    {
+        return $this->connection->getDriverName();
+    }
+
+    /**
+     * Execute a prepared statement with parameters.
+     *
+     * @param string $sql SQL query with placeholders
+     * @param array $params Parameters to bind
+     * @return \PDOStatement|false
+     */
     public function query(string $sql, array $params = []): false|\PDOStatement
     {
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute($params);
-        return $stmt;
+        return $this->connection->query($sql, $params);
     }
 
+    /**
+     * Fetch all results from a query.
+     *
+     * @param string $sql SQL query
+     * @param array $params Parameters to bind
+     * @return array Results
+     */
     public function fetchAll(string $sql, array $params = []): array
     {
-        $stmt = $this->query($sql, $params);
-        return $stmt->fetchAll();
+        return $this->connection->fetchAll($sql, $params);
     }
 
     /**
-     * Perform an UPSERT (Update or Insert) operation in a DB-agnostic way.
+     * Fetch a single row from a query.
      *
-     * @param string $table The table name.
-     * @param array $data Associative array of column => value to insert/update.
-     * @param array $uniqueKeys Array of column names that form the unique constraint (required for SQLite).
+     * @param string $sql SQL query
+     * @param array $params Parameters to bind
+     * @return array|null Single row or null
      */
-    public function upsert(string $table, array $data, array $uniqueKeys): void
+    public function fetchOne(string $sql, array $params = []): ?array
     {
-        $driver = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME);
-        $columns = array_keys($data);
-        $placeholders = array_map(fn($c) => ":$c", $columns);
-        
-        $sql = "INSERT INTO $table (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
-
-        if ($driver === 'sqlite') {
-            $conflictCols = implode(', ', $uniqueKeys);
-            $updateSet = [];
-            foreach ($columns as $col) {
-                if (!in_array($col, $uniqueKeys)) {
-                    $updateSet[] = "$col = excluded.$col";
-                }
-            }
-            if (!empty($updateSet)) {
-                $sql .= " ON CONFLICT($conflictCols) DO UPDATE SET " . implode(', ', $updateSet);
-            } else {
-                $sql .= " ON CONFLICT($conflictCols) DO NOTHING";
-            }
-        } elseif ($driver === 'mysql') {
-            $updateSet = [];
-            foreach ($columns as $col) {
-                if (!in_array($col, $uniqueKeys)) {
-                    $updateSet[] = "$col = VALUES($col)";
-                }
-            }
-            if (!empty($updateSet)) {
-                $sql .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updateSet);
-            }
-            // Note: MySQL ON DUPLICATE KEY UPDATE without changes is implicit DO NOTHING-ish, 
-            // but usually we want at least one field updated or touched. 
-            // If updateSet is empty (only unique keys provided), MySQL effectively does nothing.
-        } else {
-            throw new RuntimeException("UPSERT not supported for driver: $driver");
-        }
-
-        $params = [];
-        foreach ($data as $col => $val) {
-            $params[":$col"] = $val;
-        }
-
-        $this->query($sql, $params);
+        return $this->connection->fetchOne($sql, $params);
     }
 
     /**
-     * Perform an INSERT IGNORE operation in a DB-agnostic way.
-     * Skips insertion if a unique constraint violation occurs.
+     * Execute an INSERT OR IGNORE statement (database-agnostic).
+     * Use this instead of raw "INSERT OR IGNORE" or "INSERT IGNORE" SQL.
      *
-     * @param string $table The table name.
-     * @param array $data Associative array of column => value.
+     * @param string $table Table name
+     * @param array $data Associative array of column => value
+     * @return bool Success
      */
-    public function insertIgnore(string $table, array $data): void
+    public function insertOrIgnore(string $table, array $data): bool
     {
-        $driver = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME);
-        $columns = array_keys($data);
-        $placeholders = array_map(fn($c) => ":$c", $columns);
-        
-        $ignoreKeyword = ($driver === 'sqlite') ? 'OR IGNORE' : 'IGNORE';
-        
-        $sql = "INSERT $ignoreKeyword INTO $table (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
-        
-        $params = [];
-        foreach ($data as $col => $val) {
-            $params[":$col"] = $val;
-        }
+        return $this->connection->insertOrIgnore($table, $data);
+    }
 
-        $this->query($sql, $params);
+    /**
+     * Get the last inserted ID.
+     */
+    public function lastInsertId(): string|false
+    {
+        return $this->connection->lastInsertId();
+    }
+
+    /**
+     * Begin a database transaction.
+     */
+    public function beginTransaction(): bool
+    {
+        return $this->connection->beginTransaction();
+    }
+
+    /**
+     * Commit the current transaction.
+     */
+    public function commit(): bool
+    {
+        return $this->connection->commit();
+    }
+
+    /**
+     * Roll back the current transaction.
+     */
+    public function rollBack(): bool
+    {
+        return $this->connection->rollBack();
+    }
+
+    /**
+     * Check if currently in a transaction.
+     */
+    public function inTransaction(): bool
+    {
+        return $this->connection->inTransaction();
+    }
+
+    /**
+     * Reset the singleton instance.
+     * Useful for testing or when switching database configurations.
+     */
+    public static function resetInstance(): void
+    {
+        self::$instance = null;
     }
 }

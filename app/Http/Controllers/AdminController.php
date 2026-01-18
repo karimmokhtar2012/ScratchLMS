@@ -228,7 +228,8 @@ class AdminController extends Controller
         $userId = (int) $_POST['user_id'];
         $courseId = (int) $_POST['course_id'];
 
-        $this->db->insertIgnore('enrollments', [
+        // Database-agnostic insert
+        $this->db->insertOrIgnore('enrollments', [
             'user_id' => $userId,
             'course_id' => $courseId
         ]);
@@ -274,13 +275,8 @@ class AdminController extends Controller
                 ':cid' => $courseId
             ]);
 
-            // 2. Delete Content Progress (New)
-            $this->db->query("DELETE FROM content_progress WHERE user_id = :uid AND item_id IN (SELECT id FROM content_items WHERE course_id = :cid)", [
-                ':uid' => $userId, 
-                ':cid' => $courseId
-            ]);
-
-            // 3. Delete Completed Lessons Log (Legacy)
+            // 2. Delete Completed Lessons Log
+            // Need to find lessons belonging to this course
             $sqlLessons = "DELETE FROM completed_lessons 
                            WHERE user_id = :uid 
                            AND lesson_id IN (
@@ -290,7 +286,7 @@ class AdminController extends Controller
                            )";
             $this->db->query($sqlLessons, [':uid' => $userId, ':cid' => $courseId]);
 
-            // 4. Delete Quiz Attempts
+            // 3. Delete Quiz Attempts
             $sqlAttempts = "DELETE FROM quiz_attempts 
                             WHERE user_id = :uid 
                             AND quiz_id IN (
@@ -423,7 +419,8 @@ class AdminController extends Controller
         }
 
         foreach ($ids as $uid) {
-            $this->db->insertIgnore('enrollments', [
+            // Database-agnostic insert
+            $this->db->insertOrIgnore('enrollments', [
                 'user_id' => $uid,
                 'course_id' => $courseId
             ]);
