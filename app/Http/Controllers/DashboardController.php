@@ -21,7 +21,7 @@ class DashboardController extends Controller
     public function index(): void
     {
         $userId = $_SESSION['user_id'];
-        
+
         // Fetch Fresh Roles & Permissions
         $db = \App\Core\Database::getInstance();
         $sqlRoles = "SELECT r.slug FROM roles r 
@@ -50,13 +50,13 @@ class DashboardController extends Controller
             header('Location: /courses');
             exit;
         }
-        
+
         $canSwitch = $isAdmin || ($_SESSION['can_switch_role'] ?? 0);
 
         // Determine Mode
         $defaultMode = $isInstructor ? 'instructor' : 'student';
         $mode = $_SESSION['dashboard_mode'] ?? $defaultMode;
-        
+
         // Enforce Mode Permissions
         if ($isInstructor) {
             // If Instructor, check if they are allowed to be in Student mode
@@ -67,7 +67,7 @@ class DashboardController extends Controller
             // If not instructor, must be student (or viewer handled above)
             $mode = 'student';
         }
-        
+
         // Save validated mode back to session to keep state consistent
         $_SESSION['dashboard_mode'] = $mode;
 
@@ -89,22 +89,21 @@ class DashboardController extends Controller
             ];
             $data['recent_activity'] = $this->getRecentActivity($userId);
             $data['enrolled_courses'] = $this->getEnrolledCourses($userId);
-            
+
             // Last Action for Resume
             $data['last_action'] = !empty($data['recent_activity']) ? $data['recent_activity'][0] : null;
-
         } else {
             // --- INSTRUCTOR DATA ---
             $data['created_courses'] = $this->getCreatedCourses($userId);
             $data['notifications'] = $this->getPendingRequests($userId);
             $data['pending_certificate_approvals'] = $this->countPendingCertificateApprovals($userId);
-            
+
             // Calculate Instructor Stats
             $db = \App\Core\Database::getInstance();
             // Total Students across all my courses
             $sqlStudents = "SELECT COUNT(DISTINCT user_id) as count FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE c.instructor_id = :uid";
             $totalStudents = $db->fetchAll($sqlStudents, [':uid' => $userId])[0]['count'] ?? 0;
-            
+
             // Total Content Items
             $sqlItems = "SELECT COUNT(*) as count FROM lessons l JOIN modules m ON l.module_id = m.id JOIN courses c ON m.course_id = c.id WHERE c.instructor_id = :uid";
             $totalItems = $db->fetchAll($sqlItems, [':uid' => $userId])[0]['count'] ?? 0;
@@ -128,7 +127,7 @@ class DashboardController extends Controller
     public function dismissTutorial(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        
+
         $userId = $_SESSION['user_id'] ?? null;
         if (!$userId) return;
 
@@ -140,7 +139,7 @@ class DashboardController extends Controller
     public function switchMode(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        
+
         $roles = $_SESSION['user_roles'] ?? [];
         $isAdmin = in_array('admin', $roles);
         $canSwitch = $isAdmin || ($_SESSION['can_switch_role'] ?? 0);
@@ -152,7 +151,7 @@ class DashboardController extends Controller
 
         $current = $_SESSION['dashboard_mode'] ?? 'student';
         $_SESSION['dashboard_mode'] = ($current === 'student') ? 'instructor' : 'student';
-        
+
         header('Location: /dashboard');
         exit;
     }
@@ -180,15 +179,15 @@ class DashboardController extends Controller
 
     private function countEnrollments(int $userId): int
     {
-        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = 0";
-        $res = $this->db->fetchAll($sql, [':uid' => $userId]);
+        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = :is_comp";
+        $res = $this->db->fetchAll($sql, [':uid' => $userId, ':is_comp' => '0']);
         return $res[0]['count'] ?? 0;
     }
 
     private function countCompletedEnrollments(int $userId): int
     {
-        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = 1";
-        $res = $this->db->fetchAll($sql, [':uid' => $userId]);
+        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = :is_comp";
+        $res = $this->db->fetchAll($sql, [':uid' => $userId, ':is_comp' => '1']);
         return $res[0]['count'] ?? 0;
     }
 
@@ -205,11 +204,17 @@ class DashboardController extends Controller
                 FROM enrollments e
                 JOIN courses c ON e.course_id = c.id
                 WHERE c.instructor_id = :uid
-                  AND c.has_certificate = 1
-                  AND c.certificate_auto_issue = 0
-                  AND e.is_completed = 1
+                  AND c.has_certificate = :has_cert
+                  AND c.certificate_auto_issue = :auto_issue
+                  AND e.is_completed = :is_comp
                   AND e.certificate_id IS NULL";
-        $res = $this->db->fetchAll($sql, [':uid' => $userId]);
+        $params = [
+            ':uid' => $userId,
+            ':has_cert' => '1',
+            ':auto_issue' => '0',
+            ':is_comp' => '1'
+        ];
+        $res = $this->db->fetchAll($sql, $params);
         return (int) ($res[0]['count'] ?? 0);
     }
 

@@ -179,3 +179,19 @@
     - **Security**: N/A
     - **DB Notes**: Fixed `DB_PORT` in `.env` and Postgres grammar issues to ensure backend stability for UI testing.
     - **Tests run + results**: Manual verification on mobile viewports for all modified pages. Validated Player notes syncing between desktop/mobile forms.
+
+- 2026-01-18 21:05 (Africa/Cairo)
+    - **Goal**: Fix Critical Database Compatibility Issues (PostgreSQL Boolean & Missing Methods).
+    - **Files Changed**:
+        - `app/Http/Controllers/DashboardController.php`: Fixed PostgreSQL error `boolean = integer` by using strictly typed bound parameters.
+        - `app/Http/Controllers/InstructorController.php`: Fixed boolean comparisons in SQL string. Fixed undefined variables `$prev/$pct` -> `$unlockLesson/$unlockPercent`.
+        - `app/Core/Database/Grammar/Grammar.php`: Added abstract `compileUpsert`.
+        - `app/Core/Database/Grammar/PostgresGrammar.php`: Implemented `compileUpsert` using `ON CONFLICT DO UPDATE`.
+        - `app/Core/Database/Grammar/MysqlGrammar.php`: Implemented `compileUpsert` using `ON DUPLICATE KEY UPDATE`.
+        - `app/Core/Database/Grammar/SqliteGrammar.php`: Implemented `compileUpsert` using `ON CONFLICT DO UPDATE`.
+        - `app/Core/Database/Connection.php`: Added `upsert` method.
+        - `app/Core/Database.php`: Added `upsert` and `insertIgnore` wrappers.
+    - **Rationale**: Prevent 500 errors on PostgreSQL regarding boolean types and ensure `upsert`/`insertIgnore` methods used in Controllers actually exist in the Database layer.
+    - **Security**: N/A
+    - **DB Notes**: Upsert implementation is now database-agnostic.
+    - **Tests run + results**: Verified linting passed. Manual verification pending user confirmation.

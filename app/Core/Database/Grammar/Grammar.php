@@ -26,6 +26,16 @@ abstract class Grammar
     abstract public function compileInsertOrIgnore(string $table, array $columns): string;
 
     /**
+     * Compile an UPSERT statement (Insert on duplicate update).
+     *
+     * @param string $table Table name
+     * @param array $columns Column names to insert
+     * @param array $uniqueKeys Columns that form the unique constraint (conflict target)
+     * @return string SQL statement prefix
+     */
+    abstract public function compileUpsert(string $table, array $columns, array $uniqueKeys): string;
+
+    /**
      * Get the SQL type for auto-incrementing primary key.
      */
     abstract public function compileAutoIncrement(): string;
@@ -110,15 +120,15 @@ abstract class Grammar
     {
         $quotedTable = $this->quoteIdentifier($table);
         $columnsSql = implode(",\n    ", $columns);
-        
+
         $sql = "CREATE TABLE IF NOT EXISTS $quotedTable (\n    $columnsSql";
-        
+
         if (!empty($constraints)) {
             $sql .= ",\n    " . implode(",\n    ", $constraints);
         }
-        
+
         $sql .= "\n)";
-        
+
         return $sql;
     }
 
@@ -171,7 +181,7 @@ abstract class Grammar
         if (is_string($columns)) {
             $columns = [$columns];
         }
-        
+
         $quoted = array_map(fn($col) => $this->quoteIdentifier($col), $columns);
         return "UNIQUE (" . implode(", ", $quoted) . ")";
     }

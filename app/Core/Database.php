@@ -129,6 +129,27 @@ class Database
     }
 
     /**
+     * Alias for insertOrIgnore.
+     */
+    public function insertIgnore(string $table, array $data): bool
+    {
+        return $this->connection->insertOrIgnore($table, $data);
+    }
+
+    /**
+     * Execute an UPSERT statement.
+     *
+     * @param string $table Table name
+     * @param array $data Data to insert/update
+     * @param array $uniqueKeys Conflict keys
+     * @return bool Success
+     */
+    public function upsert(string $table, array $data, array $uniqueKeys): bool
+    {
+        return $this->connection->upsert($table, $data, $uniqueKeys);
+    }
+
+    /**
      * Get the last inserted ID.
      */
     public function lastInsertId(): string|false

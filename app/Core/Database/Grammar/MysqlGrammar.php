@@ -28,6 +28,33 @@ class MysqlGrammar extends Grammar
         );
     }
 
+    public function compileUpsert(string $table, array $columns, array $uniqueKeys): string
+    {
+        $quotedTable = $this->quoteIdentifier($table);
+        $quotedColumns = array_map(fn($col) => $this->quoteIdentifier($col), $columns);
+        $placeholders = array_map(fn($col) => ":$col", $columns);
+
+        // Filter out keys that shouldn't be updated (the unique keys themselves)
+        $updateColumns = array_diff($columns, $uniqueKeys);
+
+        // MySQL VALUES() function usage for upsert (compatible with 5.7+)
+        // For modern MySQL 8+, use alias: INSERT INTO ... VALUES ... AS new ON DUPLICATE ...
+        // keeping compat with generic VALUES for now or explicitly setting binding
+
+        $updates = array_map(
+            fn($col) => sprintf("%s = VALUES(%s)", $this->quoteIdentifier($col), $this->quoteIdentifier($col)),
+            $updateColumns
+        );
+
+        return sprintf(
+            "INSERT INTO %s (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s",
+            $quotedTable,
+            implode(", ", $quotedColumns),
+            implode(", ", $placeholders),
+            implode(", ", $updates)
+        );
+    }
+
     public function compileAutoIncrement(): string
     {
         return 'INT AUTO_INCREMENT PRIMARY KEY';

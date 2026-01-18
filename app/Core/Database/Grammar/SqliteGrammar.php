@@ -28,6 +28,31 @@ class SqliteGrammar extends Grammar
         );
     }
 
+    public function compileUpsert(string $table, array $columns, array $uniqueKeys): string
+    {
+        $quotedTable = $this->quoteIdentifier($table);
+        $quotedColumns = array_map(fn($col) => $this->quoteIdentifier($col), $columns);
+        $placeholders = array_map(fn($col) => ":$col", $columns);
+        $quotedUnique = array_map(fn($col) => $this->quoteIdentifier($col), $uniqueKeys);
+
+        // Filter out keys that shouldn't be updated (the unique keys themselves)
+        $updateColumns = array_diff($columns, $uniqueKeys);
+
+        $updates = array_map(
+            fn($col) => sprintf("%s = excluded.%s", $this->quoteIdentifier($col), $this->quoteIdentifier($col)),
+            $updateColumns
+        );
+
+        return sprintf(
+            "INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s",
+            $quotedTable,
+            implode(", ", $quotedColumns),
+            implode(", ", $placeholders),
+            implode(", ", $quotedUnique),
+            implode(", ", $updates)
+        );
+    }
+
     public function compileAutoIncrement(): string
     {
         return 'INTEGER PRIMARY KEY AUTOINCREMENT';
