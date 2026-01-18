@@ -36,10 +36,23 @@ class InstructorController extends Controller
         $thumbnail = '';
 
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            // Validate thumbnail file
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            $validation = validateFileUpload($_FILES['thumbnail'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Thumbnail upload failed: ' . $validation['error'];
+                header('Location: /instructor/course/new');
+                exit;
+            }
+
             $uploadDir = __DIR__ . '/../../public/uploads/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
-            $fileName = uniqid() . '_' . basename($_FILES['thumbnail']['name']);
+            $extension = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $uploadDir . $fileName)) {
                 $thumbnail = '/uploads/' . $fileName;
             }
@@ -187,10 +200,23 @@ class InstructorController extends Controller
         $certificateAutoIssue = isset($_POST['certificate_auto_issue']) ? 1 : 0;
 
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            // Validate thumbnail file
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            $validation = validateFileUpload($_FILES['thumbnail'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Thumbnail upload failed: ' . $validation['error'];
+                header("Location: /instructor/course/$courseId/settings");
+                exit;
+            }
+
             $uploadDir = __DIR__ . '/../../public/uploads/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
-            $fileName = uniqid() . '_' . basename($_FILES['thumbnail']['name']);
+            $extension = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $uploadDir . $fileName)) {
                 $thumbnail = '/uploads/' . $fileName;
             }
@@ -375,7 +401,7 @@ class InstructorController extends Controller
         $quizTitle = $courseRes[0]['lesson_title'] ?? 'Quiz';
         $returnPath = $_POST['return'] ?? '';
         $defaultReturn = "/instructor/course/$courseId/student/" . $request['user_id'];
-        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : $defaultReturn;
+        $returnPath = sanitizeRedirect($returnPath, $defaultReturn);
 
         // Security: Ensure Instructor Owns Course
         try {
@@ -476,10 +502,33 @@ class InstructorController extends Controller
         $attachmentUrl = null;
 
         if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            // Validate attachment file
+            $allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'txt'];
+            $allowedMimeTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'text/plain'
+            ];
+
+            $validation = validateFileUpload($_FILES['attachment'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Attachment upload failed: ' . $validation['error'];
+                header('Location: /instructor/course/' . $courseId . '/edit');
+                exit;
+            }
+
             $uploadDir = __DIR__ . '/../../public/uploads/resources/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
-            $fileName = uniqid() . '_' . basename($_FILES['attachment']['name']);
+            $extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $fileName)) {
                 $attachmentUrl = '/uploads/resources/' . $fileName;
             }
@@ -631,9 +680,23 @@ class InstructorController extends Controller
 
         // Video File (If uploaded, overrides content_url)
         if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+            // Validate video file
+            $allowedExtensions = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'];
+            $allowedMimeTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+
+            $validation = validateFileUpload($_FILES['video_file'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Video upload failed: ' . $validation['error'];
+                header("Location: /instructor/lesson/$lessonId/edit");
+                exit;
+            }
+
             $videoDir = $uploadDir . 'videos/';
             if (!is_dir($videoDir)) mkdir($videoDir, 0755, true);
-            $fileName = uniqid() . '_' . basename($_FILES['video_file']['name']);
+
+            $extension = strtolower(pathinfo($_FILES['video_file']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['video_file']['tmp_name'], $videoDir . $fileName)) {
                 $contentUrl = '/uploads/videos/' . $fileName;
             }
@@ -673,9 +736,33 @@ class InstructorController extends Controller
 
         $attachmentUrl = null;
         if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            // Validate attachment file
+            $allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'txt'];
+            $allowedMimeTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'text/plain'
+            ];
+
+            $validation = validateFileUpload($_FILES['attachment'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Attachment upload failed: ' . $validation['error'];
+                header("Location: /instructor/lesson/$lessonId/edit");
+                exit;
+            }
+
             $resDir = $uploadDir . 'resources/';
             if (!is_dir($resDir)) mkdir($resDir, 0755, true);
-            $fileName = uniqid() . '_' . basename($_FILES['attachment']['name']);
+
+            $extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['attachment']['tmp_name'], $resDir . $fileName)) {
                 $attachmentUrl = '/uploads/resources/' . $fileName;
             }
@@ -1057,7 +1144,7 @@ class InstructorController extends Controller
         $enrollmentId = (int) ($_POST['enrollment_id'] ?? 0);
         $userId = $_SESSION['user_id'] ?? null;
         $returnPath = $_POST['return'] ?? '';
-        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : '/instructor/requests#certificates';
+        $returnPath = sanitizeRedirect($returnPath, '/instructor/requests#certificates');
 
         if (!$enrollmentId || !$userId) {
             $_SESSION['flash_error'] = 'Invalid certificate approval request.';

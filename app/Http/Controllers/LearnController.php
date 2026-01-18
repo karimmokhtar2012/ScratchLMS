@@ -37,10 +37,10 @@ class LearnController extends Controller
         // 2. Fetch Course Data
         $courseModel = new Course();
         $course = $courseModel->find($courseId);
-        
+
         $modules = $courseModel->modules($courseId);
         $moduleModel = new Module();
-        
+
         // Build Playlist & Find Current Lesson
         $flatLessons = [];
         foreach ($modules as &$module) {
@@ -85,7 +85,7 @@ class LearnController extends Controller
         $progressService = new \App\Services\CourseProgressService();
         if ($progressService->isLessonLocked($userId, $courseId, $currentLesson['id'])) {
             $_SESSION['flash_error'] = 'This lesson is locked. Please complete the previous lesson first.';
-            
+
             // Redirect to the last completed lesson or the first one if none
             // Simple fallback: just refresh page without lesson ID (which defaults to first/resume logic)
             // But we already calculated resume logic above. If we are here, user specifically requested a locked lesson.
@@ -150,7 +150,7 @@ class LearnController extends Controller
         // 1. Security Check: Find Course and Verify Enrollment
         $sqlCourse = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
         $res = $this->db->fetchAll($sqlCourse, [':lid' => $lessonId]);
-        
+
         if (empty($res)) {
             // Lesson not found or not assigned to a course
             http_response_code(404);
@@ -171,21 +171,28 @@ class LearnController extends Controller
         // 2. Authorized: Log xAPI
         $sqlLog = "INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, :verb, :meta)";
         $this->db->query($sqlLog, [
-            ':uid' => $userId, 
-            ':lid' => $lessonId, 
-            ':verb' => $verb, 
+            ':uid' => $userId,
+            ':lid' => $lessonId,
+            ':verb' => $verb,
             ':meta' => json_encode($input['meta'] ?? [])
         ]);
 
         // 3. Authorized: Mark Completed (database-agnostic)
         if ($verb === 'completed') {
+            // Security Check: Verify lesson is unlocked before marking as complete
+            $progressService = new \App\Services\CourseProgressService();
+            if ($progressService->isLessonLocked($userId, $courseId, $lessonId)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Cannot complete locked lesson. Please complete prerequisites first.']);
+                exit;
+            }
+
             $this->db->insertOrIgnore('completed_lessons', [
                 'user_id' => $userId,
                 'lesson_id' => $lessonId
             ]);
-            
+
             // Trigger Course Progress Update
-            $progressService = new \App\Services\CourseProgressService();
             $progressService->updateProgress($userId, $courseId);
         }
 

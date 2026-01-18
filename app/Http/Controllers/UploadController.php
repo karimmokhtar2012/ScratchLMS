@@ -56,15 +56,15 @@ class UploadController extends Controller
                 exit;
             }
         } else {
-             http_response_code(400);
-             echo json_encode(['status' => 'error', 'message' => 'No file data received']);
-             exit;
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No file data received']);
+            exit;
         }
 
         // Check if all chunks are uploaded
         // Simple check: count files. Better check: verify indexes.
         $uploadedChunks = count(glob($tempDir . '/*.part'));
-        
+
         if ($uploadedChunks === $totalChunks) {
             $this->mergeChunks($tempDir, $fileName, $totalChunks);
         } else {
@@ -79,8 +79,33 @@ class UploadController extends Controller
             mkdir($finalDir, 0755, true);
         }
 
+        // Validate file extension (whitelist for videos)
+        $allowedExtensions = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'];
+        $allowedMimeTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+
+        $extension = strtolower(pathinfo($originalFileName, PATHINFO_EXTENSION));
+
+        if (!in_array($extension, $allowedExtensions, true)) {
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => "File type '$extension' not allowed. Allowed types: " . implode(', ', $allowedExtensions)
+            ]);
+            return;
+        }
+
+        // Check for double extensions (e.g., file.php.mp4)
+        $basename = pathinfo($originalFileName, PATHINFO_FILENAME);
+        if (preg_match('/\.(php|phtml|php3|php4|php5|phar|exe|sh|bat|cmd|js|html|htm)$/i', $basename)) {
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Potential executable file detected in filename'
+            ]);
+            return;
+        }
+
         // Generate a safe unique filename
-        $extension = pathinfo($originalFileName, PATHINFO_EXTENSION);
         $safeName = uniqid() . '_' . time() . '.' . $extension;
         $finalPath = $finalDir . '/' . $safeName;
 
@@ -107,6 +132,24 @@ class UploadController extends Controller
         }
 
         fclose($fp);
+
+        // Validate MIME type of merged file
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $finalPath);
+        finfo_close($finfo);
+
+        $allowedMimeTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+
+        if (!in_array($mimeType, $allowedMimeTypes, true)) {
+            unlink($finalPath); // Delete invalid file
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => "Invalid video file. MIME type '$mimeType' not allowed."
+            ]);
+            return;
+        }
+
         rmdir($tempDir); // Remove temp directory
 
         echo json_encode([

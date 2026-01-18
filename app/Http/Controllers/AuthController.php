@@ -16,6 +16,13 @@ class AuthController extends Controller
 
     public function login(): void
     {
+        // Validate CSRF token
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!hash_equals(\App\Core\Csrf::getToken(), $csrfToken)) {
+            $this->view('auth.login', ['error' => 'Invalid security token. Please try again.']);
+            return;
+        }
+
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
 
@@ -26,11 +33,15 @@ class AuthController extends Controller
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
+
+            // Regenerate session ID to prevent session fixation attacks
+            session_regenerate_id(true);
+
             unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['admin_flash_success'], $_SESSION['admin_flash_error']);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['can_switch_role'] = $user['can_switch_role'] ?? 0;
-            
+
             // Fetch and store roles
             $db = \App\Core\Database::getInstance();
             $sqlRoles = "SELECT r.slug FROM roles r 
@@ -60,6 +71,13 @@ class AuthController extends Controller
 
     public function register(): void
     {
+        // Validate CSRF token
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!hash_equals(\App\Core\Csrf::getToken(), $csrfToken)) {
+            $this->view('auth.register', ['error' => 'Invalid security token. Please try again.']);
+            return;
+        }
+
         $name = $_POST['name'] ?? '';
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
@@ -71,45 +89,45 @@ class AuthController extends Controller
 
         $userModel = new User();
         if ($userModel->findByEmail($email)) {
-             $this->view('auth.register', ['error' => 'Email already registered']);
-             return;
+            $this->view('auth.register', ['error' => 'Email already registered']);
+            return;
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        
+
         $userId = $userModel->create(['name' => $name, 'email' => $email, 'password' => $hashedPassword]);
-        
+
         if ($userId) {
-             // Assign 'student' role by default
-             $db = \App\Core\Database::getInstance();
-             $sqlRole = "SELECT id FROM roles WHERE slug = 'student'";
-             $resRole = $db->fetchAll($sqlRole);
-             $studentRoleId = $resRole[0]['id'] ?? 3; // Default to 3 (student) if not found
+            // Assign 'student' role by default
+            $db = \App\Core\Database::getInstance();
+            $sqlRole = "SELECT id FROM roles WHERE slug = 'student'";
+            $resRole = $db->fetchAll($sqlRole);
+            $studentRoleId = $resRole[0]['id'] ?? 3; // Default to 3 (student) if not found
 
-             $db->query("INSERT INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
-                 ':uid' => $userId,
-                 ':rid' => $studentRoleId
-             ]);
+            $db->query("INSERT INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
+                ':uid' => $userId,
+                ':rid' => $studentRoleId
+            ]);
 
-             // Welcome Notification
-             (new \App\Domain\Notifications\Notification())->create([
-                 'user_id' => $userId,
-                 'type' => 'system',
-                 'title' => 'Welcome to ScratchLMS',
-                 'message' => "We're glad you're here! Start exploring courses now.",
-                 'link' => '/courses'
-             ]);
+            // Welcome Notification
+            (new \App\Domain\Notifications\Notification())->create([
+                'user_id' => $userId,
+                'type' => 'system',
+                'title' => 'Welcome to ScratchLMS',
+                'message' => "We're glad you're here! Start exploring courses now.",
+                'link' => '/courses'
+            ]);
 
-             header('Location: /login');
-             exit;
+            header('Location: /login');
+            exit;
         }
 
         $this->view('auth.register', ['error' => 'Registration failed']);
     }
-    
+
     public function logout(): void
     {
-         if (session_status() === PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['admin_flash_success'], $_SESSION['admin_flash_error']);
