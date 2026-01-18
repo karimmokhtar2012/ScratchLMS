@@ -846,6 +846,14 @@
     - **DB Notes**: `setup_db.php` is now the definitive schema source.
     - **Tests run + results**: Passed 5-phase comprehensive verification plan (Auth, Instructor, Student, Grading, Admin).
 
+- 2026-01-18 02:15 (Africa/Cairo)
+    - **Goal**: Resolve Quiz Builder 404 and final logic gaps.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Refactored `addLesson` to handle the 'quiz' type correctly by creating payload and structure simultaneously.
+        - `resources/views/instructor/course_builder.php`: Removed debug code.
+    - **Rationale**: Quiz Builder links were 404ing because `addLesson` didn't create the necessary `quizzes` row or correctly typed `content_items` for quizzes.
+    - **Tests run + results**: Manual verification of Quiz Builder link generation.
+
 - 2026-01-17 22:45 (EET)
     - **Goal**: Expand Trading Mastery seed data to cover grouped/ungrouped quiz scenarios for Plan A UX testing.
     - **Files Changed**:
