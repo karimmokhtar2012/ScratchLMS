@@ -336,6 +336,9 @@ class QuizService
             if (in_array($q['type'], ['essay', 'video_submission'], true)) {
                 if (isset($manualMap[$q['id']]) && $manualMap[$q['id']]['final_score'] !== null) {
                     $earnedPoints += (float) $manualMap[$q['id']]['final_score'];
+                } else {
+                    // Critical: If manual question has no score yet, grading CANNOT be final.
+                    $manualComplete = false;
                 }
                 continue;
             }

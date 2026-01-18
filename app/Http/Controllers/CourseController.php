@@ -294,10 +294,10 @@ class CourseController extends Controller
             $roleRes = $this->db->fetchAll("SELECT id FROM roles WHERE slug = 'student'");
             $studentRoleId = $roleRes[0]['id'] ?? 3;
 
-            // Assign Student Role
-            $this->db->query("INSERT OR IGNORE INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
-                ':uid' => $userId,
-                ':rid' => $studentRoleId
+            // Assign Student Role safely
+            $this->db->insertIgnore('role_user', [
+                'user_id' => $userId,
+                'role_id' => $studentRoleId
             ]);
 
             // Update Session

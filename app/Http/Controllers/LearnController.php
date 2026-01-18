@@ -77,12 +77,15 @@ class LearnController extends Controller
             $moduleModel = new Module();
             foreach ($modules as &$module) {
                 $module['lessons'] = $moduleModel->lessons($module['id']);
+                $moduleItems = [];
                 foreach ($module['lessons'] as $l) {
                     $l['item_type'] = 'lesson';
                     $l['item_id'] = $l['id'];
+                    $l['display_group_id'] = null; // Ensure key exists
+                    $moduleItems[] = $l;
                     $flatItems[] = $l;
                 }
-                $module['items'] = $module['lessons'];
+                $module['items'] = $moduleItems;
             }
             $playlist = $modules;
         }
@@ -292,20 +295,24 @@ class LearnController extends Controller
         if ($verb === 'completed') {
             // New model progress
             if ($itemId && $this->hasTable('content_progress')) {
-                $this->db->query("INSERT INTO content_progress (user_id, item_id, status, completed_at)
-                                  VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP)
-                                  ON CONFLICT(user_id, item_id) DO UPDATE SET
-                                      status = 'completed',
-                                      completed_at = CURRENT_TIMESTAMP", [
-                    ':uid' => $userId,
-                    ':iid' => $itemId
-                ]);
+                $this->db->upsert(
+                    'content_progress',
+                    [
+                        'user_id' => $userId,
+                        'item_id' => $itemId,
+                        'status' => 'completed',
+                        'completed_at' => date('Y-m-d H:i:s')
+                    ],
+                    ['user_id', 'item_id']
+                );
             }
             
             // Legacy progress
             if ($lessonId) {
-                $sqlComp = "INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)";
-                $this->db->query($sqlComp, [':uid' => $userId, ':lid' => $lessonId]);
+                $this->db->insertIgnore('completed_lessons', [
+                    'user_id' => $userId,
+                    'lesson_id' => $lessonId
+                ]);
             }
             
             // Trigger Course Progress Update

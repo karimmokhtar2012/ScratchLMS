@@ -1,5 +1,6 @@
 <?php 
-    $lockedLessonIds = $lockedLessonIds ?? [];
+    $nextLesson = $nextLesson ?? null;
+    $prevLesson = $prevLesson ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en" class="dark">
@@ -195,9 +196,12 @@
                 </a>
             <?php endif; ?>
 
-            <?php if ($nextItem): ?>
-                <?php $nextUrl = isset($nextItem['id']) ? "/learn/{$course['id']}/item/{$nextItem['id']}" : "/learn/{$course['id']}/lesson/{$nextItem['item_id']}"; ?>
-                <a href="<?= $nextUrl ?>" class="px-4 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition flex items-center font-bold">
+            <?php if (!empty($nextItemUrl)): ?>
+                <a href="<?= $nextItemUrl ?>" class="px-4 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition flex items-center font-bold">
+                    <span class="hidden sm:inline">Next</span> <i class="fa-solid fa-chevron-right ml-1.5"></i>
+                </a>
+            <?php elseif (isset($nextLesson) && $nextLesson): ?>
+                <a href="/learn/<?= $course['id'] ?>/lesson/<?= $nextLesson['id'] ?>" class="px-4 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition flex items-center font-bold">
                     <span class="hidden sm:inline">Next</span> <i class="fa-solid fa-chevron-right ml-1.5"></i>
                 </a>
             <?php else: ?>
@@ -392,7 +396,9 @@
                             </a>
                         <?php endif; ?>
 
-                        <?php if ($quizResult['is_passed'] && $nextLesson): ?>
+                        <?php if ($quizResult['is_passed'] && !empty($nextItemUrl)): ?>
+                            <a href="<?= $nextItemUrl ?>" class="block w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-zinc-200 transition text-lg shadow-lg shadow-white/10">Next Lesson <i class="fa-solid fa-arrow-right ml-2"></i></a>
+                        <?php elseif ($quizResult['is_passed'] && !empty($nextLesson)): ?>
                             <a href="/learn/<?= $course['id'] ?>/lesson/<?= $nextLesson['id'] ?>" class="block w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-zinc-200 transition text-lg shadow-lg shadow-white/10">Next Lesson <i class="fa-solid fa-arrow-right ml-2"></i></a>
                         <?php elseif ($quizResult['is_passed']): ?>
                             <a href="/dashboard" class="block w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-500 transition text-lg">Return to Dashboard</a>
@@ -558,7 +564,7 @@
                 <div x-show="activeTab === 'notes'" class="flex-1 flex flex-col h-full bg-zinc-900/30">
                     <!-- Notes Form -->
                     <div class="p-4 border-b border-zinc-800 bg-surface">
-                        <form id="note-form" class="space-y-3">
+                        <form id="note-form" class="space-y-3" data-no-transition>
                             <textarea id="note-content" rows="3" placeholder="Jot down a thought..." 
                                       class="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-3 text-sm text-white placeholder-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none"></textarea>
                             <div class="flex justify-between items-center">

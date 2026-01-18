@@ -271,11 +271,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = noteContent.value.trim();
             if (!content) return;
 
+            const submitBtn = noteForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Saving...';
+
             fetch('/notes/store', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': window.CSRF_TOKEN || ''
+                    'X-CSRF-TOKEN': window.CSRF_TOKEN
                 },
                 body: JSON.stringify({
                     lesson_id: LESSON_ID,
@@ -297,6 +302,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => {
                 console.error('Network Error:', err);
                 showToast('Network error saving note', 'error');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalText;
             });
         });
     }

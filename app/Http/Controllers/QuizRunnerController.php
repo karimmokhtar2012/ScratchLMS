@@ -310,23 +310,28 @@ class QuizRunnerController extends Controller
                     // New Model Progress (content_items)
                     $item = $db->fetchAll("SELECT id FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $result['quiz_id']])[0] ?? null;
                     if ($item && $this->hasTable($db, 'content_progress')) {
-                        $db->query("INSERT INTO content_progress (user_id, item_id, status, completed_at, score, attempts)
-                                    VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP, :score, 1)
-                                    ON CONFLICT(user_id, item_id) DO UPDATE SET
-                                        status = 'completed',
-                                        completed_at = CURRENT_TIMESTAMP,
-                                        score = excluded.score,
-                                        attempts = content_progress.attempts + 1", [
-                            ':uid' => $userId,
-                            ':iid' => $item['id'],
-                            ':score' => $result['score']
-                        ]);
+                        // Fetch current attempts to increment safely via generic upsert
+                        $currentProgress = $db->fetchAll("SELECT attempts FROM content_progress WHERE user_id = :uid AND item_id = :iid", [':uid' => $userId, ':iid' => $item['id']])[0] ?? null;
+                        $newAttempts = ($currentProgress['attempts'] ?? 0) + 1;
+
+                        $db->upsert(
+                            'content_progress',
+                            [
+                                'user_id' => $userId,
+                                'item_id' => $item['id'],
+                                'status' => 'completed',
+                                'completed_at' => date('Y-m-d H:i:s'), // Current timestamp
+                                'score' => $result['score'],
+                                'attempts' => $newAttempts
+                            ],
+                            ['user_id', 'item_id']
+                        );
                     }
 
                     // Legacy progress
-                    $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
-                        ':uid' => $userId,
-                        ':lid' => $lessonId
+                    $db->insertIgnore('completed_lessons', [
+                        'user_id' => $userId,
+                        'lesson_id' => $lessonId
                     ]);
 
                     // Trigger Course Progress Update
@@ -352,115 +357,489 @@ class QuizRunnerController extends Controller
                 header('Location: /learn/quiz/attempt/' . $attemptId);
                 exit;
             }
-            header('Location: /dashboard');
-        }
-    }
-
-    /**
-     * Show Result Page
-     */
-    public function result(string $attemptId): void
-    {
-        $userId = $_SESSION['user_id'];
-        $db = \App\Core\Database::getInstance();
-        
-        // 1. Fetch Attempt & Context
-        $sql = "SELECT qa.*, q.passing_score, q.show_correct_answers, l.title as lesson_title, l.id as lesson_id, c.id as course_id
-                FROM quiz_attempts qa 
-                JOIN quizzes q ON qa.quiz_id = q.id
-                JOIN lessons l ON q.lesson_id = l.id
-                JOIN modules m ON l.module_id = m.id
-                JOIN courses c ON m.course_id = c.id
-                WHERE qa.id = :id AND qa.user_id = :uid";
-        
-        $attempt = $db->fetchAll($sql, [':id' => $attemptId, ':uid' => $userId]);
-
-        if (empty($attempt)) {
-            header('Location: /dashboard');
-            exit;
-        }
-        $attempt = $attempt[0];
-
-        // 1.5 Fetch Detailed Results if allowed
-        // Ensure strictly boolean check
-        $canReview = !empty($attempt['show_correct_answers']); 
-        
-        $reviewData = null;
-        if ($canReview) {
-            $questions = $db->fetchAll("SELECT * FROM questions WHERE quiz_id = :qid ORDER BY sort_order ASC, id ASC", [':qid' => $attempt['quiz_id']]);
-            $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
+            // Log error but try to redirect to result if attempt was at least created/graded partially
+            // If attemptId exists, we should try to show its state rather than dumping to dashboard
+            error_log("Quiz Submit Error: " . $e->getMessage());
             
-            // Format for View
-            foreach ($questions as &$q) {
-                $q['options'] = json_decode($q['options'] ?? '[]', true);
-                $q['correct_answers'] = json_decode($q['correct_answers'] ?? '[]', true);
-                $q['user_answer'] = $userAnswers[$q['id']] ?? null;
+            if (isset($attemptId) && $attemptId > 0) {
+                 $_SESSION['flash_error'] = 'An error occurred during submission processing, but your attempt was recorded.';
+                 header('Location: /learn/quiz/result/' . $attemptId);
+            } else {
+                 $_SESSION['flash_error'] = 'Submission failed: ' . $e->getMessage();
+                 header('Location: /dashboard');
+            }
+        }
     }
 
-        $reviewData = $questions;
-    }
+        /**
 
-        // 2. Fetch Course & Curriculum (For Sidebar context)
-        $courseModel = new \App\Domain\Courses\Course();
-        $course = $courseModel->find($attempt['course_id']);
-        $modules = $courseModel->modules($attempt['course_id']);
-        $moduleModel = new \App\Domain\Courses\Module();
-        
-        // Build Playlist & Find Next Lesson
-        $flatLessons = [];
-        foreach ($modules as &$module) {
-            $module['lessons'] = $moduleModel->lessons($module['id']);
-            foreach ($module['lessons'] as $l) {
-                $flatLessons[] = $l;
-            }
-        }
+         * Show Result Page
 
-        $nextLesson = null;
-        $found = false;
-        foreach ($flatLessons as $l) {
-            if ($found) {
-                $nextLesson = $l;
-                break;
-            }
-            if ($l['id'] == $attempt['lesson_id']) {
-                $found = true;
-            }
-        }
+         */
 
-        // 3. Mark Lesson Completed if Passed
-        if ($attempt['is_passed']) {
-            // Already handled in submit(), but safe to ensure here for idempotency if needed.
-            // Skipping to avoid duplicate log logic.
-        }
+        public function result(string $attemptId): void
 
-        // 4. Get Completed List for Sidebar
-        $completedSql = "SELECT lesson_id FROM completed_lessons WHERE user_id = :uid";
-        $rows = $db->fetchAll($completedSql, [':uid' => $userId]);
-        $completedLessonIds = array_column($rows, 'lesson_id');
+        {
 
-                // Render PLAYER view but with RESULT content
+            $userId = $_SESSION['user_id'];
 
-                $this->view('learn.player', [
+            $db = \App\Core\Database::getInstance();
 
-                    'course' => $course,
+            
 
-                    'modules' => $modules,
+            // 1. Fetch Attempt & Context
 
-                    'currentLesson' => ['id' => $attempt['lesson_id'], 'title' => $attempt['lesson_title'], 'type' => 'quiz_result'], 
+            $sql = "SELECT qa.*, q.passing_score, q.show_correct_answers, l.title as lesson_title, l.id as lesson_id, c.id as course_id
 
-                    'quizResult' => $attempt, 
+                    FROM quiz_attempts qa 
 
-                    'reviewData' => null, // Don't show review inline anymore
+                    JOIN quizzes q ON qa.quiz_id = q.id
 
-                    'prevLesson' => null, 
+                    JOIN lessons l ON q.lesson_id = l.id
 
-                    'nextLesson' => $nextLesson,
+                    JOIN modules m ON l.module_id = m.id
 
-                    'completedLessonIds' => $completedLessonIds
+                    JOIN courses c ON m.course_id = c.id
 
-                ]);
+                    WHERE qa.id = :id AND qa.user_id = :uid";
+
+            
+
+            $attempt = $db->fetchAll($sql, [':id' => $attemptId, ':uid' => $userId]);
+
+    
+
+            if (empty($attempt)) {
+
+                header('Location: /dashboard');
+
+                exit;
 
             }
+
+            $attempt = $attempt[0];
+
+    
+
+            // 1.5 Fetch Detailed Results if allowed
+
+            $canReview = !empty($attempt['show_correct_answers']); 
+
+            
+
+            $reviewData = null;
+
+            if ($canReview) {
+
+                $questions = $db->fetchAll("SELECT * FROM questions WHERE quiz_id = :qid ORDER BY sort_order ASC, id ASC", [':qid' => $attempt['quiz_id']]);
+
+                $userAnswers = json_decode($attempt['answers'] ?? '{}', true);
+
+                
+
+                // Format for View
+
+                foreach ($questions as &$q) {
+
+                    $q['options'] = json_decode($q['options'] ?? '[]', true);
+
+                    $q['correct_answers'] = json_decode($q['correct_answers'] ?? '[]', true);
+
+                    $q['user_answer'] = $userAnswers[$q['id']] ?? null;
+
+                }
+
+                $reviewData = $questions;
+
+            }
+
+    
+
+            // 2. Fetch Course & Curriculum (New ContentItems Logic)
+
+            $courseModel = new \App\Domain\Courses\Course();
+
+            $course = $courseModel->find($attempt['course_id']);
+
+            $modules = $courseModel->modules($attempt['course_id']);
+
+            $contentItems = $courseModel->contentItems($attempt['course_id']);
+
+            $useContentItems = !empty($contentItems);
+
+    
+
+            // Build Playlist & Flat Items
+
+            $playlist = [];
+
+            $flatItems = [];
+
+    
+
+            if ($useContentItems) {
+
+                $moduleMap = [];
+
+                foreach ($modules as $m) {
+
+                    $moduleMap[$m['id']] = $m;
+
+                    $moduleMap[$m['id']]['items'] = [];
+
+                }
+
+                foreach ($contentItems as $item) {
+
+                    $flatItems[] = $item;
+
+                    if (isset($moduleMap[$item['module_id']])) {
+
+                        $moduleMap[$item['module_id']]['items'][] = $item;
+
+                    }
+
+                }
+
+                $playlist = array_values($moduleMap);
+
+            } else {
+
+                // Legacy Fallback
+
+                $moduleModel = new \App\Domain\Courses\Module();
+
+                foreach ($modules as &$module) {
+
+                    $module['lessons'] = $moduleModel->lessons($module['id']);
+
+                    foreach ($module['lessons'] as $l) {
+
+                        $l['item_type'] = 'lesson';
+
+                        $l['item_id'] = $l['id'];
+
+                        $flatItems[] = $l;
+
+                    }
+
+                    $module['items'] = $module['lessons'];
+
+                }
+
+                $playlist = $modules;
+
+            }
+
+    
+
+            // 3. Determine Current Item (The Quiz that was just attempted)
+
+            // Find item corresponding to the quiz's lesson_id (legacy mapping) or direct quiz item
+
+            $currentItem = null;
+
+            if ($useContentItems) {
+
+                // Try finding by Quiz ID
+
+                foreach ($flatItems as $item) {
+
+                    if ($item['item_type'] === 'quiz' && $item['item_id'] == $attempt['quiz_id']) {
+
+                        $currentItem = $item;
+
+                        break;
+
+                    }
+
+                }
+
+                // Fallback: Try finding by Lesson ID (if quiz attached to lesson in old model)
+
+                if (!$currentItem) {
+
+                    foreach ($flatItems as $item) {
+
+                        if ($item['item_type'] === 'lesson' && $item['item_id'] == $attempt['lesson_id']) {
+
+                            $currentItem = $item;
+
+                            break;
+
+                        }
+
+                    }
+
+                }
+
+            } else {
+
+                // Legacy: Find by lesson_id
+
+                foreach ($flatItems as $item) {
+
+                    if ($item['id'] == $attempt['lesson_id']) {
+
+                        $currentItem = $item;
+
+                        break;
+
+                    }
+
+                }
+
+            }
+
+    
+
+                    // 4. Calculate Prev/Next
+
+    
+
+                    $prevItem = null;
+
+    
+
+                    $nextItem = null;
+
+    
+
+                    $found = false;
+
+    
+
+                    
+
+    
+
+                    if ($currentItem) {
+
+    
+
+                        foreach ($flatItems as $item) {
+
+    
+
+                            if ($found) {
+
+    
+
+                                $nextItem = $item;
+
+    
+
+                                break;
+
+    
+
+                            }
+
+    
+
+                            if ($useContentItems && isset($item['id']) && $currentItem['id'] == $item['id']) {
+
+    
+
+                                $found = true;
+
+    
+
+                            } elseif (!$useContentItems && $item['id'] == $currentItem['id']) {
+
+    
+
+                                $found = true;
+
+    
+
+                            } else {
+
+    
+
+                                $prevItem = $item;
+
+    
+
+                            }
+
+    
+
+                        }
+
+    
+
+                    }
+
+    
+
+            
+
+    
+
+                    $nextItemUrl = null;
+
+    
+
+                    if ($nextItem) {
+
+    
+
+                        $nextItemUrl = ($useContentItems && isset($nextItem['id']))
+
+    
+
+                            ? "/learn/{$attempt['course_id']}/item/{$nextItem['id']}"
+
+    
+
+                            : "/learn/{$attempt['course_id']}/lesson/{$nextItem['item_id']}";
+
+    
+
+                    }
+
+    
+
+            
+
+    
+
+                    // 5. Get Progress
+
+    
+
+                    $completedLessonIds = [];
+
+    
+
+                    $completedItems = [];
+
+    
+
+                    
+
+    
+
+                    if ($useContentItems) {
+
+    
+
+                        $sqlProgress = "SELECT ci.item_type, ci.item_id 
+
+    
+
+                                        FROM content_progress cp 
+
+    
+
+                                        JOIN content_items ci ON cp.item_id = ci.id 
+
+    
+
+                                        WHERE cp.user_id = :uid AND cp.status = 'completed'";
+
+    
+
+                        $progress = $db->fetchAll($sqlProgress, [':uid' => $userId]);
+
+    
+
+                        $completedItems = $progress;
+
+    
+
+                    } else {
+
+    
+
+                        $completedSql = "SELECT lesson_id FROM completed_lessons WHERE user_id = :uid";
+
+    
+
+                        $rows = $db->fetchAll($completedSql, [':uid' => $userId]);
+
+    
+
+                        $completedLessonIds = array_column($rows, 'lesson_id');
+
+    
+
+                    }
+
+    
+
+            
+
+    
+
+                    $this->view('learn.player', [
+
+    
+
+                        'course' => $course,
+
+    
+
+                        'modules' => $playlist,
+
+    
+
+                        'currentLesson' => ['id' => $attempt['lesson_id'], 'title' => $attempt['lesson_title'], 'type' => 'quiz_result'], 
+
+    
+
+                        'currentItem' => $currentItem,
+
+    
+
+                        'quizResult' => $attempt, 
+
+    
+
+                        'reviewData' => null, 
+
+    
+
+                        'prevItem' => $prevItem, 
+
+    
+
+                        'nextItem' => $nextItem,
+
+    
+
+                        'nextItemUrl' => $nextItemUrl,
+
+    
+
+                        'completedLessonIds' => $completedLessonIds,
+
+    
+
+                        'completedItems' => $completedItems,
+
+    
+
+                        'useContentItems' => $useContentItems,
+
+    
+
+                        'lockedItemIds' => []
+
+    
+
+                    ]);
+
+    
+
+                }
+
+    
+
+            
+
+    
 
         
 

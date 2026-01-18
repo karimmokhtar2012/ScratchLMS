@@ -232,16 +232,15 @@ class InstructorController extends Controller
                     $hasRule = ($days !== null) || ($prev !== null) || ($pct !== null);
 
                     if ($hasRule) {
-                        $db->query(
-                            "INSERT INTO lesson_drip_rules (lesson_id, unlock_after_days, unlock_after_lesson_id, unlock_after_percent)
-                             VALUES (:lid, :days, :prev, :pct)
-                             ON CONFLICT(lesson_id) DO UPDATE SET unlock_after_days = :days, unlock_after_lesson_id = :prev, unlock_after_percent = :pct",
+                        $db->upsert(
+                            'lesson_drip_rules',
                             [
-                                ':lid' => $lessonId,
-                                ':days' => $days,
-                                ':prev' => $prev,
-                                ':pct' => $pct
-                            ]
+                                'lesson_id' => $lessonId,
+                                'unlock_after_days' => $days,
+                                'unlock_after_lesson_id' => $prev,
+                                'unlock_after_percent' => $pct
+                            ],
+                            ['lesson_id']
                         );
                     } else {
                         $db->query("DELETE FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lessonId]);
@@ -620,9 +619,30 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
-        $currentLesson = $db->fetchAll("SELECT attachment_url, content_url FROM lessons WHERE id = :id", [':id' => $lessonId])[0] ?? null;
+        $currentLesson = $db->fetchAll("SELECT l.attachment_url, l.content_url, m.course_id, l.instructor_id 
+                                        FROM lessons l 
+                                        LEFT JOIN modules m ON l.module_id = m.id 
+                                        WHERE l.id = :id", [':id' => $lessonId])[0] ?? null;
         
         if (!$currentLesson) {
+            header('Location: /dashboard');
+            exit;
+        }
+
+        // Security Check
+        $hasAccess = false;
+        if ($currentLesson['course_id']) {
+            try {
+                Authorization::requireInstructor($_SESSION['user_id'], $currentLesson['course_id']);
+                $hasAccess = true;
+            } catch (\Exception $e) {}
+        } elseif ($currentLesson['instructor_id'] == $_SESSION['user_id']) {
+            // Library lesson
+            $hasAccess = true;
+        }
+
+        if (!$hasAccess) {
+            $_SESSION['flash_error'] = 'Access denied.';
             header('Location: /dashboard');
             exit;
         }
@@ -673,14 +693,16 @@ class InstructorController extends Controller
                 $hasRule = ($unlockDays || $unlockLesson || $unlockPercent);
 
                 if ($hasRule) {
-                    $db->query("INSERT INTO lesson_drip_rules (lesson_id, unlock_after_days, unlock_after_lesson_id, unlock_after_percent)
-                                VALUES (:lid, :days, :prev, :pct)
-                                ON CONFLICT(lesson_id) DO UPDATE SET unlock_after_days = :days, unlock_after_lesson_id = :prev, unlock_after_percent = :pct", [
-                        ':lid' => $lessonId,
-                        ':days' => $unlockDays,
-                        ':prev' => $unlockLesson ?: null,
-                        ':pct' => $unlockPercent
-                    ]);
+                    $db->upsert(
+                        'lesson_drip_rules',
+                        [
+                            'lesson_id' => $lessonId,
+                            'unlock_after_days' => $unlockDays,
+                            'unlock_after_lesson_id' => $prev ?: null,
+                            'unlock_after_percent' => $pct
+                        ],
+                        ['lesson_id']
+                    );
                 } else {
                     $db->query("DELETE FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lessonId]);
                 }
@@ -1085,25 +1107,24 @@ class InstructorController extends Controller
             // 1. Update Content Progress (The New Source of Truth)
             $item = $db->fetchAll("SELECT id FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $quizId])[0] ?? null;
             if ($item) {
-                $db->query("INSERT OR REPLACE INTO content_progress (user_id, item_id, status, completed_at, score) 
-                            VALUES (:uid, :iid, 'completed', CURRENT_TIMESTAMP, :score)", [
-                    ':uid' => $studentId,
-                    ':iid' => $item['id'],
-                    ':score' => $result['score']
-                ]);
+                $db->upsert(
+                    'content_progress',
+                    [
+                        'user_id' => $studentId,
+                        'item_id' => $item['id'],
+                        'status' => 'completed',
+                        'completed_at' => date('Y-m-d H:i:s'),
+                        'score' => $result['score']
+                    ],
+                    ['user_id', 'item_id']
+                );
             }
 
             // 2. Legacy Fallback (Optional but good for reports)
-            $alreadyCompleted = $db->fetchAll("SELECT 1 FROM completed_lessons WHERE user_id = :uid AND lesson_id = :lid LIMIT 1", [
-                ':uid' => $studentId,
-                ':lid' => $lessonId
+            $db->insertIgnore('completed_lessons', [
+                'user_id' => $studentId,
+                'lesson_id' => $lessonId
             ]);
-            if (empty($alreadyCompleted)) {
-                $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
-                    ':uid' => $studentId,
-                    ':lid' => $lessonId
-                ]);
-            }
 
             $progressService = new \App\Services\CourseProgressService();
             $progressService->updateProgress($studentId, (int) $row['course_id']);
@@ -1226,25 +1247,47 @@ class InstructorController extends Controller
                         ':id' => $lessonItem['id']
                     ]);
 
-                    // Update grouped items (e.g. Quizzes)
+                    // Update grouped items (e.g. Quizzes) - Sequential positions to avoid overlap
                     if (!empty($lessonItem['display_group_id'])) {
-                        $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE display_group_id = :gid AND id != :lid", [
-                            ':mid' => $moduleId,
-                            ':cid' => $module['course_id'],
-                            ':pos' => $newPos + 1, // Basic logic: put it right after. 
+                        $peers = $db->fetchAll("SELECT id FROM content_items WHERE display_group_id = :gid AND id != :lid ORDER BY position ASC", [
                             ':gid' => $lessonItem['display_group_id'],
                             ':lid' => $lessonItem['id']
                         ]);
+                        
+                        foreach ($peers as $index => $peer) {
+                            $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE id = :id", [
+                                ':mid' => $moduleId,
+                                ':cid' => $module['course_id'],
+                                ':pos' => $newPos + ($index + 1),
+                                ':id' => $peer['id']
+                            ]);
+                        }
                     }
                 } else {
                     // Legacy/Library Lesson without Item? Create one.
-                    $contentItemModel->createItem([
+                    $newLessonItemId = $contentItemModel->createItem([
                         'course_id' => (int)$module['course_id'],
                         'module_id' => $moduleId,
                         'item_type' => 'lesson',
                         'item_id' => $lessonId,
                         'display_group_id' => null
                     ]);
+
+                    // CHECK FOR ATTACHED QUIZ (Legacy sync)
+                    $quiz = $db->fetchAll("SELECT id FROM quizzes WHERE lesson_id = :lid", [':lid' => $lessonId])[0] ?? null;
+                    if ($quiz) {
+                        // Generate a group ID and update both
+                        $groupId = (int)$newLessonItemId + 900000;
+                        $db->query("UPDATE content_items SET display_group_id = :gid WHERE id = :id", [':gid' => $groupId, ':id' => $newLessonItemId]);
+                        
+                        $contentItemModel->createItem([
+                            'course_id' => (int)$module['course_id'],
+                            'module_id' => $moduleId,
+                            'item_type' => 'quiz',
+                            'item_id' => $quiz['id'],
+                            'display_group_id' => $groupId
+                        ]);
+                    }
                 }
 
                 $_SESSION['flash_success'] = 'Lesson added to course successfully.';

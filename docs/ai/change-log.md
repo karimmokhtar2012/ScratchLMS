@@ -831,6 +831,21 @@
     - **DB Notes**: Migrated to new `content_items` and `content_progress` schema.
     - **Tests run + results**: Seeded "Trading Mastery" with grouped/ungrouped scenarios; verified `content_items` seeding and playlist structure.
 
+- 2026-01-17 23:55 (Africa/Cairo)
+    - **Goal**: Stabilize and harden the Unified Content Items implementation.
+    - **Files Changed**:
+        - `app/Http/Controllers/InstructorController.php`: Refactored `addLesson`, `edit`, `deleteLesson`, `reorderLessons`, `updateLesson`, and `addToCourse` to strictly use `content_items`. Added ownership checks.
+        - `app/Http/Controllers/QuizController.php`: Refactored `getOrCreateQuiz` to sync with `content_items` and handle visual grouping.
+        - `app/Http/Controllers/QuizRunnerController.php`: Fixed navigation logic and undefined variables in Result view.
+        - `app/Core/Database.php`: Added `upsert` and `insertIgnore` for driver portability (SQLite/MySQL).
+        - `setup_db.php`: Consolidated all historical schema columns (`is_onboarded`, `seen_tutorial`, `transaction_id`, etc.) into the base build script.
+        - `resources/views/instructor/course_builder.php`: Fixed ID mapping between structure and payload.
+        - `resources/views/learn/player.php`: Fixed "stuck loading" on note save by adding `data-no-transition`.
+    - **Rationale**: Resolved "split-brain" data integrity issues, fixed critical navigation bugs, and established database driver portability.
+    - **Security**: Added ownership verification to lesson updates. Hashed seeded admin password.
+    - **DB Notes**: `setup_db.php` is now the definitive schema source.
+    - **Tests run + results**: Passed 5-phase comprehensive verification plan (Auth, Instructor, Student, Grading, Admin).
+
 - 2026-01-17 22:45 (EET)
     - **Goal**: Expand Trading Mastery seed data to cover grouped/ungrouped quiz scenarios for Plan A UX testing.
     - **Files Changed**:

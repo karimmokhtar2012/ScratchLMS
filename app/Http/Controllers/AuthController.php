@@ -80,15 +80,15 @@ class AuthController extends Controller
         $userId = $userModel->create(['name' => $name, 'email' => $email, 'password' => $hashedPassword]);
         
         if ($userId) {
-             // Assign 'viewer' role by default
+             // Assign 'student' role by default
              $db = \App\Core\Database::getInstance();
-             $sqlRole = "SELECT id FROM roles WHERE slug = 'viewer'";
+             $sqlRole = "SELECT id FROM roles WHERE slug = 'student'";
              $resRole = $db->fetchAll($sqlRole);
-             $viewerRoleId = $resRole[0]['id'] ?? 4; // Default to 4 (viewer) if not found logic
+             $studentRoleId = $resRole[0]['id'] ?? 3; // Default to 3 (student) if not found
 
              $db->query("INSERT INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
                  ':uid' => $userId,
-                 ':rid' => $viewerRoleId
+                 ':rid' => $studentRoleId
              ]);
 
              // Welcome Notification

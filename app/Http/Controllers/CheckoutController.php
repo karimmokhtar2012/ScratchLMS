@@ -100,9 +100,9 @@ class CheckoutController extends Controller
                 ]);
 
                 // Enroll User (Directly since order is 'paid')
-                $db->query("INSERT OR IGNORE INTO enrollments (user_id, course_id) VALUES (:uid, :cid)", [
-                    ':uid' => $userId,
-                    ':cid' => $course['id']
+                $db->insertIgnore('enrollments', [
+                    'user_id' => $userId,
+                    'course_id' => $course['id']
                 ]);
             }
 

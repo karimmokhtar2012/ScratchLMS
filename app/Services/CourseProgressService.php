@@ -106,12 +106,17 @@ class CourseProgressService
         }
 
         // 3. Drip rules (item-level)
-        if (!$this->hasTable('content_item_rules')) {
-            return false;
+        $rules = [];
+        if ($this->hasTable('content_item_rules')) {
+            $rules = $this->db->fetchAll("SELECT * FROM content_item_rules WHERE item_id = :iid", [':iid' => $itemId]);
         }
 
-        $rules = $this->db->fetchAll("SELECT * FROM content_item_rules WHERE item_id = :iid", [':iid' => $itemId]);
+        // Fallback: If no item rules, check legacy drip rules if this item is a lesson
         if (empty($rules)) {
+            $item = $this->db->fetchAll("SELECT item_type, item_id FROM content_items WHERE id = :id", [':id' => $itemId])[0] ?? null;
+            if ($item && $item['item_type'] === 'lesson') {
+                return $this->legacyIsLocked($userId, $courseId, (int)$item['item_id']);
+            }
             return false;
         }
 
