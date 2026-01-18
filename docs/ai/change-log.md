@@ -108,3 +108,57 @@
     - **Security**: N/A
     - **DB Notes**: N/A
     - **Tests run + results**: Manual verification of homepage text rendering.
+
+- 2026-01-18 02:53 (Africa/Cairo)
+    - **Goal**: Project audit - fix spelling, logical, security, and design errors.
+    - **Files Changed**:
+        - `app/Http/Controllers/CourseController.php`: Fixed spelling error `redirectEmrollment` → `redirectEnrollment` (method definition + 2 calls).
+        - `app/Http/Controllers/LearnController.php`: Removed duplicate `file_get_contents` call in `track()` method.
+        - `app/Services/QuizService.php`: Added actual time limit enforcement - now throws `TIME_LIMIT_EXCEEDED` exception for late submissions.
+        - `resources/views/dashboard.php`: Added explicit CSRF header to dismiss-tutorial fetch call (defense in depth; layout already auto-injects).
+    - **Rationale**: Clean up codebase quality issues discovered during comprehensive audit.
+    - **Security**: Time limit enforcement prevents students from gaming quiz deadlines. CSRF header adds redundant but harmless protection layer.
+    - **DB Notes**: N/A
+    - **Tests run + results**: Automated test requires `composer install`. Changes verified via diff review.
+    - **Follow-ups**: Sync En/Ar language files roadmap sections (lower priority, content divergence).
+
+- 2026-01-18 17:26 (Africa/Cairo)
+    - **Goal**: Implement multi-database support (MySQL, PostgreSQL, SQLite) for commercial deployment flexibility.
+    - **Files Changed**:
+        - `app/Core/Database.php`: Refactored to use new Connection factory with adapter pattern.
+        - `app/Core/Database/Connection.php`: [NEW] Database connection factory with insertOrIgnore() helper.
+        - `app/Core/Database/Adapters/AdapterInterface.php`: [NEW] Interface for database adapters.
+        - `app/Core/Database/Adapters/SqliteAdapter.php`: [NEW] SQLite-specific adapter with PRAGMA foreign_keys.
+        - `app/Core/Database/Adapters/MysqlAdapter.php`: [NEW] MySQL adapter with InnoDB, strict mode.
+        - `app/Core/Database/Adapters/PostgresAdapter.php`: [NEW] PostgreSQL adapter with schema support.
+        - `app/Core/Database/Grammar/Grammar.php`: [NEW] Base SQL grammar generator class.
+        - `app/Core/Database/Grammar/SqliteGrammar.php`: [NEW] SQLite SQL syntax (INSERT OR IGNORE, AUTOINCREMENT).
+        - `app/Core/Database/Grammar/MysqlGrammar.php`: [NEW] MySQL SQL syntax (INSERT IGNORE, AUTO_INCREMENT).
+        - `app/Core/Database/Grammar/PostgresGrammar.php`: [NEW] PostgreSQL syntax (ON CONFLICT DO NOTHING, SERIAL).
+        - `app/Core/Database/Migration/Migration.php`: [NEW] Base migration class.
+        - `app/Core/Database/Migration/Blueprint.php`: [NEW] Fluent table schema builder.
+        - `app/Core/Database/Migration/Schema.php`: [NEW] Schema facade for create/drop/hasTable.
+        - `app/Core/Database/Migration/MigrationRunner.php`: [NEW] Migration execution and tracking.
+        - `app/helpers.php`: [NEW] env(), loadEnvFile(), config() helper functions.
+        - `config/database.php`: Restructured for multi-driver support with connections array.
+        - `.env.example`: [NEW] Environment configuration template.
+        - `migrate.php`: [NEW] CLI migration tool with --rollback, --fresh, --status options.
+        - `database/migrations/`: [NEW] 8 migration files covering all tables.
+        - `app/Http/Controllers/CourseController.php`: Replaced INSERT OR IGNORE with insertOrIgnore().
+        - `app/Http/Controllers/LearnController.php`: Replaced INSERT OR IGNORE with insertOrIgnore().
+        - `app/Http/Controllers/CheckoutController.php`: Replaced INSERT OR IGNORE with insertOrIgnore().
+        - `app/Http/Controllers/QuizRunnerController.php`: Replaced INSERT OR IGNORE with insertOrIgnore().
+        - `app/Http/Controllers/AdminController.php`: Replaced INSERT OR IGNORE with insertOrIgnore() (3 locations).
+    - **Rationale**: Enable ScratchLMS to be deployed on any hosting (shared hosting with MySQL, VPS with PostgreSQL, or local SQLite for development). This is critical for a commercial LMS product.
+    - **Security**: Database adapters enforce foreign keys. Connection factory abstracts credentials. PDO prepared statements preserved throughout.
+    - **DB Notes**: New migration system replaces standalone scripts. Existing SQLite database continues to work. For fresh installs, run `php migrate.php`.
+    - **Tests run + results**: PHP syntax validation passed for all 25+ new/modified files.
+    - **Follow-ups**: Test on actual MySQL and PostgreSQL servers. Create data migration tool for existing SQLite to new DB.
+
+- 2026-01-18 17:40 (Africa/Cairo)
+    - **Goal**: Finalize session and open issue for Multi-DB testing.
+    - **Files Changed**: N/A (GitHub Issue #39 created).
+    - **Rationale**: Track the validation of the new database system against real infrastructure.
+    - **Security**: N/A.
+    - **DB Notes**: N/A.
+    - **Tests run + results**: Daily report generated.

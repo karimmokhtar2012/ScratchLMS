@@ -60,7 +60,7 @@
 
         body { background-color: #0a0a0a; color: #e2e8f0; }
         body.page-transition > :not(#page-transition) { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
-        body.page-ready > :not(#page-transition) { opacity: 1; transform: translateY(0); }
+        body.page-ready > :not(#page-transition) { opacity: 1; transform: none; }
         body.page-exit > :not(#page-transition) { opacity: 0; transform: translateY(8px); }
         .page-transition-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(80% 80% at 50% 40%, rgba(88, 28, 135, 0.25), rgba(9, 9, 11, 0.95)); opacity: 0; pointer-events: none; transition: opacity 240ms ease; z-index: 9999; }
         .page-transition-overlay.is-active { opacity: 1; pointer-events: auto; }
@@ -88,16 +88,16 @@
                 if (overlay) overlay.classList.add('is-active');
                 document.body.classList.add('page-exit');
             };
-            document.addEventListener('DOMContentLoaded', () => {
+            const markReady = () => {
                 document.body.classList.remove('page-exit');
                 document.body.classList.add('page-ready');
                 if (overlay) overlay.classList.remove('is-active');
-            });
+            };
+            document.addEventListener('DOMContentLoaded', markReady);
             window.addEventListener('pageshow', () => {
-                document.body.classList.remove('page-exit');
-                document.body.classList.add('page-ready');
-                if (overlay) overlay.classList.remove('is-active');
+                markReady();
             });
+            setTimeout(markReady, 1200);
             document.addEventListener('click', (e) => {
                 const link = e.target.closest('a');
                 if (!link) return;
@@ -108,6 +108,15 @@
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 const url = new URL(href, window.location.href);
                 if (url.origin !== window.location.origin) return;
+                
+                // Prevent loader on same-page anchor navigation
+                if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
+
+                showOverlay();
+            }, true);
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (!form || form.dataset.noTransition !== undefined) return;
                 showOverlay();
             }, true);
         })();
@@ -283,27 +292,37 @@
                                 <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Question Bank</span>
                             </a>
                         </div>
-                        <p class="px-4 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2" x-show="!sidebarCollapsed">Bending Requests</p>
+                        <p class="px-4 mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2" x-show="!sidebarCollapsed">Actions</p>
                         <div class="space-y-1">
-                            <a href="/dashboard" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/requests" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
-                                    <i class="fa-solid fa-clipboard-check w-5 text-center group-hover:text-amber-400 transition"></i>
-                                    <span x-show="!sidebarCollapsed">Attempt Approvals</span>
+                                    <i class="fa-solid fa-rotate-right w-5 text-center group-hover:text-amber-400 transition"></i>
+                                    <span x-show="!sidebarCollapsed">Retake Requests</span>
                                 </div>
-                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Attempt Approvals</span>
-                                <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
-                                      :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingAttemptCount ?></span>
+                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Retake Requests</span>
+                                <?php if ($pendingAttemptCount > 0): ?>
+                                    <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
+                                          :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingAttemptCount ?></span>
+                                <?php endif; ?>
                             </a>
-                            <a href="/dashboard" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                            <a href="/instructor/certificates/approvals" class="relative flex items-center px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
                                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between'">
                                 <div class="flex items-center space-x-3" :class="sidebarCollapsed ? 'space-x-0' : ''">
-                                    <i class="fa-solid fa-award w-5 text-center group-hover:text-amber-400 transition"></i>
-                                    <span x-show="!sidebarCollapsed">Certificate Approvals</span>
+                                    <i class="fa-solid fa-award w-5 text-center group-hover:text-emerald-400 transition"></i>
+                                    <span x-show="!sidebarCollapsed">Certificates</span>
                                 </div>
-                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Certificate Approvals</span>
-                                <span class="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30"
-                                      :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingCertificateCount ?></span>
+                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Certificates</span>
+                                <?php if ($pendingCertificateCount > 0): ?>
+                                    <span class="bg-emerald-500/10 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30"
+                                          :class="sidebarCollapsed ? 'absolute -top-1 right-2' : ''"><?= $pendingCertificateCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                            <a href="/instructor/grading" class="relative flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition group"
+                               :class="sidebarCollapsed ? 'justify-center px-0' : ''">
+                                <i class="fa-solid fa-pen-to-square w-5 text-center group-hover:text-indigo-400 transition"></i>
+                                <span x-show="!sidebarCollapsed">Grading Queue</span>
+                                <span x-show="sidebarCollapsed" class="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-zinc-900 text-zinc-200 text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 shadow-xl opacity-0 group-hover:opacity-100 transition">Grading Queue</span>
                             </a>
                         </div>
                     </div>
@@ -438,15 +457,22 @@
         </div>
     </main>
 
+    <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
+
     <script>
         function notificationSystem() {
             return {
                 notifications: [],
                 unreadCount: 0,
                 init() {
+                    // Initial fetch for the header state (independent of toast system's initial fetch)
                     this.fetchNotifications();
-                    // Poll every 60 seconds
-                    setInterval(() => this.fetchNotifications(), 60000);
+                    
+                    // Listen for updates from the Toast system (which handles polling)
+                    window.addEventListener('notifications-updated', (e) => {
+                        this.notifications = e.detail.list;
+                        this.unreadCount = e.detail.count;
+                    });
                 },
                 fetchNotifications() {
                     fetch('/api/notifications')

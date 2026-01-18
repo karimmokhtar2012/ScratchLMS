@@ -45,9 +45,94 @@ class Course extends Model
         return $result[0] ?? null;
     }
 
-    public function modules(int $courseId): array
+        public function modules(int $courseId): array
+
+        {
+
+            $sql = "SELECT * FROM modules WHERE course_id = :course_id ORDER BY sort_order ASC";
+
+            return $this->db->fetchAll($sql, [':course_id' => $courseId]);
+
+        }
+
+    
+
+    public function contentItems(int $courseId): array
+
     {
-        $sql = "SELECT * FROM modules WHERE course_id = :course_id ORDER BY sort_order ASC";
-        return $this->db->fetchAll($sql, [':course_id' => $courseId]);
+
+        if (!$this->hasTable('content_items')) {
+
+            return [];
+
+        }
+
+    
+
+            $sql = "SELECT ci.*, 
+
+                           CASE 
+
+                               WHEN ci.item_type = 'lesson' THEN l.title 
+
+                               WHEN ci.item_type = 'quiz' THEN ql.title
+
+                               ELSE 'Unknown'
+
+                           END as title,
+
+                           CASE 
+
+                               WHEN ci.item_type = 'lesson' THEN l.type 
+
+                               WHEN ci.item_type = 'quiz' THEN 'quiz'
+
+                               ELSE 'unknown'
+
+                           END as type,
+
+                           CASE 
+
+                               WHEN ci.item_type = 'lesson' THEN l.duration 
+
+                               ELSE 0
+
+                           END as duration
+
+                    FROM content_items ci
+
+                    LEFT JOIN lessons l ON ci.item_type = 'lesson' AND ci.item_id = l.id
+
+                    LEFT JOIN quizzes q ON ci.item_type = 'quiz' AND ci.item_id = q.id
+
+                    LEFT JOIN lessons ql ON q.lesson_id = ql.id
+
+                    WHERE ci.course_id = :course_id
+
+                    ORDER BY ci.position ASC";
+
+            
+
+            return $this->db->fetchAll($sql, [':course_id' => $courseId]);
+
+        }
+
+        private function hasTable(string $table): bool
+        {
+            $driver = $this->db->getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name = :table", [
+                    ':table' => $table
+                ]);
+            } else {
+                $tableCheck = $this->db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table", [
+                    ':table' => $table
+                ]);
+            }
+
+            return !empty($tableCheck);
+        }
+
     }
-}
+
+    

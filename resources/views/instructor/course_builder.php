@@ -52,7 +52,11 @@
     </div>
 
     <!-- Chunked Uploader Script -->
-    <script src="/assets/js/uploader.js"></script>
+    <?php 
+        $uploaderJsPath = BASE_PATH . 'public/assets/js/uploader.min.js';
+        $uploaderJsVer = is_file($uploaderJsPath) ? filemtime($uploaderJsPath) : time();
+    ?>
+    <script src="/assets/js/uploader.min.js?v=<?= $uploaderJsVer ?>"></script>
 
     <!-- Curriculum Builder -->
     <div>
@@ -328,16 +332,16 @@
                                     <!-- Actions -->
                                     <div class="flex items-center space-x-2">
                                         <?php if ($lesson['type'] === 'quiz'): ?>
-                                            <a href="/instructor/lesson/<?= $lesson['id'] ?>/quiz" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-500 transition shadow-lg shadow-purple-900/20 edit-mode-only hidden font-bold">
+                                            <a href="/instructor/lesson/<?= $lesson['quiz_lesson_id'] ?>/quiz" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-500 transition shadow-lg shadow-purple-900/20 edit-mode-only hidden font-bold">
                                                 Quiz Builder
                                             </a>
                                         <?php else: ?>
-                                            <a href="/instructor/lesson/<?= $lesson['id'] ?>/edit" class="text-zinc-500 hover:text-white p-2 transition edit-mode-only hidden" title="Edit Content">
+                                            <a href="/instructor/lesson/<?= $lesson['item_id'] ?>/edit" class="text-zinc-500 hover:text-white p-2 transition edit-mode-only hidden" title="Edit Content">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
                                         <?php endif; ?>
                                          
-                                         <form action="/instructor/lesson/delete/<?= $lesson['id'] ?>" method="POST" class="protected-form edit-mode-only hidden" onsubmit="return confirm('Delete this lesson?');">
+                                         <form action="/instructor/content-item/delete/<?= $lesson['id'] ?>" method="POST" class="protected-form edit-mode-only hidden" onsubmit="return confirm('Delete this item?');">
                                             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                                             <button type="submit" class="text-zinc-500 hover:text-red-400 p-2 transition opacity-0 group-hover:opacity-100" title="Delete">
                                                 <i class="fa-solid fa-trash-can"></i>

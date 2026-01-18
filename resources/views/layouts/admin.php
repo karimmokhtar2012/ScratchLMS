@@ -54,7 +54,7 @@
     <style>
         body { background-color: #050505; color: #e5e5e5; }
         body.page-transition > :not(#page-transition) { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
-        body.page-ready > :not(#page-transition) { opacity: 1; transform: translateY(0); }
+        body.page-ready > :not(#page-transition) { opacity: 1; transform: none; }
         body.page-exit > :not(#page-transition) { opacity: 0; transform: translateY(8px); }
         .page-transition-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(80% 80% at 50% 40%, rgba(88, 28, 135, 0.25), rgba(9, 9, 11, 0.95)); opacity: 0; pointer-events: none; transition: opacity 240ms ease; z-index: 9999; }
         .page-transition-overlay.is-active { opacity: 1; pointer-events: auto; }
@@ -83,16 +83,16 @@
                 if (overlay) overlay.classList.add('is-active');
                 document.body.classList.add('page-exit');
             };
-            document.addEventListener('DOMContentLoaded', () => {
+            const markReady = () => {
                 document.body.classList.remove('page-exit');
                 document.body.classList.add('page-ready');
                 if (overlay) overlay.classList.remove('is-active');
-            });
+            };
+            document.addEventListener('DOMContentLoaded', markReady);
             window.addEventListener('pageshow', () => {
-                document.body.classList.remove('page-exit');
-                document.body.classList.add('page-ready');
-                if (overlay) overlay.classList.remove('is-active');
+                markReady();
             });
+            setTimeout(markReady, 1200);
             document.addEventListener('click', (e) => {
                 const link = e.target.closest('a');
                 if (!link) return;
@@ -103,6 +103,11 @@
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 const url = new URL(href, window.location.href);
                 if (url.origin !== window.location.origin) return;
+                showOverlay();
+            }, true);
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (!form || form.dataset.noTransition !== undefined) return;
                 showOverlay();
             }, true);
         })();
@@ -181,5 +186,6 @@
         </div>
     </main>
 
+    <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
 </html>

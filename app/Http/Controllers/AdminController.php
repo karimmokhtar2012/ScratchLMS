@@ -228,9 +228,10 @@ class AdminController extends Controller
         $userId = (int) $_POST['user_id'];
         $courseId = (int) $_POST['course_id'];
 
-        $this->db->query("INSERT OR IGNORE INTO enrollments (user_id, course_id) VALUES (:uid, :cid)", [
-            ':uid' => $userId,
-            ':cid' => $courseId
+        // Database-agnostic insert
+        $this->db->insertOrIgnore('enrollments', [
+            'user_id' => $userId,
+            'course_id' => $courseId
         ]);
 
         echo json_encode(['status' => 'success']);
@@ -418,9 +419,10 @@ class AdminController extends Controller
         }
 
         foreach ($ids as $uid) {
-            $this->db->query("INSERT OR IGNORE INTO enrollments (user_id, course_id) VALUES (:uid, :cid)", [
-                ':uid' => $uid,
-                ':cid' => $courseId
+            // Database-agnostic insert
+            $this->db->insertOrIgnore('enrollments', [
+                'user_id' => $uid,
+                'course_id' => $courseId
             ]);
         }
 

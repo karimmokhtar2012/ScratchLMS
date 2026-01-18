@@ -4,14 +4,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const youtubeContainer = document.getElementById('youtube-player');
 
     // 1. Toast Notification Helper
-    function showToast(message, type = 'success') {
+    function showToast(message, type = 'success', nextUrl = null) {
         const toast = document.createElement('div');
         const colorClass = type === 'success' ? 'bg-emerald-600' : 'bg-blue-600';
         toast.className = `fixed bottom-8 right-8 ${colorClass} text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-500 translate-y-20 opacity-0 z-50 font-bold flex items-center gap-4`;
         
         let html = `<i class="fa-solid fa-circle-check text-xl"></i> <div>${message}</div>`;
         
-        if (NEXT_LESSON_ID) {
+        const resolvedNextUrl = nextUrl
+            || (typeof NEXT_ITEM_URL !== 'undefined' ? NEXT_ITEM_URL : null)
+            || (typeof ITEM_STATE !== 'undefined' && ITEM_STATE && ITEM_STATE.nextItemUrl ? ITEM_STATE.nextItemUrl : null);
+        if (resolvedNextUrl) {
+            html += `<a href="${resolvedNextUrl}" class="ml-4 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs transition border border-white/20">Next Item &rarr;</a>`;
+        } else if (typeof NEXT_LESSON_ID !== 'undefined' && NEXT_LESSON_ID) {
             html += `<a href="/learn/${COURSE_ID}/lesson/${NEXT_LESSON_ID}" class="ml-4 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs transition border border-white/20">Next Lesson &rarr;</a>`;
         }
 
@@ -57,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({
                 lesson_id: LESSON_ID,
+                item_id: typeof ITEM_ID !== 'undefined' ? ITEM_ID : null,
                 verb: verb,
                 meta: meta
             })
@@ -67,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (data.status === 'success' && verb === 'completed') {
                 markSidebarComplete();
-                showToast('Lesson Completed!', 'success');
+                showToast('Lesson Completed!', 'success', data.next_item_url || null);
                 
                 if (markCompleteBtn) {
                     markCompleteBtn.disabled = true;
@@ -265,11 +271,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = noteContent.value.trim();
             if (!content) return;
 
+            const submitBtn = noteForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Saving...';
+
             fetch('/notes/store', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': window.CSRF_TOKEN || ''
+                    'X-CSRF-TOKEN': window.CSRF_TOKEN
                 },
                 body: JSON.stringify({
                     lesson_id: LESSON_ID,
@@ -291,6 +302,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => {
                 console.error('Network Error:', err);
                 showToast('Network error saving note', 'error');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerText = originalText;
             });
         });
     }

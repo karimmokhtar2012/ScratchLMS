@@ -81,7 +81,7 @@ class InstructorController extends Controller
     {
         $courseId = (int) $id;
         $courseModel = new Course();
-        $moduleModel = new Module();
+        $contentItemModel = new \App\Domain\Courses\ContentItem(); // Use new model
 
         $course = $courseModel->find($courseId);
         if (!$course) {
@@ -99,11 +99,17 @@ class InstructorController extends Controller
 
         $modules = $courseModel->modules($courseId);
         foreach ($modules as &$module) {
-            $module['lessons'] = $moduleModel->lessons($module['id']);
+            // New Logic: Fetch from ContentItems
+            $module['items'] = $contentItemModel->getModuleStructure((int)$module['id']);
+            // Backwards compatibility for view (alias items to lessons if view expects 'lessons')
+            // Ideally, we update the view to iterate 'items'
+            $module['lessons'] = $module['items']; 
         }
 
         // Fetch lessons for import library (all lessons owned by instructor)
         $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
         $libraryLessons = $db->fetchAll("SELECT id, title, type FROM lessons WHERE instructor_id = :uid ORDER BY id DESC", [':uid' => $_SESSION['user_id']]);
 
         $this->view('instructor.course_builder', ['course' => $course, 'modules' => $modules, 'libraryLessons' => $libraryLessons]);
@@ -128,7 +134,24 @@ class InstructorController extends Controller
             exit;
         }
 
-        $this->view('instructor.edit_course', ['course' => $course]);
+        // Fetch lessons + existing drip rules for this course (for UI helpers)
+        $db = \App\Core\Database::getInstance();
+        $lessons = $db->fetchAll(
+            "SELECT l.id, l.title, l.type, m.sort_order as module_sort, ci.position as lesson_sort,
+                    r.unlock_after_days, r.unlock_after_lesson_id, r.unlock_after_percent
+             FROM content_items ci
+             JOIN lessons l ON ci.item_type = 'lesson' AND ci.item_id = l.id
+             JOIN modules m ON ci.module_id = m.id
+             LEFT JOIN lesson_drip_rules r ON r.lesson_id = l.id
+             WHERE ci.course_id = :cid
+             ORDER BY m.sort_order ASC, ci.position ASC",
+            [':cid' => $courseId]
+        );
+
+        $this->view('instructor.edit_course', [
+            'course' => $course,
+            'course_lessons' => $lessons
+        ]);
     }
 
     public function update(string $id): void
@@ -187,6 +210,44 @@ class InstructorController extends Controller
             ':flow' => $contentFlow,
             ':id' => $courseId
         ]);
+
+        // Persist drip rules per lesson if drip modes are chosen (for convenience in course settings)
+        if (in_array($contentFlow, ['drip_time', 'drip_progress', 'drip_combined'], true)) {
+            $dripRules = $_POST['drip_rules'] ?? [];
+            if (is_array($dripRules) && !empty($dripRules)) {
+                // Fetch lessons belonging to this course to validate ownership
+                $lessons = $db->fetchAll("SELECT l.id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid", [
+                    ':cid' => $courseId
+                ]);
+                $lessonIds = array_column($lessons, 'id');
+
+                foreach ($dripRules as $lessonId => $rule) {
+                    $lessonId = (int) $lessonId;
+                    if (!in_array($lessonId, $lessonIds, true)) {
+                        continue;
+                    }
+                    $days = isset($rule['days']) && $rule['days'] !== '' ? (int) $rule['days'] : null;
+                    $prev = isset($rule['lesson']) && $rule['lesson'] !== '' ? (int) $rule['lesson'] : null;
+                    $pct = isset($rule['percent']) && $rule['percent'] !== '' ? (int) $rule['percent'] : null;
+                    $hasRule = ($days !== null) || ($prev !== null) || ($pct !== null);
+
+                    if ($hasRule) {
+                        $db->upsert(
+                            'lesson_drip_rules',
+                            [
+                                'lesson_id' => $lessonId,
+                                'unlock_after_days' => $days,
+                                'unlock_after_lesson_id' => $prev,
+                                'unlock_after_percent' => $pct
+                            ],
+                            ['lesson_id']
+                        );
+                    } else {
+                        $db->query("DELETE FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lessonId]);
+                    }
+                }
+            }
+        }
 
         $_SESSION['flash_success'] = 'Course details updated.';
         header("Location: /instructor/course/$courseId/settings");
@@ -308,12 +369,21 @@ class InstructorController extends Controller
 
         $courseId = $courseRes[0]['course_id'];
         $quizTitle = $courseRes[0]['lesson_title'] ?? 'Quiz';
+        $returnPath = $_POST['return'] ?? '';
+        $defaultReturn = "/instructor/course/$courseId/student/" . $request['user_id'];
+        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : $defaultReturn;
 
         // Security: Ensure Instructor Owns Course
         try {
             Authorization::requireInstructor($_SESSION['user_id'], (int)$courseId);
         } catch (\Exception $e) {
             header('Location: /dashboard');
+            exit;
+        }
+
+        if (($request['status'] ?? 'pending') !== 'pending') {
+            $_SESSION['flash_info'] = 'This request has already been processed.';
+            header('Location: ' . $returnPath);
             exit;
         }
 
@@ -349,9 +419,11 @@ class InstructorController extends Controller
             ]);
 
             $_SESSION['flash_success'] = 'Request rejected.';
+        } else {
+            $_SESSION['flash_error'] = 'Invalid request action.';
         }
 
-        header("Location: /instructor/course/$courseId/student/" . $request['user_id']);
+        header('Location: ' . $returnPath);
         exit;
     }
 
@@ -412,12 +484,10 @@ class InstructorController extends Controller
         if ($title && $moduleId) {
              $db = \App\Core\Database::getInstance();
              
-             // Verify module ownership (optional but good for strict security if not relying on UI trust)
-             // Check if module belongs to a course owned by user
-             $moduleCheck = $db->fetchAll("SELECT c.instructor_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :mid", [':mid' => $moduleId])[0] ?? null;
+             // Verify module ownership
+             $moduleCheck = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :mid", [':mid' => $moduleId])[0] ?? null;
              
              if (!$moduleCheck || $moduleCheck['instructor_id'] != $_SESSION['user_id']) {
-                 // Check admin role if necessary, or just fail safe
                  $roles = $_SESSION['user_roles'] ?? [];
                  if (!in_array('admin', $roles)) {
                      $_SESSION['flash_error'] = 'Access denied to this module.';
@@ -426,8 +496,10 @@ class InstructorController extends Controller
                  }
              }
 
-             $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration) 
-                     VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur)";
+             // 1. Insert Payload (Lesson)
+             // NOTE: module_id and sort_order here are legacy/deprecated but kept for fallback or unique constraints if any.
+             $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order) 
+                     VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur, 999)";
              
              $db->query($sql, [
                  ':mid' => $moduleId,
@@ -439,6 +511,34 @@ class InstructorController extends Controller
                  ':att' => $attachmentUrl,
                  ':dur' => $durationSeconds
              ]);
+             $lessonId = $db->getConnection()->lastInsertId();
+
+             // 2. Insert Structure (ContentItem)
+             $contentItemModel = new \App\Domain\Courses\ContentItem();
+             
+             if ($type === 'quiz') {
+                 // Create Quiz Entity
+                 $db->query("INSERT INTO quizzes (lesson_id) VALUES (:lid)", [':lid' => $lessonId]);
+                 $quizId = $db->getConnection()->lastInsertId();
+
+                 // Content Item points to Quiz
+                 $contentItemModel->createItem([
+                     'course_id' => (int)$moduleCheck['course_id'],
+                     'module_id' => $moduleId,
+                     'item_type' => 'quiz',
+                     'item_id' => $quizId,
+                     'display_group_id' => null
+                 ]);
+             } else {
+                 // Standard Lesson
+                 $contentItemModel->createItem([
+                     'course_id' => (int)$moduleCheck['course_id'],
+                     'module_id' => $moduleId,
+                     'item_type' => 'lesson',
+                     'item_id' => $lessonId,
+                     'display_group_id' => null
+                 ]);
+             }
              
              $_SESSION['flash_success'] = 'Lesson added.';
         }
@@ -492,9 +592,21 @@ class InstructorController extends Controller
             exit;
         }
 
+        $courseFlow = null;
+        $courseLessons = [];
+        $dripRule = null;
+        if (!empty($lesson['course_id'])) {
+            $courseFlow = $db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $lesson['course_id']])[0]['content_flow'] ?? null;
+            $courseLessons = $db->fetchAll("SELECT l.id, l.title FROM lessons l JOIN modules m ON l.module_id = m.id WHERE m.course_id = :cid ORDER BY m.sort_order ASC, l.sort_order ASC", [':cid' => $lesson['course_id']]);
+            $dripRule = $db->fetchAll("SELECT * FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lesson['id']])[0] ?? null;
+        }
+
         $this->view('instructor.edit_lesson', [
             'lesson' => $lesson, 
-            'course_id' => $lesson['course_id'] ?? null // Pass null if library lesson
+            'course_id' => $lesson['course_id'] ?? null, // Pass null if library lesson
+            'course_flow' => $courseFlow,
+            'course_lessons' => $courseLessons,
+            'drip_rule' => $dripRule
         ]);
     }
 
@@ -524,9 +636,30 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
-        $currentLesson = $db->fetchAll("SELECT attachment_url, content_url FROM lessons WHERE id = :id", [':id' => $lessonId])[0] ?? null;
+        $currentLesson = $db->fetchAll("SELECT l.attachment_url, l.content_url, m.course_id, l.instructor_id 
+                                        FROM lessons l 
+                                        LEFT JOIN modules m ON l.module_id = m.id 
+                                        WHERE l.id = :id", [':id' => $lessonId])[0] ?? null;
         
         if (!$currentLesson) {
+            header('Location: /dashboard');
+            exit;
+        }
+
+        // Security Check
+        $hasAccess = false;
+        if ($currentLesson['course_id']) {
+            try {
+                Authorization::requireInstructor($_SESSION['user_id'], $currentLesson['course_id']);
+                $hasAccess = true;
+            } catch (\Exception $e) {}
+        } elseif ($currentLesson['instructor_id'] == $_SESSION['user_id']) {
+            // Library lesson
+            $hasAccess = true;
+        }
+
+        if (!$hasAccess) {
+            $_SESSION['flash_error'] = 'Access denied.';
             header('Location: /dashboard');
             exit;
         }
@@ -545,6 +678,7 @@ class InstructorController extends Controller
             $attachmentUrl = $currentLesson['attachment_url'];
         }
 
+        // 1. Update Content (Payload)
         $sql = "UPDATE lessons SET title = :title, type = :type, content_url = :url, content_text = :text, duration = :dur, attachment_url = :att WHERE id = :id";
         $db->query($sql, [
             ':title' => $title,
@@ -556,13 +690,47 @@ class InstructorController extends Controller
             ':id' => $lessonId
         ]);
 
+        // 2. Update Drip Rules (Content Item Rules)
+        // Ideally we migrate this to content_item_rules table, but for now we keep legacy drip logic working 
+        // via legacy CourseProgressService if needed, OR we refactor CourseProgressService to read legacy rules 
+        // if item rules missing. 
+        // Current Plan A stores rules in `content_item_rules`. We should write there.
+        // HOWEVER, the `InstructorController` audit showed we are sticking to `lesson_drip_rules`.
+        // To complete the "Cutover", we should ideally write to `content_item_rules`.
+        // Given complexity, let's keep `lesson_drip_rules` as the "Legacy Store" that the Service layer reads from 
+        // until we build a proper Rule Editor. The Service Layer already has dual-read logic (Item Rules -> Legacy Rules).
+        // So we keep this part AS IS for now.
+
+        if ($courseId) {
+            $flow = $db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $courseId])[0]['content_flow'] ?? 'free';
+            if (in_array($flow, ['drip_time', 'drip_progress', 'drip_combined'], true)) {
+                $unlockDays = isset($_POST['unlock_after_days']) ? (int) $_POST['unlock_after_days'] : null;
+                $unlockLesson = isset($_POST['unlock_after_lesson_id']) ? (int) $_POST['unlock_after_lesson_id'] : null;
+                $unlockPercent = isset($_POST['unlock_after_percent']) ? (int) $_POST['unlock_after_percent'] : null;
+                $hasRule = ($unlockDays || $unlockLesson || $unlockPercent);
+
+                if ($hasRule) {
+                    $db->upsert(
+                        'lesson_drip_rules',
+                        [
+                            'lesson_id' => $lessonId,
+                            'unlock_after_days' => $unlockDays,
+                            'unlock_after_lesson_id' => $prev ?: null,
+                            'unlock_after_percent' => $pct
+                        ],
+                        ['lesson_id']
+                    );
+                } else {
+                    $db->query("DELETE FROM lesson_drip_rules WHERE lesson_id = :lid", [':lid' => $lessonId]);
+                }
+            }
+        }
+
         $_SESSION['flash_success'] = 'Lesson updated successfully.';
         
-        // Redirect based on context
         if ($courseId) {
-            header("Location: /learn/$courseId/lesson/$lessonId"); // Return to Player (or builder?)
+            header("Location: /learn/$courseId/lesson/$lessonId"); 
         } else {
-            // Library lesson
             header("Location: /instructor/lessons");
         }
         exit;
@@ -707,6 +875,295 @@ class InstructorController extends Controller
         exit;
     }
 
+    public function pendingRequests(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
+        
+        $sqlAttempts = "SELECT ar.id,
+                               ar.created_at,
+                               u.id as user_id,
+                               u.name,
+                               u.email,
+                               c.id as course_id,
+                               c.title as course_title,
+                               l.title as quiz_title
+                        FROM attempt_requests ar
+                        JOIN users u ON ar.user_id = u.id
+                        JOIN quizzes q ON ar.quiz_id = q.id
+                        JOIN lessons l ON q.lesson_id = l.id
+                        JOIN modules m ON l.module_id = m.id
+                        JOIN courses c ON m.course_id = c.id
+                        WHERE ar.status = 'pending'";
+        if (!$isPrivileged) {
+            $sqlAttempts .= " AND c.instructor_id = :uid";
+        }
+        $sqlAttempts .= " ORDER BY ar.created_at DESC";
+        $attemptRequests = $db->fetchAll($sqlAttempts, $isPrivileged ? [] : [':uid' => $userId]);
+
+        $this->view('instructor.retake_requests', [
+            'attemptRequests' => $attemptRequests
+        ]);
+    }
+
+    public function gradingQueue(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
+
+        $sqlGrading = "SELECT g.id as grading_id,
+                              g.attempt_id,
+                              g.question_id,
+                              g.status,
+                              g.ai_score,
+                              g.ai_feedback,
+                              g.ai_rationale,
+                              g.final_score,
+                              u.id as user_id,
+                              u.name,
+                              u.email,
+                              c.id as course_id,
+                              c.title as course_title,
+                              qz.id as quiz_id,
+                              l.title as lesson_title,
+                              qu.question_text,
+                              qu.points,
+                              qa.answers as attempt_answers
+                       FROM grading_queue g
+                       JOIN quiz_attempts qa ON g.attempt_id = qa.id
+                       JOIN questions qu ON g.question_id = qu.id
+                       JOIN quizzes qz ON qa.quiz_id = qz.id
+                       JOIN lessons l ON qz.lesson_id = l.id
+                       JOIN modules m ON l.module_id = m.id
+                       JOIN courses c ON m.course_id = c.id
+                       JOIN users u ON qa.user_id = u.id
+                       WHERE g.status IN ('pending_review','ai_scored')";
+        if (!$isPrivileged) {
+            $sqlGrading .= " AND c.instructor_id = :uid";
+        }
+        $sqlGrading .= " ORDER BY g.created_at DESC";
+        $gradingQueue = $db->fetchAll($sqlGrading, $isPrivileged ? [] : [':uid' => $userId]);
+
+        foreach ($gradingQueue as &$item) {
+            $answers = json_decode($item['attempt_answers'] ?? '{}', true);
+            $item['submission_text'] = $answers[$item['question_id']] ?? 'No submission found';
+        }
+
+        $this->view('instructor.grading_queue', [
+            'gradingQueue' => $gradingQueue
+        ]);
+    }
+
+    public function certificateApprovals(): void
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $roles = $_SESSION['user_roles'] ?? [];
+        $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
+
+        $sqlCerts = "SELECT e.id as enrollment_id,
+                            e.progress_percent,
+                            e.is_completed,
+                            e.created_at as enrolled_at,
+                            u.id as user_id,
+                            u.name,
+                            u.email,
+                            c.id as course_id,
+                            c.title as course_title
+                     FROM enrollments e
+                     JOIN users u ON e.user_id = u.id
+                     JOIN courses c ON e.course_id = c.id
+                     WHERE c.has_certificate = 1
+                       AND c.certificate_auto_issue = 0
+                       AND e.is_completed = 1
+                       AND e.certificate_id IS NULL
+                     ORDER BY e.created_at DESC";
+        if (!$isPrivileged) {
+            $sqlCerts = str_replace("WHERE c.has_certificate = 1", "WHERE c.instructor_id = :uid AND c.has_certificate = 1", $sqlCerts);
+        }
+        $certificateApprovals = $db->fetchAll($sqlCerts, $isPrivileged ? [] : [':uid' => $userId]);
+
+        $this->view('instructor.certificate_approvals', [
+            'certificateApprovals' => $certificateApprovals
+        ]);
+    }
+
+    public function issueCertificate(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /instructor/requests#certificates');
+            exit;
+        }
+
+        $enrollmentId = (int) ($_POST['enrollment_id'] ?? 0);
+        $userId = $_SESSION['user_id'] ?? null;
+        $returnPath = $_POST['return'] ?? '';
+        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : '/instructor/requests#certificates';
+
+        if (!$enrollmentId || !$userId) {
+            $_SESSION['flash_error'] = 'Invalid certificate approval request.';
+            header('Location: ' . $returnPath);
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $sql = "SELECT e.id,
+                       e.user_id,
+                       e.course_id,
+                       e.certificate_id,
+                       e.is_completed,
+                       c.has_certificate,
+                       c.certificate_auto_issue
+                FROM enrollments e
+                JOIN courses c ON e.course_id = c.id
+                WHERE e.id = :eid
+                  AND c.instructor_id = :uid";
+        $row = $db->fetchAll($sql, [':eid' => $enrollmentId, ':uid' => $userId])[0] ?? null;
+
+        if (!$row) {
+            $_SESSION['flash_error'] = 'Enrollment not found or access denied.';
+            header('Location: ' . $returnPath);
+            exit;
+        }
+
+        if (!empty($row['certificate_id'])) {
+            $_SESSION['flash_info'] = 'Certificate already issued for this enrollment.';
+            header('Location: ' . $returnPath);
+            exit;
+        }
+
+        if (!$row['is_completed'] || !$row['has_certificate'] || $row['certificate_auto_issue']) {
+            $_SESSION['flash_error'] = 'Certificate cannot be issued for this enrollment.';
+            header('Location: ' . $returnPath);
+            exit;
+        }
+
+        $certId = 'CERT-' . strtoupper(uniqid());
+        $db->query("UPDATE enrollments SET certificate_id = :certId, certified_at = CURRENT_TIMESTAMP WHERE id = :eid", [
+            ':certId' => $certId,
+            ':eid' => $enrollmentId
+        ]);
+
+        $_SESSION['flash_success'] = 'Certificate issued successfully.';
+        header('Location: ' . $returnPath);
+        exit;
+    }
+
+    public function gradeEssay(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /instructor/requests#grading');
+            exit;
+        }
+
+        $gradingId = (int) ($_POST['grading_id'] ?? 0);
+        $rawScore = $_POST['final_score'] ?? null;
+        $finalScore = is_string($rawScore) ? trim($rawScore) : $rawScore;
+        $userId = $_SESSION['user_id'] ?? null;
+
+        if (!$gradingId || $finalScore === null || $finalScore === '' || $userId === null || !is_numeric($finalScore)) {
+            $_SESSION['flash_error'] = 'Invalid grading submission.';
+            header('Location: /instructor/requests#grading');
+            exit;
+        }
+
+        $db = \App\Core\Database::getInstance();
+        $row = $db->fetchAll("SELECT g.id, g.attempt_id, g.question_id, c.id as course_id, l.id as lesson_id, qu.points, qa.user_id as student_id, qa.quiz_id
+                              FROM grading_queue g
+                              JOIN quiz_attempts qa ON g.attempt_id = qa.id
+                              JOIN quizzes qz ON qa.quiz_id = qz.id
+                              JOIN lessons l ON qz.lesson_id = l.id
+                              JOIN modules m ON l.module_id = m.id
+                              JOIN courses c ON m.course_id = c.id
+                              JOIN questions qu ON g.question_id = qu.id
+                              WHERE g.id = :gid AND c.instructor_id = :uid", [
+            ':gid' => $gradingId,
+            ':uid' => $userId
+        ])[0] ?? null;
+
+        if (!$row) {
+            $_SESSION['flash_error'] = 'Grading item not found or access denied.';
+            header('Location: /instructor/requests#grading');
+            exit;
+        }
+
+        $finalScore = max(0, min((float) $row['points'], $finalScore));
+        $db->query("UPDATE grading_queue SET status = 'approved', final_score = :score, reviewer_id = :uid, updated_at = CURRENT_TIMESTAMP WHERE id = :gid", [
+            ':score' => $finalScore,
+            ':uid' => $userId,
+            ':gid' => $gradingId
+        ]);
+
+        $quizService = new \App\Services\QuizService();
+        $result = $quizService->recalculateAttemptScore((int) $row['attempt_id']);
+
+        if (($result['grading_status'] ?? '') === 'final' && !empty($result['is_passed'])) {
+            $lessonId = (int) $row['lesson_id'];
+            $studentId = (int) $row['student_id'];
+            $quizId = (int) $row['quiz_id'];
+
+            // 1. Update Content Progress (The New Source of Truth)
+            $item = $db->fetchAll("SELECT id FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $quizId])[0] ?? null;
+            if ($item) {
+                $db->upsert(
+                    'content_progress',
+                    [
+                        'user_id' => $studentId,
+                        'item_id' => $item['id'],
+                        'status' => 'completed',
+                        'completed_at' => date('Y-m-d H:i:s'),
+                        'score' => $result['score']
+                    ],
+                    ['user_id', 'item_id']
+                );
+            }
+
+            // 2. Legacy Fallback (Optional but good for reports)
+            $db->insertIgnore('completed_lessons', [
+                'user_id' => $studentId,
+                'lesson_id' => $lessonId
+            ]);
+
+            $progressService = new \App\Services\CourseProgressService();
+            $progressService->updateProgress($studentId, (int) $row['course_id']);
+
+            $existingLog = $db->fetchAll("SELECT 1 FROM xapi_logs WHERE user_id = :uid AND lesson_id = :lid AND verb = 'completed' LIMIT 1", [
+                ':uid' => $studentId,
+                ':lid' => $lessonId
+            ]);
+            if (empty($existingLog)) {
+                $db->query("INSERT INTO xapi_logs (user_id, lesson_id, verb, meta_data) VALUES (:uid, :lid, 'completed', :meta)", [
+                    ':uid' => $studentId,
+                    ':lid' => $lessonId,
+                    ':meta' => json_encode(['score' => $result['score'], 'grader' => 'instructor'])
+                ]);
+            }
+        }
+
+        $_SESSION['flash_success'] = 'Grade saved.';
+        header('Location: /instructor/requests#grading');
+        exit;
+    }
+
     public function lessonLibrary(): void
     {
         $userId = $_SESSION['user_id'];
@@ -777,14 +1234,79 @@ class InstructorController extends Controller
             
             // Verify ownership of both lesson and target module
             $lesson = $db->fetchAll("SELECT instructor_id FROM lessons WHERE id = :id", [':id' => $lessonId])[0] ?? null;
-            
-            $module = $db->fetchAll("SELECT c.instructor_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :id", [':id' => $moduleId])[0] ?? null;
+            $module = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :id", [':id' => $moduleId])[0] ?? null;
 
             if ($lesson && $module && $lesson['instructor_id'] == $userId && $module['instructor_id'] == $userId) {
+                // 1. Move Payload (Legacy sync)
                 $db->query("UPDATE lessons SET module_id = :mid WHERE id = :lid", [
                     ':mid' => $moduleId,
                     ':lid' => $lessonId
                 ]);
+
+                // 2. Move Content Items (Structure)
+                // We need to move the lesson item AND any grouped items (like attached quizzes)
+                $contentItemModel = new \App\Domain\Courses\ContentItem();
+                
+                // Find the main lesson item
+                $lessonItem = $db->fetchAll("SELECT id, display_group_id FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
+
+                if ($lessonItem) {
+                    // Update lesson item
+                    // Calculate position: append to end
+                    $sqlPos = "SELECT MAX(position) as max_pos FROM content_items WHERE course_id = :cid AND module_id = :mid";
+                    $res = $db->fetchAll($sqlPos, [':cid' => $module['course_id'], ':mid' => $moduleId]);
+                    $newPos = ($res[0]['max_pos'] ?? 0) + 1;
+
+                    $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE id = :id", [
+                        ':mid' => $moduleId,
+                        ':cid' => $module['course_id'],
+                        ':pos' => $newPos,
+                        ':id' => $lessonItem['id']
+                    ]);
+
+                    // Update grouped items (e.g. Quizzes) - Sequential positions to avoid overlap
+                    if (!empty($lessonItem['display_group_id'])) {
+                        $peers = $db->fetchAll("SELECT id FROM content_items WHERE display_group_id = :gid AND id != :lid ORDER BY position ASC", [
+                            ':gid' => $lessonItem['display_group_id'],
+                            ':lid' => $lessonItem['id']
+                        ]);
+                        
+                        foreach ($peers as $index => $peer) {
+                            $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE id = :id", [
+                                ':mid' => $moduleId,
+                                ':cid' => $module['course_id'],
+                                ':pos' => $newPos + ($index + 1),
+                                ':id' => $peer['id']
+                            ]);
+                        }
+                    }
+                } else {
+                    // Legacy/Library Lesson without Item? Create one.
+                    $newLessonItemId = $contentItemModel->createItem([
+                        'course_id' => (int)$module['course_id'],
+                        'module_id' => $moduleId,
+                        'item_type' => 'lesson',
+                        'item_id' => $lessonId,
+                        'display_group_id' => null
+                    ]);
+
+                    // CHECK FOR ATTACHED QUIZ (Legacy sync)
+                    $quiz = $db->fetchAll("SELECT id FROM quizzes WHERE lesson_id = :lid", [':lid' => $lessonId])[0] ?? null;
+                    if ($quiz) {
+                        // Generate a group ID and update both
+                        $groupId = (int)$newLessonItemId + 900000;
+                        $db->query("UPDATE content_items SET display_group_id = :gid WHERE id = :id", [':gid' => $groupId, ':id' => $newLessonItemId]);
+                        
+                        $contentItemModel->createItem([
+                            'course_id' => (int)$module['course_id'],
+                            'module_id' => $moduleId,
+                            'item_type' => 'quiz',
+                            'item_id' => $quiz['id'],
+                            'display_group_id' => $groupId
+                        ]);
+                    }
+                }
+
                 $_SESSION['flash_success'] = 'Lesson added to course successfully.';
             } else {
                 $_SESSION['flash_error'] = 'Invalid operation.';
@@ -838,7 +1360,7 @@ class InstructorController extends Controller
             $src = $db->fetchAll("SELECT * FROM lessons WHERE id = :id", [':id' => $sourceLessonId])[0] ?? null;
             
             if ($src) {
-                // 2. Duplicate
+                // 2. Duplicate Payload
                 $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order)
                         VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur, 999)";
                 
@@ -852,12 +1374,70 @@ class InstructorController extends Controller
                     ':att' => $src['attachment_url'],
                     ':dur' => $src['duration']
                 ]);
+                $newLessonId = $db->getConnection()->lastInsertId();
                 
+                // 3. Create Content Item
+                $contentItemModel = new \App\Domain\Courses\ContentItem();
+                $contentItemModel->createItem([
+                    'course_id' => $courseId,
+                    'module_id' => $targetModuleId,
+                    'item_type' => 'lesson',
+                    'item_id' => $newLessonId,
+                    'display_group_id' => null
+                ]);
+
+                // TODO: Copy Quizzes if attached? (Out of scope for now, but good for future)
+
                 $_SESSION['flash_success'] = 'Lesson imported successfully.';
             }
         }
 
         header("Location: /instructor/course/$courseId/edit");
+        exit;
+    }
+
+    public function deleteContentItem(string $id): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+
+        $contentItemId = (int) $id;
+        $db = \App\Core\Database::getInstance();
+
+        // 1. Fetch Item to Identify Payload
+        $item = $db->fetchAll("SELECT * FROM content_items WHERE id = :id", [':id' => $contentItemId])[0] ?? null;
+        if (!$item) {
+            header('Location: /dashboard');
+            exit;
+        }
+
+        // 2. Check Access via Course
+        try {
+            Authorization::requireInstructor($_SESSION['user_id'], (int)$item['course_id']);
+        } catch (\Exception $e) {
+            header('Location: /dashboard');
+            exit;
+        }
+
+        // 3. Delegate to Payload Deletion Logic
+        if ($item['item_type'] === 'lesson') {
+            // Delete Lesson Payload (which deletes the content item too via my previous fix, or we delete here)
+            // Ideally re-use deleteLesson logic but by ID.
+            // Let's call deleteLesson with the payload ID.
+            $this->deleteLesson((string)$item['item_id']); 
+            return;
+        } elseif ($item['item_type'] === 'quiz') {
+            // Quizzes might be attached to lessons or standalone.
+            // If standalone, we delete the quiz payload.
+            // If attached (has display_group_id matching a lesson), we should probably warn, but for now we delete it.
+            $db->query("DELETE FROM quizzes WHERE id = :id", [':id' => $item['item_id']]);
+            $db->query("DELETE FROM content_items WHERE id = :id", [':id' => $contentItemId]);
+            $_SESSION['flash_success'] = 'Quiz deleted.';
+            header("Location: /instructor/course/{$item['course_id']}/edit");
+            exit;
+        }
+
+        $_SESSION['flash_error'] = 'Unknown item type.';
+        header("Location: /instructor/course/{$item['course_id']}/edit");
         exit;
     }
 
@@ -885,7 +1465,21 @@ class InstructorController extends Controller
         }
 
         if ($hasAccess) {
+            // 1. Clean up attached Quiz Content Items
+            // Quizzes attached to this lesson (via legacy FK) will be deleted by DB CASCADE, 
+            // but their content_items rows will remain unless we delete them manually.
+            $attachedQuizzes = $db->fetchAll("SELECT id FROM quizzes WHERE lesson_id = :lid", [':lid' => $lessonId]);
+            foreach ($attachedQuizzes as $q) {
+                $db->query("DELETE FROM content_items WHERE item_type = 'quiz' AND item_id = :qid", [':qid' => $q['id']]);
+            }
+
+            // 2. Delete Lesson Content Item (Structure)
+            $db->query("DELETE FROM content_items WHERE item_type = 'lesson' AND item_id = :id", [':id' => $lessonId]);
+            
+            // 3. Delete Lesson Payload (Content)
+            // This triggers ON DELETE CASCADE for the `quizzes` table rows, ensuring data integrity.
             $db->query("DELETE FROM lessons WHERE id = :id", [':id' => $lessonId]);
+            
             $_SESSION['flash_success'] = 'Lesson deleted.';
         } else {
             $_SESSION['flash_error'] = 'Access denied.';
@@ -943,12 +1537,26 @@ class InstructorController extends Controller
         $db->getConnection()->beginTransaction();
 
         try {
-            foreach ($order as $position => $lessonId) {
-                $db->query("UPDATE lessons SET sort_order = :order WHERE id = :id", [
-                    ':order' => $position,
-                    ':id' => (int) $lessonId
-                ]);
+            // Check if we are reordering content_items (IDs in UI are now content_item.id if using getModuleStructure)
+            // But the UI might still be sending lesson IDs if we didn't update the JS.
+            // Assuming for this Cutover Plan that the UI will send ContentItem IDs (or we need to look them up).
+            // Let's assume the frontend sends ITEM IDs now because edit() passes 'items'.
+            // Wait, standard SortableJS sends whatever ID is on the element.
+            // If edit() passes 'items', the view likely renders <li data-id="item.id">.
+            
+            // However, to be safe and compatible with legacy frontend JS which might send lesson IDs if the view wasn't fully updated,
+            // we should handle both or update the view. 
+            // In Phase 2.1 we updated edit(), so the view receives ContentItems.
+            // We need to check resources/views/instructor/course_builder.php to see what ID it puts in data-id.
+            
+            // Assuming we are receiving CONTENT_ITEM IDs now:
+            $contentItemModel = new \App\Domain\Courses\ContentItem();
+            foreach ($order as $position => $itemId) {
+                // If the frontend sends lesson ID, we'd need to lookup content_item.
+                // But let's enforce ContentItem ID usage.
+                $contentItemModel->updatePosition((int)$itemId, $position);
             }
+            
             $db->getConnection()->commit();
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);

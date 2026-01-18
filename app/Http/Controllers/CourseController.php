@@ -263,7 +263,7 @@ class CourseController extends Controller
 
         if (!empty($exists)) {
             $_SESSION['flash_info'] = 'You are already enrolled in this course.';
-            $this->redirectEmrollment($courseId);
+            $this->redirectEnrollment($courseId);
             return;
         }
 
@@ -294,10 +294,10 @@ class CourseController extends Controller
             $roleRes = $this->db->fetchAll("SELECT id FROM roles WHERE slug = 'student'");
             $studentRoleId = $roleRes[0]['id'] ?? 3;
 
-            // Assign Student Role
-            $this->db->query("INSERT OR IGNORE INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
-                ':uid' => $userId,
-                ':rid' => $studentRoleId
+            // Assign Student Role (database-agnostic)
+            $this->db->insertOrIgnore('role_user', [
+                'user_id' => $userId,
+                'role_id' => $studentRoleId
             ]);
 
             // Update Session
@@ -314,10 +314,10 @@ class CourseController extends Controller
             'link' => "/instructor/course/{$courseId}/students"
         ]);
 
-        $this->redirectEmrollment($courseId);
+        $this->redirectEnrollment($courseId);
     }
 
-    private function redirectEmrollment(int $courseId): void
+    private function redirectEnrollment(int $courseId): void
     {
         // Find the first lesson to redirect to
         $courseModel = new Course();

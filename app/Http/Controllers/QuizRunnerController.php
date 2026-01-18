@@ -255,9 +255,10 @@ class QuizRunnerController extends Controller
                 
                 if ($quiz) {
                     $lessonId = $quiz['lesson_id'];
-                    $db->query("INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)", [
-                        ':uid' => $userId,
-                        ':lid' => $lessonId
+                    // Database-agnostic insert
+                    $db->insertOrIgnore('completed_lessons', [
+                        'user_id' => $userId,
+                        'lesson_id' => $lessonId
                     ]);
 
                     // Trigger Course Progress Update

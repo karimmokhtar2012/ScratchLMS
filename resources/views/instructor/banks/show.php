@@ -4,8 +4,10 @@
     showAddForm: false, 
     type: 'single_choice',
     options: [{ text: '' }, { text: '' }],
+    pairs: [{}, {}, {}],
     addOption() { this.options.push({ text: '' }) },
-    removeOption(index) { this.options.splice(index, 1) }
+    removeOption(index) { this.options.splice(index, 1) },
+    addPair() { this.pairs.push({}) }
 }">
     
     <!-- Header -->
@@ -52,6 +54,10 @@
                         <option value="multi_choice">Multiple Choice</option>
                         <option value="true_false">True / False</option>
                         <option value="short_text">Short Text (Exact Match)</option>
+                        <option value="fill_blank">Fill in the Blank</option>
+                        <option value="matching">Matching</option>
+                        <option value="essay">Essay</option>
+                        <option value="video_submission">Video Submission (URL)</option>
                     </select>
                 </div>
 
@@ -86,6 +92,42 @@
                         <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Correct Answer</label>
                         <input type="text" name="correct_text" required placeholder="Enter the exact correct answer"
                                class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-emerald-500 transition outline-none">
+                    </div>
+                </template>
+
+                <!-- Fill Blank -->
+                <template x-if="type === 'fill_blank'">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-500 uppercase mb-2">Accepted Answers (comma separated)</label>
+                        <input type="text" name="fill_blank_answers" placeholder="e.g., hypertext, hyper text"
+                               class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-emerald-500 transition outline-none">
+                    </div>
+                </template>
+
+                <!-- Matching -->
+                <template x-if="type === 'matching'">
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest">Pairs (Left → Right)</label>
+                            <button type="button" @click="addPair" class="text-xs text-indigo-400 hover:text-indigo-300 font-bold">+ Add Pair</button>
+                        </div>
+                        <template x-for="(pair, index) in pairs" :key="index">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" :name="`match_left[${index}]`"
+                                       class="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500 transition outline-none"
+                                       placeholder="Left item">
+                                <input type="text" :name="`match_right[${index}]`"
+                                       class="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:border-indigo-500 transition outline-none"
+                                       placeholder="Right item">
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Essay / Video Submission -->
+                <template x-if="type === 'essay' || type === 'video_submission'">
+                    <div class="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-zinc-500">
+                        Manual review required. No correct answer needed.
                     </div>
                 </template>
 
@@ -171,6 +213,23 @@
                         <p class="text-xs text-zinc-500 uppercase font-bold mb-1 tracking-widest">Correct Match</p>
                         <p class="text-emerald-400 font-medium"><?= htmlspecialchars($correct[0]) ?></p>
                     </div>
+                <?php elseif ($q['type'] === 'fill_blank'): ?>
+                    <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-xl">
+                        <p class="text-xs text-zinc-500 uppercase font-bold mb-2 tracking-widest">Accepted Answers</p>
+                        <div class="flex flex-wrap gap-2">
+                            <?php foreach ($correct as $ans): ?>
+                                <span class="px-2 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs"><?= htmlspecialchars((string)$ans) ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php elseif ($q['type'] === 'matching'): ?>
+                    <div class="space-y-2">
+                        <?php foreach ($options as $pair): ?>
+                            <div class="text-xs text-zinc-400"><?= htmlspecialchars($pair['left_text']) ?> → <?= htmlspecialchars($pair['right_text']) ?></div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php elseif (in_array($q['type'], ['essay', 'video_submission'], true)): ?>
+                    <div class="text-xs text-amber-400">Manual review required.</div>
                 <?php endif; ?>
 
                 <?php if ($q['explanation']): ?>

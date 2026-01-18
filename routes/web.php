@@ -71,18 +71,25 @@ $router->post('/instructor/module/add', [InstructorController::class, 'addModule
 $router->post('/instructor/module/update/([^/]+)', [InstructorController::class, 'updateModule']);
 $router->post('/instructor/lesson/add', [InstructorController::class, 'addLesson']);
 $router->post('/instructor/module/delete/([^/]+)', [InstructorController::class, 'deleteModule']);
-$router->post('/instructor/lesson/delete/([^/]+)', [InstructorController::class, 'deleteLesson']);
+$router->post('/instructor/lesson/delete/([^/]+)', [InstructorController::class, 'deleteLesson']); // Legacy/Direct payload
+$router->post('/instructor/content-item/delete/([^/]+)', [InstructorController::class, 'deleteContentItem']); // New Structural Delete
 $router->post('/instructor/course/([^/]+)/enroll-student', [InstructorController::class, 'enrollStudent']);
+$router->get('/instructor/requests', [InstructorController::class, 'pendingRequests']);
+$router->get('/instructor/grading', [InstructorController::class, 'gradingQueue']);
 $router->post('/instructor/modules/reorder', [InstructorController::class, 'reorderModules']);
 $router->post('/instructor/lessons/reorder', [InstructorController::class, 'reorderLessons']);
 $router->get('/instructor/lesson/([^/]+)/edit', [InstructorController::class, 'editLesson']);
 $router->post('/instructor/lesson/([^/]+)/update', [InstructorController::class, 'updateLesson']);
+$router->get('/instructor/certificates/approvals', [InstructorController::class, 'certificateApprovals']);
+$router->post('/instructor/certificates/issue', [InstructorController::class, 'issueCertificate']);
+$router->post('/instructor/grading/score', [InstructorController::class, 'gradeEssay']);
 
 // Quiz Routes
 $router->get('/instructor/lesson/([^/]+)/quiz', [QuizController::class, 'build']);
 $router->post('/instructor/quiz/settings', [QuizController::class, 'updateSettings']);
 $router->post('/instructor/quiz/import', [QuizController::class, 'importFromBank']);
 $router->post('/instructor/question/add', [QuizController::class, 'addQuestion']);
+$router->post('/instructor/question/update/([^/]+)', [QuizController::class, 'updateQuestion']);
 $router->post('/instructor/question/delete/([^/]+)', [QuizController::class, 'deleteQuestion']);
 
 // Upload Routes
@@ -90,7 +97,8 @@ $router->post('/upload/chunk', [UploadController::class, 'uploadChunk']);
 
 // Learning Player Routes
 $router->get('/learn/([^/]+)', [LearnController::class, 'show']); // Resume Course
-$router->get('/learn/([^/]+)/lesson/([^/]+)', [LearnController::class, 'show']); // Specific Lesson
+$router->get('/learn/([^/]+)/lesson/([^/]+)', [LearnController::class, 'show']); // Specific Lesson (Legacy)
+$router->get('/learn/([^/]+)/item/([^/]+)', [LearnController::class, 'showItem']); // Specific Item (New)
 $router->post('/learn/track', [LearnController::class, 'track']);
 
 // Quiz Runner (Student)

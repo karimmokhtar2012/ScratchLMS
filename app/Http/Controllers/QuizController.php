@@ -29,7 +29,13 @@ class QuizController extends Controller
         $lessonId = (int) $lessonId;
         
         // 1. Fetch or Create Quiz
-        $quiz = $this->getOrCreateQuiz($lessonId);
+        try {
+            $quiz = $this->getOrCreateQuiz($lessonId);
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = 'Lesson not found.';
+            header('Location: /dashboard');
+            exit;
+        }
 
         // 2. Fetch Course ID for the "Back" link
         $sqlCourse = "SELECT m.course_id 
@@ -152,6 +158,19 @@ class QuizController extends Controller
         // Process Options & Answers based on Type
         $options = [];
         $correctAnswers = [];
+        $gradingPolicy = $_POST['grading_policy'] ?? null;
+        if ($type === 'fill_blank') {
+            $gradingPolicy = $gradingPolicy ?: 'both';
+        } elseif ($type === 'matching') {
+            $gradingPolicy = 'strict';
+        } elseif ($type === 'essay') {
+            $gradingPolicy = $gradingPolicy ?: 'ai';
+        } elseif ($type === 'video_submission') {
+            $gradingPolicy = 'manual';
+        } else {
+            $gradingPolicy = $gradingPolicy ?: 'auto';
+        }
+        $aiRubric = $_POST['ai_rubric'] ?? null;
 
         if (in_array($type, ['single_choice', 'multi_choice'])) {
             // Expecting arrays from form: option_text[], is_correct[] OR correct_option (radio)
@@ -181,10 +200,37 @@ class QuizController extends Controller
                 ['id' => 0, 'text' => 'False']
             ];
             $correctAnswers[] = (int) ($_POST['tf_correct'] ?? 1);
+        } elseif ($type === 'fill_blank') {
+            $raw = $_POST['fill_blank_answers'] ?? '';
+            $answers = array_filter(array_map('trim', explode(',', $raw)));
+            $correctAnswers = array_values($answers);
+        } elseif ($type === 'matching') {
+            $left = $_POST['match_left'] ?? [];
+            $right = $_POST['match_right'] ?? [];
+            $pairs = [];
+            $correct = [];
+            foreach ($left as $index => $leftText) {
+                $leftText = trim($leftText);
+                $rightText = trim($right[$index] ?? '');
+                if ($leftText === '' || $rightText === '') continue;
+                $leftId = $index + 1;
+                $rightId = $index + 1;
+                $pairs[] = [
+                    'left_id' => $leftId,
+                    'left_text' => $leftText,
+                    'right_id' => $rightId,
+                    'right_text' => $rightText
+                ];
+                $correct[] = ['left_id' => $leftId, 'right_id' => $rightId];
+            }
+            $options = $pairs;
+            $correctAnswers = $correct;
+        } elseif (in_array($type, ['essay', 'video_submission'], true)) {
+            $correctAnswers = [];
         }
 
-        $sql = "INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers, explanation) 
-                VALUES (:qid, :type, :text, :points, :opts, :ans, :exp)";
+        $sql = "INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers, explanation, grading_policy, ai_rubric) 
+                VALUES (:qid, :type, :text, :points, :opts, :ans, :exp, :policy, :rubric)";
         
         $this->db->query($sql, [
             ':qid' => $quizId,
@@ -193,10 +239,129 @@ class QuizController extends Controller
             ':points' => $points,
             ':opts' => json_encode($options),
             ':ans' => json_encode($correctAnswers),
-            ':exp' => $explanation
+            ':exp' => $explanation,
+            ':policy' => $gradingPolicy,
+            ':rubric' => $aiRubric
         ]);
 
         $_SESSION['flash_success'] = 'Question added.';
+        header("Location: /instructor/lesson/$lessonId/quiz");
+        exit;
+    }
+
+    public function updateQuestion(string $id): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+
+        $questionId = (int) $id;
+        $quizId = (int) $_POST['quiz_id'];
+        $lessonId = (int) $_POST['lesson_id'];
+        
+        // Security Check
+        $sqlCheck = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
+        $res = $this->db->fetchAll($sqlCheck, [':lid' => $lessonId]);
+        if (empty($res)) { http_response_code(403); exit; }
+        try { Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']); } catch (\Exception $e) { http_response_code(403); exit; }
+
+        $type = $_POST['type'];
+        $text = $_POST['question_text'];
+        $points = (int) ($_POST['points'] ?? 1);
+        $explanation = $_POST['explanation'] ?? '';
+
+        // Process Options & Answers based on Type
+        $options = [];
+        $correctAnswers = [];
+        $gradingPolicy = $_POST['grading_policy'] ?? null;
+        
+        if ($type === 'fill_blank') {
+            $gradingPolicy = $gradingPolicy ?: 'both';
+        } elseif ($type === 'matching') {
+            $gradingPolicy = 'strict';
+        } elseif ($type === 'essay') {
+            $gradingPolicy = $gradingPolicy ?: 'ai';
+        } elseif ($type === 'video_submission') {
+            $gradingPolicy = 'manual';
+        } else {
+            $gradingPolicy = $gradingPolicy ?: 'auto';
+        }
+        $aiRubric = $_POST['ai_rubric'] ?? null;
+
+        if (in_array($type, ['single_choice', 'multi_choice'])) {
+            $rawOptions = $_POST['option_text'] ?? [];
+            $rawCorrect = $_POST['is_correct'] ?? [];
+            $radioCorrectIndex = isset($_POST['correct_option']) ? (int)$_POST['correct_option'] : -1;
+
+            foreach ($rawOptions as $index => $optText) {
+                if (trim($optText) === '') continue;
+                
+                $id = $index + 1;
+                $options[] = ['id' => $id, 'text' => trim($optText)];
+
+                if (isset($rawCorrect[$index])) {
+                    $correctAnswers[] = $id;
+                } elseif ($radioCorrectIndex === $index) {
+                     $correctAnswers[] = $id;
+                }
+            }
+        } elseif ($type === 'true_false') {
+            $options = [
+                ['id' => 1, 'text' => 'True'],
+                ['id' => 0, 'text' => 'False']
+            ];
+            $correctAnswers[] = (int) ($_POST['tf_correct'] ?? 1);
+        } elseif ($type === 'fill_blank') {
+            $raw = $_POST['fill_blank_answers'] ?? '';
+            $answers = array_filter(array_map('trim', explode(',', $raw)));
+            $correctAnswers = array_values($answers);
+        } elseif ($type === 'matching') {
+            $left = $_POST['match_left'] ?? [];
+            $right = $_POST['match_right'] ?? [];
+            $pairs = [];
+            $correct = [];
+            foreach ($left as $index => $leftText) {
+                $leftText = trim($leftText);
+                $rightText = trim($right[$index] ?? '');
+                if ($leftText === '' || $rightText === '') continue;
+                $leftId = $index + 1;
+                $rightId = $index + 1;
+                $pairs[] = [
+                    'left_id' => $leftId,
+                    'left_text' => $leftText,
+                    'right_id' => $rightId,
+                    'right_text' => $rightText
+                ];
+                $correct[] = ['left_id' => $leftId, 'right_id' => $rightId];
+            }
+            $options = $pairs;
+            $correctAnswers = $correct;
+        } elseif (in_array($type, ['essay', 'video_submission'], true)) {
+            $correctAnswers = [];
+        }
+
+        $sql = "UPDATE questions SET 
+                type = :type, 
+                question_text = :text, 
+                points = :points, 
+                options = :opts, 
+                correct_answers = :ans, 
+                explanation = :exp, 
+                grading_policy = :policy, 
+                ai_rubric = :rubric
+                WHERE id = :id";
+        
+        $this->db->query($sql, [
+            ':type' => $type,
+            ':text' => $text,
+            ':points' => $points,
+            ':opts' => json_encode($options),
+            ':ans' => json_encode($correctAnswers),
+            ':exp' => $explanation,
+            ':policy' => $gradingPolicy,
+            ':rubric' => $aiRubric,
+            ':id' => $questionId
+        ]);
+
+        $_SESSION['flash_success'] = 'Question updated.';
         header("Location: /instructor/lesson/$lessonId/quiz");
         exit;
     }
@@ -259,8 +424,18 @@ class QuizController extends Controller
             $bq = $bankQuestionModel->find((int)$bqId);
             if ($bq) {
                 // Copy to questions table
-                $sql = "INSERT INTO questions (quiz_id, type, question_text, options, correct_answers, explanation) 
-                        VALUES (:qid, :type, :text, :opts, :correct, :exp)";
+                $gradingPolicy = 'auto';
+                if ($bq['type'] === 'fill_blank') {
+                    $gradingPolicy = 'both';
+                } elseif ($bq['type'] === 'matching') {
+                    $gradingPolicy = 'strict';
+                } elseif ($bq['type'] === 'essay') {
+                    $gradingPolicy = 'ai';
+                } elseif ($bq['type'] === 'video_submission') {
+                    $gradingPolicy = 'manual';
+                }
+                $sql = "INSERT INTO questions (quiz_id, type, question_text, options, correct_answers, explanation, grading_policy) 
+                        VALUES (:qid, :type, :text, :opts, :correct, :exp, :policy)";
                 
                 $this->db->query($sql, [
                     ':qid' => $quizId,
@@ -268,7 +443,8 @@ class QuizController extends Controller
                     ':text' => $bq['question_text'],
                     ':opts' => $bq['options'],
                     ':correct' => $bq['correct_answers'],
-                    ':exp' => $bq['explanation']
+                    ':exp' => $bq['explanation'],
+                    ':policy' => $gradingPolicy
                 ]);
             }
         }
@@ -287,9 +463,53 @@ class QuizController extends Controller
             return $res[0];
         }
 
-        // Create Default
-        $sqlInsert = "INSERT INTO quizzes (lesson_id) VALUES (:lid)";
-        $this->db->query($sqlInsert, [':lid' => $lessonId]);
+        // Fetch parent lesson context first to fail fast if invalid
+        $parentLesson = $this->db->fetchAll("SELECT l.module_id, m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid", [':lid' => $lessonId])[0] ?? null;
+        
+        if (!$parentLesson) {
+            // Should theoretically not happen if UI is consistent, but safety check
+            throw new \Exception("Cannot create quiz for invalid lesson ID: $lessonId");
+        }
+
+        $this->db->getConnection()->beginTransaction();
+        try {
+            // Create Default Quiz Payload
+            $sqlInsert = "INSERT INTO quizzes (lesson_id) VALUES (:lid)";
+            $this->db->query($sqlInsert, [':lid' => $lessonId]);
+            $quizId = $this->db->getConnection()->lastInsertId();
+
+            // Sync with ContentItems (Structure)
+            $parentItem = $this->db->fetchAll("SELECT id, position, display_group_id FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
+            
+            $pos = ($parentItem['position'] ?? 0) + 1;
+            $groupId = $parentItem['id'] ?? null;
+            
+            if ($parentItem) {
+                if (empty($parentItem['display_group_id'])) {
+                    // Create a new group ID based on parent item ID to ensure uniqueness but linkage
+                    $newGroupId = (int) $parentItem['id'] + 900000; 
+                    $this->db->query("UPDATE content_items SET display_group_id = :gid WHERE id = :id", [':gid' => $newGroupId, ':id' => $parentItem['id']]);
+                    $groupId = $newGroupId;
+                } else {
+                    $groupId = $parentItem['display_group_id'];
+                }
+            }
+
+            $contentItemModel = new \App\Domain\Courses\ContentItem();
+            $contentItemModel->createItem([
+                'course_id' => $parentLesson['course_id'],
+                'module_id' => $parentLesson['module_id'],
+                'item_type' => 'quiz',
+                'item_id' => $quizId,
+                'position' => $pos,
+                'display_group_id' => $groupId
+            ]);
+
+            $this->db->getConnection()->commit();
+        } catch (\Exception $e) {
+            $this->db->getConnection()->rollBack();
+            throw $e;
+        }
 
         // Fetch again
         return $this->db->fetchAll($sql, [':lid' => $lessonId])[0];

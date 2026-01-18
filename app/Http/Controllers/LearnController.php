@@ -138,8 +138,6 @@ class LearnController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
         $input = json_decode(file_get_contents('php://input'), true);
-
-        $input = json_decode(file_get_contents('php://input'), true);
         $lessonId = (int) ($input['lesson_id'] ?? 0);
         $verb = $input['verb'] ?? '';
         $userId = $_SESSION['user_id'];
@@ -179,10 +177,12 @@ class LearnController extends Controller
             ':meta' => json_encode($input['meta'] ?? [])
         ]);
 
-        // 3. Authorized: Mark Completed
+        // 3. Authorized: Mark Completed (database-agnostic)
         if ($verb === 'completed') {
-            $sqlComp = "INSERT OR IGNORE INTO completed_lessons (user_id, lesson_id) VALUES (:uid, :lid)";
-            $this->db->query($sqlComp, [':uid' => $userId, ':lid' => $lessonId]);
+            $this->db->insertOrIgnore('completed_lessons', [
+                'user_id' => $userId,
+                'lesson_id' => $lessonId
+            ]);
             
             // Trigger Course Progress Update
             $progressService = new \App\Services\CourseProgressService();

@@ -1,30 +1,6 @@
 <?php 
-    // Pre-calculate locked status for Linear Flow
-    $isLinear = ($course['content_flow'] ?? 'free') === 'linear';
-    $lockedLessonIds = [];
-    
-    if ($isLinear) {
-        $allLessonIds = [];
-        foreach ($modules as $module) {
-            foreach ($module['lessons'] as $lesson) {
-                $allLessonIds[] = $lesson['id'];
-            }
-        }
-        
-        foreach ($allLessonIds as $index => $id) {
-            if ($index === 0) continue; // First lesson always unlocked
-            
-            $prevId = $allLessonIds[$index - 1];
-            // If previous is NOT completed, this one is locked
-            // Also if previous itself is locked, this one is locked (transitive, but covered by the loop order if we check completion)
-            // Wait, if prev is completed, this is unlocked. 
-            // If prev is NOT completed, this is locked.
-            
-            if (!in_array($prevId, $completedLessonIds)) {
-                $lockedLessonIds[] = $id;
-            }
-        }
-    }
+    $nextLesson = $nextLesson ?? null;
+    $prevLesson = $prevLesson ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en" class="dark">
@@ -88,9 +64,9 @@
         @font-face { font-family: 'RB'; src: url('/assets/fonts/RB LIGHT.TTF') format('truetype'); font-weight: 300; font-style: normal; }
 
         body { background-color: #09090b; color: #e4e4e7; }
-        body.page-transition { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
-        body.page-ready { opacity: 1; transform: translateY(0); }
-        body.page-exit { opacity: 0; transform: translateY(8px); }
+        body.page-transition > :not(#page-transition) { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
+        body.page-ready > :not(#page-transition) { opacity: 1; transform: none; }
+        body.page-exit > :not(#page-transition) { opacity: 0; transform: translateY(8px); }
         .page-transition-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(80% 80% at 50% 40%, rgba(88, 28, 135, 0.25), rgba(9, 9, 11, 0.95)); opacity: 0; pointer-events: none; transition: opacity 240ms ease; z-index: 9999; }
         .page-transition-overlay.is-active { opacity: 1; pointer-events: auto; }
         .page-loader { position: relative; width: 64px; height: 64px; }
@@ -124,13 +100,16 @@
                 if (overlay) overlay.classList.add('is-active');
                 document.body.classList.add('page-exit');
             };
-            document.addEventListener('DOMContentLoaded', () => {
-                document.body.classList.add('page-ready');
-            });
-            window.addEventListener('pageshow', () => {
+            const markReady = () => {
+                document.body.classList.remove('page-exit');
                 document.body.classList.add('page-ready');
                 if (overlay) overlay.classList.remove('is-active');
+            };
+            document.addEventListener('DOMContentLoaded', markReady);
+            window.addEventListener('pageshow', () => {
+                markReady();
             });
+            setTimeout(markReady, 1200);
             document.addEventListener('click', (e) => {
                 const link = e.target.closest('a');
                 if (!link) return;
@@ -141,6 +120,11 @@
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 const url = new URL(href, window.location.href);
                 if (url.origin !== window.location.origin) return;
+                showOverlay();
+            }, true);
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (!form || form.dataset.noTransition !== undefined) return;
                 showOverlay();
             }, true);
         })();
@@ -172,7 +156,7 @@
             
             <!-- Lesson Title -->
             <div class="flex items-center space-x-2 min-w-0">
-                <h1 class="font-bold text-white text-sm md:text-base truncate"><?= htmlspecialchars($currentLesson['title']) ?></h1>
+                <h1 class="font-bold text-white text-sm md:text-base truncate"><?= htmlspecialchars($currentLesson['title'] ?? 'Untitled') ?></h1>
                                 <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $course['instructor_id']): ?>
                                     <span class="text-zinc-600 flex-shrink-0">|</span>
                                     <div class="flex items-center space-x-2 flex-shrink-0">
@@ -180,7 +164,7 @@
                                             <i class="fa-solid fa-pen-to-square mr-2 text-indigo-400"></i> Edit Course
                                         </a>
                                         
-                                                                <?php if ($currentLesson['type'] === 'quiz'): ?>
+                                                                <?php if (($currentLesson['type'] ?? '') === 'quiz'): ?>
                                         
                                                                     <a href="/instructor/lesson/<?= $currentLesson['id'] ?>/quiz" class="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 rounded-lg text-xs font-bold transition flex items-center border border-purple-500/30">
                                         
@@ -188,7 +172,7 @@
                                         
                                                                     </a>
                                         
-                                                                <?php else: ?>
+                                                                <?php elseif (isset($currentLesson['id'])): ?>
                                         
                                                                     <a href="/instructor/lesson/<?= $currentLesson['id'] ?>/edit" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold transition flex items-center border border-zinc-700">
                                         
@@ -205,13 +189,18 @@
 
         <!-- Right: Navigation -->
         <div class="flex items-center space-x-2 md:space-x-3">
-             <?php if ($prevLesson): ?>
-                <a href="/learn/<?= $course['id'] ?>/lesson/<?= $prevLesson['id'] ?>" class="hidden md:flex px-3 py-2 text-xs font-bold text-zinc-400 hover:text-white border border-zinc-800 rounded-xl transition items-center">
+             <?php if ($prevItem): ?>
+                <?php $prevUrl = isset($prevItem['id']) ? "/learn/{$course['id']}/item/{$prevItem['id']}" : "/learn/{$course['id']}/lesson/{$prevItem['item_id']}"; ?>
+                <a href="<?= $prevUrl ?>" class="hidden md:flex px-3 py-2 text-xs font-bold text-zinc-400 hover:text-white border border-zinc-800 rounded-xl transition items-center">
                     <i class="fa-solid fa-chevron-left mr-1.5"></i> Prev
                 </a>
             <?php endif; ?>
 
-            <?php if ($nextLesson): ?>
+            <?php if (!empty($nextItemUrl)): ?>
+                <a href="<?= $nextItemUrl ?>" class="px-4 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition flex items-center font-bold">
+                    <span class="hidden sm:inline">Next</span> <i class="fa-solid fa-chevron-right ml-1.5"></i>
+                </a>
+            <?php elseif (isset($nextLesson) && $nextLesson): ?>
                 <a href="/learn/<?= $course['id'] ?>/lesson/<?= $nextLesson['id'] ?>" class="px-4 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition flex items-center font-bold">
                     <span class="hidden sm:inline">Next</span> <i class="fa-solid fa-chevron-right ml-1.5"></i>
                 </a>
@@ -256,7 +245,7 @@
                         <?php endif; ?>
                     </div>
                     
-                    <?php $isCurrentCompleted = in_array($currentLesson['id'], $completedLessonIds ?? []); ?>
+                    <?php $isCurrentCompleted = $currentItemCompleted ?? false; ?>
                     <div class="flex justify-end pb-12">
                         <button id="mark-complete-btn"
                                 class="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-xl font-bold transition flex items-center border border-zinc-700 <?= $isCurrentCompleted ? 'opacity-50 cursor-not-allowed' : '' ?>"
@@ -273,7 +262,7 @@
                     <div class="prose prose-invert prose-indigo max-w-none prose-sm md:prose-base lg:prose-lg">
                         <?= \App\Core\Markdown::parse($currentLesson['content_text']) ?>
                     </div>
-                    <?php $isCurrentCompleted = in_array($currentLesson['id'], $completedLessonIds ?? []); ?>
+                    <?php $isCurrentCompleted = $currentItemCompleted ?? false; ?>
                     <div class="mt-16 border-t border-zinc-800/50 pt-10 text-center pb-20">
                         <button id="mark-complete-btn"
                                 class="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-2xl font-bold transition shadow-lg shadow-indigo-500/20 transform hover:-translate-y-1 <?= $isCurrentCompleted ? 'opacity-50 cursor-not-allowed' : '' ?>"
@@ -286,7 +275,13 @@
             <!-- Quiz Result -->
             <?php elseif (isset($quizResult)): ?>
                 <div class="w-full max-w-2xl mx-auto p-8 text-center flex flex-col justify-center h-full">
-                    <?php if ($quizResult['is_passed']): ?>
+                    <?php if (($quizResult['grading_status'] ?? 'final') === 'pending'): ?>
+                        <div class="w-24 h-24 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl border-4 border-amber-500/30">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <h1 class="text-3xl font-bold text-white mb-2">Pending Review</h1>
+                        <p class="text-zinc-400 mb-8">Your submission is being reviewed. Scores will update soon.</p>
+                    <?php elseif ($quizResult['is_passed']): ?>
                         <div class="w-24 h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl border-4 border-green-500/30 shadow-lg shadow-green-500/20 animate-bounce">
                             <i class="fa-solid fa-trophy"></i>
                         </div>
@@ -302,11 +297,13 @@
 
                     <div class="mb-10 bg-zinc-900/50 p-8 rounded-3xl border border-zinc-800">
                         <div class="text-6xl font-black text-white tracking-tighter"><?= $quizResult['score'] ?>%</div>
-                        <div class="text-sm text-zinc-500 uppercase tracking-widest mt-2 font-bold">Total Score</div>
+                        <div class="text-sm text-zinc-500 uppercase tracking-widest mt-2 font-bold">
+                            <?= ($quizResult['grading_status'] ?? 'final') === 'pending' ? 'Provisional Score' : 'Total Score' ?>
+                        </div>
                     </div>
 
                     <!-- Review Section -->
-                    <?php if (!empty($reviewData)): ?>
+                    <?php if (!empty($reviewData) && ($quizResult['grading_status'] ?? 'final') !== 'pending'): ?>
                         <div class="mt-12 w-full bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-left" 
                              x-data="{ reviewIndex: 0, total: <?= count($reviewData) ?> }">
                             
@@ -399,7 +396,9 @@
                             </a>
                         <?php endif; ?>
 
-                        <?php if ($quizResult['is_passed'] && $nextLesson): ?>
+                        <?php if ($quizResult['is_passed'] && !empty($nextItemUrl)): ?>
+                            <a href="<?= $nextItemUrl ?>" class="block w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-zinc-200 transition text-lg shadow-lg shadow-white/10">Next Lesson <i class="fa-solid fa-arrow-right ml-2"></i></a>
+                        <?php elseif ($quizResult['is_passed'] && !empty($nextLesson)): ?>
                             <a href="/learn/<?= $course['id'] ?>/lesson/<?= $nextLesson['id'] ?>" class="block w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-zinc-200 transition text-lg shadow-lg shadow-white/10">Next Lesson <i class="fa-solid fa-arrow-right ml-2"></i></a>
                         <?php elseif ($quizResult['is_passed']): ?>
                             <a href="/dashboard" class="block w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-500 transition text-lg">Return to Dashboard</a>
@@ -425,7 +424,7 @@
                         <i class="fa-solid fa-file-lines text-6xl text-zinc-700 mb-4"></i>
                         <h2 class="text-2xl font-bold text-white mb-2">External Content</h2>
                         <a href="<?= htmlspecialchars($currentLesson['content_url']) ?>" target="_blank" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-medium transition inline-block mx-auto">Open Content</a>
-                        <?php $isCurrentCompleted = in_array($currentLesson['id'], $completedLessonIds ?? []); ?>
+                        <?php $isCurrentCompleted = $currentItemCompleted ?? false; ?>
                         <div class="mt-8">
                             <button id="mark-complete-btn"
                                     class="text-zinc-400 hover:text-white underline <?= $isCurrentCompleted ? 'opacity-50 cursor-not-allowed' : '' ?>"
@@ -470,61 +469,91 @@
 
                 <!-- Content Tab -->
                 <div x-show="activeTab === 'content'" class="flex-1 overflow-y-auto playlist-scroll">
-                    <!-- Playlist Loop (Same Logic) -->
+                    <!-- Playlist Loop (New Item-Centric Logic) -->
                     <?php foreach ($modules as $module): ?>
                         <div class="border-b border-zinc-800/50">
                             <div class="bg-zinc-800/30 px-4 py-3 text-xs font-bold text-zinc-500 uppercase"><?= htmlspecialchars($module['title']) ?></div>
-                            <div>
-                                <?php foreach ($module['lessons'] as $lesson): ?>
-                                    <?php 
-                                        $isActive = $lesson['id'] === $currentLesson['id'];
-                                        $isCompleted = in_array($lesson['id'], $completedLessonIds);
-                                        $isLocked = in_array($lesson['id'], $lockedLessonIds);
+                            <div class="space-y-0.5">
+                                <?php 
+                                    $processedGroups = [];
+                                    foreach ($module['items'] as $index => $item): 
+                                        // Handle Grouping
+                                        if ($item['display_group_id'] && in_array($item['display_group_id'], $processedGroups)) continue;
                                         
-                                        $typeConfig = match($lesson['type']) {
-                                            'video' => ['icon' => 'fa-circle-play', 'color' => 'text-indigo-400', 'bg' => 'bg-indigo-500/10', 'label' => 'Video'],
-                                            'quiz' => ['icon' => 'fa-clipboard-question', 'color' => 'text-purple-400', 'bg' => 'bg-purple-500/10', 'label' => 'Quiz'],
-                                            'article' => ['icon' => 'fa-file-lines', 'color' => 'text-emerald-400', 'bg' => 'bg-emerald-500/10', 'label' => 'Article'],
-                                            default => ['icon' => 'fa-circle', 'color' => 'text-zinc-400', 'bg' => 'bg-zinc-800', 'label' => 'Lesson']
-                                        };
-                                        $durationMinutes = !empty($lesson['duration']) ? floor($lesson['duration'] / 60) : 0;
-                                        $metaText = $typeConfig['label'] . ($durationMinutes > 0 ? ' • ' . $durationMinutes . ' mins' : '');
-                                    ?>
+                                        $groupedItems = [];
+                                        if ($item['display_group_id']) {
+                                            $processedGroups[] = $item['display_group_id'];
+                                            foreach ($module['items'] as $subItem) {
+                                                if ($subItem['display_group_id'] === $item['display_group_id']) {
+                                                    $groupedItems[] = $subItem;
+                                                }
+                                            }
+                                        } else {
+                                            $groupedItems[] = $item;
+                                        }
+
+                                        $isGroup = count($groupedItems) > 1;
+                                ?>
                                     
-                                    <?php if ($isLocked): ?>
-                                        <div class="flex items-start space-x-3 px-4 py-3 text-sm border-l-2 border-transparent bg-zinc-900/30 opacity-50 cursor-not-allowed group relative" title="Complete previous lesson to unlock">
-                                            <div class="mt-0.5 flex-shrink-0">
-                                                <div class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-600 flex items-center justify-center text-[10px]">
-                                                    <i class="fa-solid fa-lock"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="font-medium truncate text-zinc-500"><?= htmlspecialchars($lesson['title']) ?></div>
-                                                <div class="text-[10px] mt-0.5 font-medium text-zinc-600">Locked</div>
-                                            </div>
-                                            <!-- Tooltip on Hover -->
-                                            <div class="absolute left-10 top-full mt-1 w-48 p-2 bg-black border border-zinc-700 text-xs text-zinc-300 rounded-lg shadow-xl z-50 hidden group-hover:block text-center">
-                                                Complete previous lesson first
-                                            </div>
-                                        </div>
-                                    <?php else: ?>
-                                        <a href="/learn/<?= $course['id'] ?>/lesson/<?= $lesson['id'] ?>" 
-                                           <?= $isActive ? 'id="active-lesson"' : '' ?>
-                                           class="flex items-start space-x-3 px-4 py-3 text-sm transition border-l-2 group
-                                           <?= $isActive ? 'border-indigo-500 bg-zinc-800/50' : 'border-transparent hover:bg-zinc-800/30' ?>">
+                                    <div class="<?= $isGroup ? 'bg-zinc-900/40 my-1 mx-2 rounded-xl border border-zinc-800/50 overflow-hidden' : '' ?>">
+                                        <?php foreach ($groupedItems as $gItem): ?>
+                                            <?php 
+                                                $isActive = ($gItem['item_type'] === $currentItem['item_type'] && $gItem['item_id'] === $currentItem['item_id']);
+                                                $isCompleted = false;
+                                                foreach ($completedItems as $c) {
+                                                    if ($c['item_type'] === $gItem['item_type'] && $c['item_id'] === $gItem['item_id']) {
+                                                        $isCompleted = true;
+                                                        break;
+                                                    }
+                                                }
+                                                $lockId = isset($gItem['id']) ? (int) $gItem['id'] : (int) $gItem['item_id'];
+                                                $isLocked = in_array($lockId, $lockedItemIds, true);
+                                                
+                                                $typeConfig = match($gItem['type'] ?? $gItem['item_type']) {
+                                                    'video' => ['icon' => 'fa-circle-play', 'color' => 'text-indigo-400', 'bg' => 'bg-indigo-500/10', 'label' => 'Video'],
+                                                    'quiz' => ['icon' => 'fa-clipboard-question', 'color' => 'text-purple-400', 'bg' => 'bg-purple-500/10', 'label' => 'Quiz'],
+                                                    'article' => ['icon' => 'fa-file-lines', 'color' => 'text-emerald-400', 'bg' => 'bg-emerald-500/10', 'label' => 'Article'],
+                                                    default => ['icon' => 'fa-circle', 'color' => 'text-zinc-400', 'bg' => 'bg-zinc-800', 'label' => 'Lesson']
+                                                };
+                                                $durationMinutes = !empty($gItem['duration']) ? floor($gItem['duration'] / 60) : 0;
+                                                $metaText = $typeConfig['label'] . ($durationMinutes > 0 ? ' • ' . $durationMinutes . ' mins' : '');
+                                                $itemUrl = (!empty($useContentItems) && isset($gItem['id']))
+                                                    ? "/learn/{$course['id']}/item/{$gItem['id']}"
+                                                    : "/learn/{$course['id']}/lesson/{$gItem['item_id']}";
+                                            ?>
                                             
-                                            <!-- Status Icon -->
-                                            <div class="mt-0.5 flex-shrink-0">
-                                                <?php if ($isCompleted): ?><div class="w-5 h-5 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></div>
-                                                <?php elseif ($isActive): ?><div class="w-5 h-5 rounded-full <?= $typeConfig['bg'] ?> <?= $typeConfig['color'] ?> flex items-center justify-center text-xs animate-pulse"><i class="fa-solid <?= $typeConfig['icon'] ?>"></i></div>
-                                                <?php else: ?><div class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-600 flex items-center justify-center text-[10px] group-hover:text-zinc-400 transition"><i class="fa-solid <?= $typeConfig['icon'] ?>"></i></div><?php endif; ?>
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="font-medium truncate <?= $isActive ? 'text-white' : ($isCompleted ? 'text-zinc-500 line-through decoration-zinc-700' : 'text-zinc-400 group-hover:text-zinc-200') ?>"><?= htmlspecialchars($lesson['title']) ?></div>
-                                                <div class="text-[10px] mt-0.5 flex items-center space-x-2 font-medium <?= $isActive ? $typeConfig['color'] : 'text-zinc-600' ?>"><span><?= $metaText ?></span></div>
-                                            </div>
-                                        </a>
-                                    <?php endif; ?>
+                                            <?php if ($isLocked): ?>
+                                                <div class="flex items-start space-x-3 px-4 py-3 text-sm opacity-50 cursor-not-allowed group relative" title="Locked">
+                                                    <div class="mt-0.5 flex-shrink-0">
+                                                        <div class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-600 flex items-center justify-center text-[10px]">
+                                                            <i class="fa-solid fa-lock"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="font-medium truncate text-zinc-500"><?= htmlspecialchars($gItem['title'] ?? 'Untitled') ?></div>
+                                                    </div>
+                                                </div>
+                                            <?php else: ?>
+                                                <a href="<?= $itemUrl ?>" 
+                                                   <?= $isActive ? 'id="active-lesson"' : '' ?>
+                                                   class="flex items-start space-x-3 px-4 py-3 text-sm transition group
+                                                   <?= $isActive ? 'bg-zinc-800/80 text-white' : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200' ?>
+                                                   <?= $isGroup ? 'mx-0 rounded-none' : 'mx-0' ?>">
+                                                    
+                                                    <!-- Status Icon -->
+                                                    <div class="mt-0.5 flex-shrink-0">
+                                                        <?php if ($isCompleted): ?><div class="w-5 h-5 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></div>
+                                                        <?php elseif ($isActive): ?><div class="w-5 h-5 rounded-full <?= $typeConfig['bg'] ?> <?= $typeConfig['color'] ?> flex items-center justify-center text-xs animate-pulse"><i class="fa-solid <?= $typeConfig['icon'] ?>"></i></div>
+                                                        <?php else: ?><div class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-600 flex items-center justify-center text-[10px] group-hover:text-zinc-400 transition"><i class="fa-solid <?= $typeConfig['icon'] ?>"></i></div><?php endif; ?>
+                                                    </div>
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="font-medium truncate <?= $isCompleted && !$isActive ? 'text-zinc-500 line-through decoration-zinc-700' : '' ?>"><?= htmlspecialchars($gItem['title'] ?? 'Untitled') ?></div>
+                                                        <div class="text-[10px] mt-0.5 flex items-center space-x-2 font-medium <?= $isActive ? $typeConfig['color'] : 'text-zinc-600' ?>"><span><?= $metaText ?></span></div>
+                                                    </div>
+                                                </a>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -535,7 +564,7 @@
                 <div x-show="activeTab === 'notes'" class="flex-1 flex flex-col h-full bg-zinc-900/30">
                     <!-- Notes Form -->
                     <div class="p-4 border-b border-zinc-800 bg-surface">
-                        <form id="note-form" class="space-y-3">
+                        <form id="note-form" class="space-y-3" data-no-transition>
                             <textarea id="note-content" rows="3" placeholder="Jot down a thought..." 
                                       class="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-3 text-sm text-white placeholder-zinc-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none"></textarea>
                             <div class="flex justify-between items-center">
@@ -580,11 +609,50 @@
                     <div class="border-b border-zinc-800/50">
                         <div class="bg-zinc-800/30 px-4 py-3 text-xs font-bold text-zinc-500 uppercase"><?= htmlspecialchars($module['title']) ?></div>
                         <div>
-                            <?php foreach ($module['lessons'] as $lesson): ?>
-                                <!-- (Simplified render for mobile) -->
-                                <a href="/learn/<?= $course['id'] ?>/lesson/<?= $lesson['id'] ?>" class="flex items-center space-x-3 px-4 py-3 text-sm border-l-2 border-transparent hover:bg-zinc-800/30">
-                                    <div class="font-medium text-zinc-300 truncate"><?= htmlspecialchars($lesson['title']) ?></div>
-                                </a>
+                            <?php 
+                                $processedGroups = [];
+                                foreach ($module['items'] as $item): 
+                                    if ($item['display_group_id'] && in_array($item['display_group_id'], $processedGroups, true)) continue;
+
+                                    $groupedItems = [];
+                                    if ($item['display_group_id']) {
+                                        $processedGroups[] = $item['display_group_id'];
+                                        foreach ($module['items'] as $subItem) {
+                                            if ($subItem['display_group_id'] === $item['display_group_id']) {
+                                                $groupedItems[] = $subItem;
+                                            }
+                                        }
+                                    } else {
+                                        $groupedItems[] = $item;
+                                    }
+                            ?>
+                                <?php foreach ($groupedItems as $gItem): ?>
+                                    <?php 
+                                        $isActive = ($gItem['item_type'] === $currentItem['item_type'] && $gItem['item_id'] === $currentItem['item_id']);
+                                        $lockId = isset($gItem['id']) ? (int) $gItem['id'] : (int) $gItem['item_id'];
+                                        $isLocked = in_array($lockId, $lockedItemIds, true);
+                                        $itemUrl = (!empty($useContentItems) && isset($gItem['id']))
+                                            ? "/learn/{$course['id']}/item/{$gItem['id']}"
+                                            : "/learn/{$course['id']}/lesson/{$gItem['item_id']}";
+                                        $typeLabel = match($gItem['type'] ?? $gItem['item_type']) {
+                                            'video' => 'Video',
+                                            'quiz' => 'Quiz',
+                                            'article' => 'Article',
+                                            default => 'Lesson'
+                                        };
+                                    ?>
+                                    <?php if ($isLocked): ?>
+                                        <div class="flex items-center space-x-3 px-4 py-3 text-sm text-zinc-600">
+                                            <i class="fa-solid fa-lock text-xs"></i>
+                                            <span class="truncate"><?= htmlspecialchars($gItem['title'] ?? 'Untitled') ?></span>
+                                        </div>
+                                    <?php else: ?>
+                                        <a href="<?= $itemUrl ?>" class="flex items-center space-x-3 px-4 py-3 text-sm border-l-2 border-transparent <?= $isActive ? 'bg-zinc-800/50 text-white' : 'text-zinc-300 hover:bg-zinc-800/30' ?>">
+                                            <span class="text-[10px] uppercase tracking-wide text-zinc-500"><?= $typeLabel ?></span>
+                                            <span class="font-medium truncate"><?= htmlspecialchars($gItem['title'] ?? 'Untitled') ?></span>
+                                        </a>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -595,9 +663,15 @@
 
     <!-- Tracker JS -->
     <script>
-        const LESSON_ID = <?= $currentLesson['id'] ?>;
-        const NEXT_LESSON_ID = <?= $nextLesson['id'] ?? 'null' ?>;
+        const LESSON_ID = <?= $currentLesson['id'] ?? 'null' ?>;
+        const ITEM_ID = <?= $currentItem['id'] ?? 'null' ?>;
+        const NEXT_ITEM_URL = <?= json_encode($nextItemUrl ?? null) ?>;
         const COURSE_ID = <?= $course['id'] ?>;
+        const ITEM_STATE = <?= json_encode([
+            'isCompleted' => $currentItemCompleted ?? false,
+            'progressPercent' => $progressPercent ?? 0,
+            'nextItemUrl' => $nextItemUrl ?? null
+        ]) ?>;
         
         // Auto-scroll playlist to active lesson
         document.addEventListener('DOMContentLoaded', () => {
@@ -607,6 +681,11 @@
             }
         });
     </script>
-    <script src="/assets/js/player.js?v=<?= time() ?>"></script>
+    <?php 
+        $playerJsPath = BASE_PATH . 'public/assets/js/player.min.js';
+        $playerJsVer = is_file($playerJsPath) ? filemtime($playerJsPath) : time();
+    ?>
+    <script src="/assets/js/player.min.js?v=<?= $playerJsVer ?>"></script>
+    <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
 </html>

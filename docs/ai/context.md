@@ -8,7 +8,12 @@
     - **Rate Limiting**: `App\Core\RateLimiter` handles throttling (e.g., quiz attempts, uploads).
     - **Enrollment**: Enforced at Controller and Service layers to prevent unauthorized progress/access.
 - **UI Components**: Primarily Blade-like PHP views using Tailwind CSS and Alpine.js.
-- **Data Persistence**: SQLite database. Migrations are handled by standalone PHP scripts in `database/`.
+- **Data Persistence**: Multi-database support (SQLite, MySQL, PostgreSQL). 
+    - Configuration via `config/database.php` and `.env` environment variables.
+    - `App\Core\Database` singleton with adapter pattern (`App\Core\Database\Adapters\`).
+    - Grammar classes (`App\Core\Database\Grammar\`) handle SQL syntax differences.
+    - Use `$db->insertOrIgnore()` instead of raw `INSERT OR IGNORE` for cross-DB compatibility.
+    - New migrations in `database/migrations/` using Blueprint schema builder. Run via `php migrate.php`.
 
 ## Key Flows
 - **Course Building**: Handled in `InstructorController`. Uses a "Batch Save" pattern where reordering is stored in memory (DOM) and persisted on click.

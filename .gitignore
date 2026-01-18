@@ -33,3 +33,7 @@ cache/
 # === Testing / coverage ===
 coverage/
 .phpunit.result.cache
+
+.gemini/
+gha-creds-*.json
+*.bak_*
