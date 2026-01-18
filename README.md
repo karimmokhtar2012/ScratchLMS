@@ -2,9 +2,15 @@
 
 A high-performance, lightweight Learning Management System (LMS) built from scratch using a custom MVC architecture in PHP. ScratchLMS provides a comprehensive suite of tools for students, instructors, and administrators, focusing on speed, simplicity, and flexibility without the overhead of heavy frameworks.
 
-## 🌟 Version 0.7 Release (January 17, 2026)
+## 🌟 Version 0.7 Release (January 17-18, 2026)
 
-**Introducing Scracha**, the AI backbone of ScratchLMS, alongside a massive UI/UX overhaul for the Instructor Studio.
+**Introducing Scracha, Multi-Database Support, and a massive UI/UX overhaul.**
+
+### 💾 Enterprise-Ready Data Layer
+**New in v0.7!** ScratchLMS now supports **MySQL**, **PostgreSQL**, and **SQLite** out of the box.
+- **Database Agnostic**: Seamlessly switch between database drivers using `.env` configuration.
+- **Advanced Migrations**: New CLI migration tool (`php migrate.php`) for managing schema changes across any supported database.
+- **Portable Architecture**: Built on a custom adapter pattern that abstracts SQL differences (e.g., `INSERT OR IGNORE` vs. `ON DUPLICATE KEY`).
 
 ### 🤖 Meet "Scracha"
 **Scracha** is our purpose-built AI engine designed to augment the educational experience. It doesn't just grade; it understands.
@@ -94,7 +100,10 @@ Instructors can define the student journey through flexible "Content Flow" setti
 ## 🛠️ Technology Stack
 
 - **Language**: PHP 8.1+
-- **Database**: SQLite (Zero-config, file-based database)
+- **Database**:
+    - **Primary Support**: MySQL 8.0+, PostgreSQL 13+, SQLite 3
+    - **Configuration**: Environment-based (.env) via custom Adapter factory
+    - **ORM/Query**: Native PDO with custom Database helper and Grammar classes
 - **AI Engine**: **Scracha** (Built on Groq Llama 3.1 70B architecture)
 - **Architecture**: Custom Model-View-Controller (MVC)
 - **Frontend**: Vanilla JS, HTML5, Tailwind CSS (Dark Mode Native), Alpine.js
@@ -106,7 +115,7 @@ Instructors can define the student journey through flexible "Content Flow" setti
 Ensure you have the following installed on your machine:
 - **PHP 8.1** or higher
 - **Composer**
-- **SQLite3** driver for PHP
+- **Database**: SQLite3 (bundled with PHP), MySQL, or PostgreSQL
 
 ## ⚡ Installation
 
@@ -121,14 +130,21 @@ Ensure you have the following installed on your machine:
     composer install
     ```
 
-3.  **Initialize Database**
-    This script creates the SQLite database file and runs all necessary migrations.
+3.  **Configure Environment**
+    Copy the example configuration file and set your database credentials.
     ```bash
-    php setup_db.php
+    cp .env.example .env
+    # Edit .env to set DB_CONNECTION=sqlite, mysql, or pgsql
     ```
-    *Note: This will create/reset `database/database.sqlite`.*
 
-4.  **Directory Permissions**
+4.  **Run Migrations**
+    Use the new CLI tool to set up your database schema.
+    ```bash
+    php migrate.php
+    ```
+    *Note: For development with SQLite, `php setup_db.php` is also available for a full reset.*
+
+5.  **Directory Permissions**
     Ensure the web server can write to the storage and uploads directories.
     ```bash
     chmod -R 775 storage public/uploads
@@ -151,6 +167,7 @@ Visit `http://localhost:8000` in your browser.
 LMS/
 ├── app/
 │   ├── Core/           # System core (Router, Database, CSRF, RateLimiter)
+│   │   ├── Database/   # Database Adapters, Grammars, and Migrations
 │   ├── Domain/         # Domain Entities (Courses, Lessons, Quizzes, Users)
 │   ├── Http/           # Controllers, Middleware, Requests, and Responses
 │   ├── Policies/       # Authorization and Access Control Logic
