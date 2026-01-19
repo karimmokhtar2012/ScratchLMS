@@ -1,0 +1,561 @@
+# ScratchLMS Developer Guide
+
+> **Mission-Critical Documentation**  
+> This document establishes the mandatory standards for developing, modifying, or extending ScratchLMS.  
+> **Non-compliance with security requirements is unacceptable.**
+
+---
+
+## Table of Contents
+
+1. [System Architecture](#1-system-architecture)
+2. [Page & Route Structure](#2-page--route-structure)
+3. [Required Functions & Dependencies](#3-required-functions--dependencies)
+4. [Security Layers (MANDATORY)](#4-security-layers-mandatory)
+5. [UI Design Rules](#5-ui-design-rules)
+6. [Development Requirements](#6-development-requirements)
+7. [Quick Reference Checklists](#7-quick-reference-checklists)
+
+---
+
+## 1. System Architecture
+
+### Directory Structure
+
+```
+LMS/
+├── app/
+│   ├── Core/              # Framework core (Router, Database, Controller, Csrf)
+│   ├── Domain/            # Domain models (Users, Courses, Lessons, etc.)
+│   ├── Exceptions/        # Custom exceptions
+│   ├── Http/Controllers/  # HTTP request handlers
+│   ├── Policies/          # Authorization policies
+│   ├── Services/          # Business logic services
+│   └── helpers.php        # Global helpers (env, config)
+├── config/                # Configuration files
+├── public/                # Web root (index.php, assets, uploads)
+├── resources/views/       # View templates
+├── routes/web.php         # Route definitions
+└── docs/                  # Documentation
+```
+
+### MVC Pattern
+
+```
+Request → Router → Controller → Service → Model → Database
+                       ↓
+                    View ← Data
+```
+
+- **Controllers**: Handle HTTP requests, validate input, delegate to services
+- **Services**: Encapsulate business logic, interact with models
+- **Models**: Data access and manipulation
+- **Views**: Display data (NO business logic in views!)
+
+---
+
+## 2. Page & Route Structure
+
+### Controllers & Their Responsibilities
+
+| Controller | Purpose | Auth Required |
+|------------|---------|---------------|
+| `AuthController` | Login, logout, registration | No |
+| `OnboardingController` | New user setup | Yes |
+| `DashboardController` | User/instructor dashboard | Yes |
+| `CourseController` | Public course browsing | No |
+| `LearnController` | Course player, progress tracking | Yes |
+| `InstructorController` | Course building, student management | Yes (Instructor) |
+| `QuizController` | Quiz management (CRUD) | Yes (Instructor) |
+| `QuizRunnerController` | Quiz taking, submission | Yes |
+| `ProfileController` | User profile management | Yes |
+| `NoteController` | Student notes for lessons | Yes |
+| `AdminController` | Platform administration | Yes (Admin) |
+| `UploadController` | File upload handling | Yes |
+| `NotificationController` | API for notifications | Yes |
+| `CartController` | Shopping cart | Yes |
+| `CheckoutController` | Payment processing | Yes |
+| `CertificateController` | Certificate generation | Yes |
+| `QuestionBankController` | Reusable question pools | Yes (Instructor) |
+| `HomeController` | Public homepage | No |
+
+### Route Naming Convention
+
+```php
+// Pattern: HTTP_METHOD /resource/action/parameter
+GET  /courses                    → CourseController::index
+GET  /course/{id}                → CourseController::show
+POST /course/{id}/enroll         → CourseController::enroll
+GET  /learn/{courseId}/lesson/{lessonId} → LearnController::player
+POST /instructor/course/store    → InstructorController::store
+```
+
+### Adding New Routes
+
+1. Open `routes/web.php`
+2. Add route with correct HTTP method:
+
+```php
+use App\Http\Controllers\YourController;
+$router->get('/your-route', [YourController::class, 'method']);
+$router->post('/your-route', [YourController::class, 'method']);
+```
+
+---
+
+## 3. Required Functions & Dependencies
+
+### Helper Functions (Always Available)
+
+#### Security Helpers (`app/Core/helpers.php`)
+
+```php
+// XSS Protection - USE IN ALL VIEWS!
+e($string)  // Escapes HTML entities
+
+// File Upload Validation
+validateFileUpload(
+    $file,                    // $_FILES array element
+    $allowedExtensions,       // ['jpg', 'png', 'pdf']
+    $allowedMimeTypes         // ['image/jpeg', 'image/png']
+)
+
+// Redirect Sanitization
+sanitizeRedirect($path, $default = '/')  // Prevents open redirects
+
+// Database Error Logging
+logDatabaseError($query, $params, $error, $file, $line)
+```
+
+#### Global Helpers (`app/helpers.php`)
+
+```php
+env($key, $default)     // Get environment variable
+config($key, $default)  // Get config value (dot notation: 'database.default')
+loadEnvFile($path)      // Load .env file
+```
+
+### Database Operations
+
+```php
+// Get database instance
+$db = \App\Core\Database::getInstance();
+
+// Query methods
+$db->query($sql, $params);          // Execute query
+$db->fetchAll($sql, $params);       // Get multiple rows
+$db->fetchOne($sql, $params);       // Get single row
+$db->insertOrIgnore($table, $data); // Insert without duplicate errors
+$db->upsert($table, $data, $uniqueColumn); // Insert or update
+```
+
+### Service Layer Classes
+
+When implementing business logic, use or create services:
+
+| Service | Purpose | Methods |
+|---------|---------|---------|
+| `UserService` | User operations | `register()`, `assignRole()`, `getUserWithRoles()` |
+| `RoleService` | Role management | `assignRole()`, `getUserRoles()` (cached) |
+| `NotificationService` | Notifications | `create()`, `markRead()` |
+| `CourseProgressService` | Progress tracking | `updateProgress()`, `isLessonLocked()` |
+
+---
+
+## 4. Security Layers (MANDATORY)
+
+> ⚠️ **CRITICAL**: Every security measure below is **NON-NEGOTIABLE**.
+
+### 4.1 XSS Prevention
+
+**ALWAYS escape user-generated output in views:**
+
+```php
+<!-- ✅ CORRECT -->
+<h1><?= e($user['name']) ?></h1>
+<input value="<?= e($value) ?>">
+<p><?= htmlspecialchars($text) ?></p>
+
+<!-- ❌ NEVER DO THIS -->
+<h1><?= $user['name'] ?></h1>
+<?= $_POST['data'] ?>
+```
+
+**When to escape:**
+
+- User names, emails, bios
+- Course/lesson titles and descriptions
+- Any database content that originated from user input
+- Form values being re-displayed
+
+**When NOT to escape:**
+
+- Numeric IDs (already safe)
+- System-generated HTML (intentional)
+- Already-escaped content (don't double-escape)
+
+### 4.2 CSRF Protection
+
+**All POST requests are automatically protected.** The router verifies CSRF tokens.
+
+**In forms, always include:**
+
+```php
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+    <!-- form fields -->
+</form>
+```
+
+**For AJAX requests:**
+
+```javascript
+// Token is auto-injected via fetch wrapper
+fetch('/api/endpoint', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+```
+
+### 4.3 File Upload Security
+
+**NEVER save uploaded files without validation:**
+
+```php
+// ✅ CORRECT - Required pattern
+$validation = validateFileUpload(
+    $_FILES['upload'],
+    ['jpg', 'png', 'gif', 'webp'],           // Allowed extensions
+    ['image/jpeg', 'image/png', 'image/gif', 'image/webp']  // MIME types
+);
+
+if (!$validation['valid']) {
+    // Handle error
+    return error($validation['error']);
+}
+
+// Only then save the file
+```
+
+**Allowed file types by category:**
+
+| Category | Extensions | MIME Types |
+|----------|------------|------------|
+| Images | jpg, jpeg, png, gif, webp | image/jpeg, image/png, image/gif, image/webp |
+| Videos | mp4, webm, mov | video/mp4, video/webm, video/quicktime |
+| Documents | pdf, doc, docx, xls, xlsx | application/pdf, application/msword, etc. |
+
+### 4.4 SQL Injection Prevention
+
+**ALWAYS use parameterized queries:**
+
+```php
+// ✅ CORRECT
+$db->fetchOne("SELECT * FROM users WHERE id = :id", [':id' => $userId]);
+
+// ❌ NEVER DO THIS
+$db->query("SELECT * FROM users WHERE id = $userId");
+```
+
+### 4.5 Mass Assignment Protection
+
+**Model updates must use whitelists:**
+
+```php
+// In model, define allowed columns:
+private const ALLOWED_UPDATE_COLUMNS = ['name', 'email', 'bio', 'profile_picture'];
+
+// Then filter input:
+$filtered = array_intersect_key($input, array_flip(self::ALLOWED_UPDATE_COLUMNS));
+```
+
+### 4.6 Session Security
+
+**After login, always regenerate session:**
+
+```php
+session_regenerate_id(true);
+$_SESSION['user_id'] = $user['id'];
+```
+
+### 4.7 Redirect Validation
+
+**NEVER use raw user input for redirects:**
+
+```php
+// ✅ CORRECT
+$redirect = sanitizeRedirect($_POST['return'] ?? '', '/dashboard');
+header("Location: $redirect");
+
+// ❌ NEVER DO THIS
+header("Location: " . $_POST['return']);
+```
+
+### 4.8 Authorization Checks
+
+**Always verify user permissions:**
+
+```php
+// Check authentication
+if (!isset($_SESSION['user_id'])) {
+    header('Location: /login');
+    exit;
+}
+
+// Check specific roles
+if (!in_array('admin', $_SESSION['user_roles'])) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
+// Check resource ownership
+if ($course['instructor_id'] !== $_SESSION['user_id']) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+```
+
+---
+
+## 5. UI Design Rules
+
+Reference: `docs/design_context.md`
+
+### Color Palette (MANDATORY)
+
+| Purpose | Color | Class |
+|---------|-------|-------|
+| Background | `#0a0a0a` | `bg-background` or direct |
+| Surface | `#18181b` | `bg-zinc-900` |
+| Card | `#27272a` | `bg-zinc-800` |
+| Primary Accent | Indigo → Violet | `bg-gradient-to-br from-indigo-500 to-violet-600` |
+| Text | `#e2e8f0` | `text-zinc-200` |
+| Muted Text | | `text-zinc-400` or `text-zinc-500` |
+
+### Component Standards
+
+**Cards:**
+
+```html
+<div class="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 hover:border-zinc-700 transition">
+```
+
+**Primary Buttons:**
+
+```html
+<button class="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold py-2 px-6 rounded-xl hover:opacity-90 transition">
+```
+
+**Secondary Buttons:**
+
+```html
+<button class="bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 py-2 px-4 rounded-lg transition">
+```
+
+**Form Inputs:**
+
+```html
+<input class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl py-2 px-4 focus:outline-none focus:border-indigo-500 transition">
+```
+
+### Typography
+
+- **Font**: Rubik (Latin), RB (Arabic/RTL)
+- **Headings**: `font-bold` (700) or `font-extrabold` (800)
+- **Body**: Regular (400)
+- **Icons**: FontAwesome 6 (`fa-solid`, `fa-regular`)
+
+### Layout Rules
+
+1. **Always** use `class="dark"` on `<html>` tag
+2. **Never** use pure white backgrounds
+3. Use `rounded-xl` or `rounded-2xl` for containers
+4. Use subtle borders (`border-zinc-800`) instead of heavy shadows
+5. Mobile: Stack vertically, use off-canvas sidebar
+
+---
+
+## 6. Development Requirements
+
+### Before Creating Any Page/Function
+
+1. **Identify the route** - What URL will trigger this?
+2. **Create the controller** - Extend base Controller class
+3. **Define authorization** - Who can access this?
+4. **Create the service** - Encapsulate business logic (if complex)
+5. **Create the view** - Follow UI design rules
+6. **Add security** - Apply all security layers
+
+### Controller Template
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use App\Core\Controller;
+use App\Core\Database;
+
+class YourController extends Controller
+{
+    private Database $db;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->db = Database::getInstance();
+    }
+
+    public function index(): void
+    {
+        // 1. Authorization check
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        // 2. Fetch data using parameterized queries
+        $data = $this->db->fetchAll(
+            "SELECT * FROM table WHERE user_id = :uid",
+            [':uid' => $_SESSION['user_id']]
+        );
+
+        // 3. Render view with escaped data
+        $this->view('your/view', [
+            'data' => $data,
+            'title' => 'Page Title'
+        ]);
+    }
+
+    public function store(): void
+    {
+        // CSRF is auto-verified by router for POST
+
+        // 1. Authorization
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            exit;
+        }
+
+        // 2. Validate input
+        $name = trim($_POST['name'] ?? '');
+        if (empty($name)) {
+            $_SESSION['flash_error'] = 'Name is required';
+            header('Location: /your-page');
+            exit;
+        }
+
+        // 3. File upload (if applicable)
+        if (isset($_FILES['upload'])) {
+            $validation = validateFileUpload($_FILES['upload'], ['jpg', 'png'], ['image/jpeg', 'image/png']);
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = $validation['error'];
+                header('Location: /your-page');
+                exit;
+            }
+        }
+
+        // 4. Database operation with parameterized query
+        $this->db->query(
+            "INSERT INTO table (name, user_id) VALUES (:name, :uid)",
+            [':name' => $name, ':uid' => $_SESSION['user_id']]
+        );
+
+        // 5. Redirect safely
+        $redirect = sanitizeRedirect($_POST['return'] ?? '', '/your-page');
+        header("Location: $redirect");
+    }
+}
+```
+
+### View Template
+
+```php
+<?php ob_start(); ?>
+
+<div class="max-w-7xl mx-auto space-y-8">
+    <h1 class="text-3xl font-bold text-white"><?= e($title) ?></h1>
+    
+    <?php foreach ($items as $item): ?>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <h2 class="text-white font-bold"><?= e($item['name']) ?></h2>
+            <p class="text-zinc-400"><?= e($item['description']) ?></p>
+        </div>
+    <?php endforeach; ?>
+    
+    <form method="POST" action="/your-action">
+        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+        <input type="text" name="name" value="<?= e($existingValue ?? '') ?>"
+               class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-xl py-2 px-4 focus:outline-none focus:border-indigo-500">
+        <button type="submit" class="bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold py-2 px-6 rounded-xl">
+            Submit
+        </button>
+    </form>
+</div>
+
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
+?>
+```
+
+### Git Workflow (Per GEMINI.md)
+
+1. **Gemini** handles all commits and pushes
+2. Before committing, ensure all tests pass
+3. Update `docs/ai/change-log.md` with changes
+4. Create GitHub issue for any bugs found
+5. Close GitHub issues after resolution with comment
+
+---
+
+## 7. Quick Reference Checklists
+
+### New Page Checklist
+
+- [ ] Route defined in `routes/web.php`
+- [ ] Controller created with proper authorization
+- [ ] Service created (if complex logic)
+- [ ] View follows design_context.md rules
+- [ ] All user output uses `e()` or `htmlspecialchars()`
+- [ ] Forms include CSRF token
+- [ ] File uploads validated with `validateFileUpload()`
+- [ ] Database queries use parameters
+- [ ] Redirects use `sanitizeRedirect()`
+
+### Security Audit Checklist
+
+- [ ] No raw `$_POST`/`$_GET` output in HTML
+- [ ] No unparameterized SQL queries
+- [ ] No direct file saves without validation
+- [ ] No redirects with raw user input
+- [ ] Session regenerated after login
+- [ ] Authorization checked for all protected routes
+- [ ] Mass assignment protected with whitelists
+
+### Code Review Checklist
+
+- [ ] Follows MVC pattern
+- [ ] Business logic in services, not controllers
+- [ ] UI matches design_context.md
+- [ ] Security layers properly applied
+- [ ] Error handling implemented
+- [ ] Flash messages for user feedback
+- [ ] Mobile responsive design
+
+---
+
+## Related Documentation
+
+- [Design Context](./design_context.md) - UI design system
+- [XSS Protection Guidelines](./security/xss-protection-guidelines.md) - Detailed XSS guide
+- [Change Log](./ai/change-log.md) - Development history
+- [ADR Directory](./adr/) - Architectural Decision Records
+
+---
+
+**Last Updated:** 2026-01-19  
+**Maintained by:** Gemini (Security & UI Team)
