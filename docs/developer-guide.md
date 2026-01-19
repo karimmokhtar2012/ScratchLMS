@@ -127,6 +127,34 @@ sanitizeRedirect($path, $default = '/')  // Prevents open redirects
 logDatabaseError($query, $params, $error, $file, $line)
 ```
 
+#### Input Sanitizer (`app/Core/InputSanitizer.php`)
+
+```php
+use App\Core\InputSanitizer;
+
+// Sanitize text (strips HTML tags)
+$name = InputSanitizer::text($_POST['name'] ?? '');
+
+// Sanitize email (validates + sanitizes)
+$email = InputSanitizer::email($_POST['email'] ?? '');
+
+// Sanitize integers/floats
+$age = InputSanitizer::int($_POST['age'] ?? 0);
+
+// Sanitize URLs (HTTP/HTTPS only)
+$website = InputSanitizer::url($_POST['website'] ?? '');
+
+// Sanitize HTML with whitelist (for rich text)
+$bio = InputSanitizer::html($_POST['bio'] ?? '', ['p', 'br', 'strong', 'em']);
+
+// Batch sanitize
+$data = InputSanitizer::sanitize($_POST, [
+    'name' => 'text',
+    'email' => 'email',
+    'age' => ['int', 18],  // with default
+]);
+```
+
 #### Global Helpers (`app/helpers.php`)
 
 ```php
