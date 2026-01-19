@@ -51,7 +51,7 @@ if (!function_exists('validateFileUpload')) {
         if (!empty($allowedMimeTypes)) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mimeType = finfo_file($finfo, $file['tmp_name']);
-            finfo_close($finfo);
+            // finfo_close is deprecated/unnecessary in PHP 8+ as resources are auto-freed
 
             if (!in_array($mimeType, $allowedMimeTypes, true)) {
                 return ['valid' => false, 'error' => "Invalid file content. Expected MIME types: " . implode(', ', $allowedMimeTypes)];

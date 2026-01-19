@@ -143,8 +143,8 @@ class AuthController extends Controller
         // Use UserService for registration (handles validation, role assignment, notifications)
         $userService = new \App\Services\UserService();
         $userId = $userService->register([
-            'name' => $_POST['name'] ?? '',
-            'email' => $_POST['email'] ?? '',
+            'name' => \App\Core\InputSanitizer::text($_POST['name'] ?? ''),
+            'email' => \App\Core\InputSanitizer::email($_POST['email'] ?? ''),
             'password' => $_POST['password'] ?? ''
         ]);
 
