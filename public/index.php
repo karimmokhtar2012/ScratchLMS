@@ -11,8 +11,16 @@ use App\Core\Router;
 // Define Base Path
 const BASE_PATH = __DIR__ . '/../';
 
+// Load Global Helpers
+if (file_exists(BASE_PATH . 'app/helpers.php')) {
+    require_once BASE_PATH . 'app/helpers.php';
+}
+
 // Load Security Helpers
 require_once BASE_PATH . 'app/Core/helpers.php';
+
+// Send Security Headers (CSP, X-Frame-Options, etc.)
+\App\Core\SecurityHeaders::send();
 
 // Load Composer Autoloader
 if (file_exists(BASE_PATH . 'vendor/autoload.php')) {

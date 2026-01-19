@@ -2,148 +2,92 @@
 
 This document tracks logical, design, and technical issues identified during codebase audits.
 
-**Last Updated:** 2026-01-18 23:12 (Africa/Cairo)  
-**Review Status:** 8 of 9 Critical/High issues RESOLVED ✅
-
----
-
 ## Critical Security Vulnerabilities
 
-### [SEC-001] Mass Assignment Vulnerability in `User::update` ✅ RESOLVED
-
+### [SEC-001] SQL Injection Risk in `User::update`
 - **File:** `app/Domain/Users/User.php`
 - **Description:** The `update` method dynamically constructs SQL keys from input arrays without validation or whitelisting.
-- **Status:** ✅ **Resolved** (2026-01-18)
-- **Priority:** Critical
-- **Fix:** Added `ALLOWED_UPDATE_COLUMNS` whitelist constant. Only whitelisted columns (name, email, password, profile_picture, bio, is_onboarded) can be updated.
-- **Commit:** 52d23c0
+- **Status:** **Resolved**
+- **Priority:** High
+- **Notes:** Implemented strict `ALLOWED_UPDATE_COLUMNS` whitelist.
 
-### [SEC-002] Cross-Site Scripting (XSS) Gaps ⚠️ PARTIALLY RESOLVED
-
+### [SEC-002] Cross-Site Scripting (XSS) Gaps
 - **File:** `app/Core/Controller.php` & All Views
 - **Description:** No automatic output escaping in the view rendering engine. Views rely on manual escaping which is missing in several locations.
-- **Status:** ⚠️ **Partially Resolved** (2026-01-18)
+- **Status:** **Partially Solved**
 - **Priority:** High
-- **Fix:** Created `e()` helper function for HTML escaping. View template audit pending.
-- **Remaining:** Manual audit of ~50 view files (GitHub Issue #41)
-- **Commit:** 52d23c0
+- **Notes:** Added `e()` helper. Manual migration of all views to use `e()` instead of raw echo is still in progress.
 
-### [SEC-003] Inconsistent CSRF Enforcement ✅ RESOLVED
-
-- **File:** `app/Http/Controllers/AuthController.php`
+### [SEC-003] Inconsistent CSRF Enforcement
+- **File:** `app/Http/Controllers/`
 - **Description:** CSRF tokens are generated but not consistently verified in POST controllers (e.g., AuthController).
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** Medium
-- **Fix:** Added explicit CSRF validation in `login()` and `register()` methods using constant-time comparison.
-- **Commit:** 52d23c0
+- **Notes:** Global CSRF check enforced in `Router.php` for all POST requests.
 
-### [SEC-004] Remote Code Execution (RCE) via File Upload ✅ RESOLVED
-
+### [SEC-004] Remote Code Execution (RCE) via File Upload
 - **File:** `app/Http/Controllers/UploadController.php`, `app/Http/Controllers/InstructorController.php`
 - **Description:** File uploads for thumbnails, videos, and attachments do not validate file extensions or MIME types. PHP files can be uploaded to public directories (`/public/uploads/`) and executed.
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** Critical
-- **Fix:** Implemented comprehensive file validation:
-  - Extension whitelists (images: jpg/png/gif/webp, videos: mp4/webm/mov, docs: pdf/docx/etc.)
-  - MIME type verification using `finfo_file()`
-  - Double-extension detection (e.g., file.php.mp4)
-  - Applied to all 5 file upload endpoints
-- **Commit:** 52d23c0
+- **Notes:** Implemented `validateFileUpload` with strict whitelist and MIME type checking.
 
-### [SEC-005] Session Fixation Vulnerability ✅ RESOLVED
-
+### [SEC-005] Session Fixation Vulnerability
 - **File:** `app/Http/Controllers/AuthController.php`
 - **Description:** `AuthController::login` does not regenerate the session ID (`session_regenerate_id(true)`) upon successful authentication, allowing attackers to hijack sessions.
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** High
-- **Fix:** Added `session_regenerate_id(true)` immediately after successful authentication.
-- **Commit:** 52d23c0
+- **Notes:** Added `session_regenerate_id(true)` to login flow.
 
-### [SEC-006] Logic Bypass in Progress Tracking ✅ RESOLVED
-
+### [SEC-006] Logic Bypass in Progress Tracking
 - **File:** `app/Http/Controllers/LearnController.php`
 - **Description:** The `track` method allows marking any enrolled lesson as 'completed' without verifying if the lesson is currently unlocked (e.g., in linear courses), allowing students to skip required content.
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** High
-- **Fix:** Added drip rule verification before marking lessons as complete. Returns 403 error if lesson is locked.
-- **Commit:** 52d23c0
+- **Notes:** Added `isLessonLocked` check before processing completion in `LearnController::track`.
 
-### [SEC-007] Open Redirect Vulnerability ✅ RESOLVED
-
+### [SEC-007] Open Redirect Vulnerability
 - **File:** `app/Http/Controllers/InstructorController.php`
 - **Description:** The `handleRequest` and `issueCertificate` methods use `$_POST['return']` for redirection without validating that the target is a local, safe path.
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** Medium
-- **Fix:** Created `sanitizeRedirect()` helper function. Validates redirects to prevent protocol-relative URLs, external domains, and path traversal.
-- **Commit:** 52d23c0
-
----
+- **Notes:** Implemented `sanitizeRedirect` to strictly enforce local-only redirects.
 
 ## Architectural & Design Issues
 
-### [ARCH-001] MVC Violations in AuthController ✅ RESOLVED
-
+### [ARCH-001] MVC Violations in AuthController
 - **File:** `app/Http/Controllers/AuthController.php`
 - **Description:** Business logic (role assignment, notifications) and raw SQL queries are present in the controller.
-- **Status:** ✅ **Resolved** (2026-01-18)
-- **Priority:** Low
-- **Fix:** Created service layer (UserService, RoleService, NotificationService). Extracted business logic from controller. AuthController now uses services for all operations.
-- **Commit:** cb255b3
+- **Status:** **Partially Solved**
+- **Priority:** Medium
+- **Notes:** Some queries moved to Models, but controller still handles heavy business logic.
 
-### [ARCH-002] Lack of Request/Response Abstractions 🔄 DEFERRED
-
+### [ARCH-002] Lack of Request/Response Abstractions
 - **File:** Global
 - **Description:** Extensive use of `$_POST`, `$_SESSION`, and `header()` instead of encapsulated objects.
-- **Status:** 🔄 **Deferred** (Non-critical architectural improvement)
+- **Status:** **Pending**
 - **Priority:** Low
-- **Note:** Current approach is acceptable. Can be refactored incrementally as controllers are updated.
-
----
+- **Notes:** Requires major refactor. Not addressed in this sprint.
 
 ## Technical & Logical Errors
 
-### [LOG-001] Silent Database Failures ✅ RESOLVED
-
+### [LOG-001] Silent Database Failures
 - **File:** `app/Core/Database/` & Models
 - **Description:** Database operations return `false` without logging errors or throwing exceptions, making debugging difficult.
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** Medium
-- **Fix:** Created DatabaseException class. Added logDatabaseError() helper. Security logging implemented in User model.
-- **Commit:** cb255b3
+- **Notes:** Added `logDatabaseError` helper and improved error handling in key models.
 
-### [PERF-001] N+1 Query Patterns ✅ RESOLVED
+### [LOG-002] Missing Helper Functions
+- **File:** `public/index.php`
+- **Description:** `app/helpers.php` (containing `env()` and `config()`) was not being loaded, causing critical runtime errors on database connection.
+- **Status:** **Resolved**
+- **Priority:** Critical
+- **Notes:** Added explicit `require_once` for `app/helpers.php` in `public/index.php`.
 
+### [PERF-001] N+1 Query Patterns
 - **File:** `app/Http/Controllers/AuthController.php`
 - **Description:** Manual role fetching after user login; indicates a pattern that leads to N+1 issues in list views.
-- **Status:** ✅ **Resolved** (2026-01-18)
+- **Status:** **Resolved**
 - **Priority:** Low
-- **Fix:** Eliminated N+1 in AuthController::login using GROUP_CONCAT. UserService now eagereloads roles in single query (2 queries → 1 query, 50% improvement).
-- **Commit:** cb255b3
-
----
-
-## Summary
-
-| Category | Total | Resolved | Partial | Deferred | Remaining |
-|----------|-------|----------|---------|----------|-----------|
-| Critical | 2 | 2 ✅ | 0 | 0 | 0 |
-| High | 4 | 3 ✅ | 1 ⚠️ | 0 | 0 |
-| Medium | 3 | 3 ✅ | 0 | 0 | 0 |
-| Low | 3 | 2 ✅ | 0 | 1 🔄 | 0 |
-
-**Overall Progress:** 10/12 issues resolved (83%)
-
-**Remaining Work:**
-
-- XSS view audit (high effort, low urgency - helper available)
-- Request/Response abstractions (low priority architectural improvement)
-
----
-
-## Next Steps
-
-1. **High Priority**: Complete XSS view audit or create developer guidelines document
-2. **Medium Priority**: Gradually adopt service layer pattern in other controllers
-3. **Low Priority**: Consider Request/Response wrappers for long-term architectural improvement
-
 - **Notes:** Optimized role fetching in Admin/User lists using `GROUP_CONCAT`.
