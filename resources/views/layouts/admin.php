@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -52,25 +53,117 @@
         })();
     </script>
     <style>
-        body { background-color: #050505; color: #e5e5e5; }
-        body.page-transition > :not(#page-transition) { opacity: 0; transform: translateY(8px); transition: opacity 320ms ease, transform 320ms ease; }
-        body.page-ready > :not(#page-transition) { opacity: 1; transform: none; }
-        body.page-exit > :not(#page-transition) { opacity: 0; transform: translateY(8px); }
-        .page-transition-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(80% 80% at 50% 40%, rgba(88, 28, 135, 0.25), rgba(9, 9, 11, 0.95)); opacity: 0; pointer-events: none; transition: opacity 240ms ease; z-index: 9999; }
-        .page-transition-overlay.is-active { opacity: 1; pointer-events: auto; }
-        .page-loader { position: relative; width: 64px; height: 64px; }
-        .page-loader::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 180deg, rgba(139, 92, 246, 0) 0deg, rgba(139, 92, 246, 0.95) 110deg, rgba(99, 102, 241, 0.9) 220deg, rgba(59, 130, 246, 0) 360deg); filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.5)); animation: spin 900ms linear infinite; }
-        .page-loader::after { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.9), rgba(99, 102, 241, 0.35), rgba(9, 9, 11, 0) 70%); border: 1px solid rgba(139, 92, 246, 0.4); animation: pulse 1200ms ease-in-out infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { transform: scale(0.92); opacity: 0.7; } 50% { transform: scale(1); opacity: 1; } }
-        .glass-panel { background: rgba(30, 30, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        body {
+            background-color: #050505;
+            color: #e5e5e5;
+        }
+
+        body.page-transition> :not(#page-transition) {
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 320ms ease, transform 320ms ease;
+        }
+
+        body.page-ready> :not(#page-transition) {
+            opacity: 1;
+            transform: none;
+        }
+
+        body.page-exit> :not(#page-transition) {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        .page-transition-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(80% 80% at 50% 40%, rgba(88, 28, 135, 0.25), rgba(9, 9, 11, 0.95));
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 240ms ease;
+            z-index: 9999;
+        }
+
+        .page-transition-overlay.is-active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .page-loader {
+            position: relative;
+            width: 64px;
+            height: 64px;
+        }
+
+        .page-loader::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(from 180deg, rgba(139, 92, 246, 0) 0deg, rgba(139, 92, 246, 0.95) 110deg, rgba(99, 102, 241, 0.9) 220deg, rgba(59, 130, 246, 0) 360deg);
+            filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.5));
+            animation: spin 900ms linear infinite;
+        }
+
+        .page-loader::after {
+            content: "";
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.9), rgba(99, 102, 241, 0.35), rgba(9, 9, 11, 0) 70%);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            animation: pulse 1200ms ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(0.92);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0a0a0a; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
+
 <body class="antialiased flex h-screen overflow-hidden page-transition">
 
     <div id="page-transition" class="page-transition-overlay" aria-hidden="true">
@@ -118,7 +211,7 @@
         <?php if (isset($_SESSION['admin_flash_success'])): ?>
             <div class="bg-gradient-to-r from-purple-500/20 via-fuchsia-500/20 to-indigo-500/20 border border-purple-400/60 text-purple-100 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm relative overflow-hidden">
                 <div class="absolute inset-0 pointer-events-none opacity-20"
-                     style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
+                    style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
                 <?= $_SESSION['admin_flash_success'] ?>
                 <?php unset($_SESSION['admin_flash_success']); ?>
             </div>
@@ -126,7 +219,7 @@
         <?php if (isset($_SESSION['admin_flash_error'])): ?>
             <div class="bg-gradient-to-r from-purple-500/20 via-fuchsia-500/20 to-indigo-500/20 border border-purple-400/60 text-purple-100 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm relative overflow-hidden">
                 <div class="absolute inset-0 pointer-events-none opacity-20"
-                     style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
+                    style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
                 <?= $_SESSION['admin_flash_error'] ?>
                 <?php unset($_SESSION['admin_flash_error']); ?>
             </div>
@@ -171,7 +264,7 @@
             <h1 class="text-xl font-bold text-white"><?= $title ?? 'Dashboard' ?></h1>
             <div class="flex items-center space-x-4">
                 <div class="text-right hidden md:block">
-                    <p class="text-sm font-bold text-white"><?= $_SESSION['user_name'] ?></p>
+                    <p class="text-sm font-bold text-white"><?= htmlspecialchars($_SESSION['user_name'] ?? 'Admin') ?></p>
                     <p class="text-xs text-zinc-500 uppercase tracking-wider">Super Admin</p>
                 </div>
                 <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
@@ -188,4 +281,5 @@
 
     <?php require __DIR__ . '/../partials/toast_notifications.php'; ?>
 </body>
+
 </html>
