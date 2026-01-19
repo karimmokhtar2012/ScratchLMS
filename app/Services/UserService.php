@@ -76,21 +76,22 @@ class UserService
      */
     public function getUserWithRoles(int $userId): ?array
     {
-        $sql = "SELECT u.*, GROUP_CONCAT(r.slug) as roles
-                FROM users u
-                LEFT JOIN role_user ru ON u.id = ru.user_id
-                LEFT JOIN roles r ON ru.role_id = r.id
-                WHERE u.id = :id
-                GROUP BY u.id";
+        // Get user data
+        $user = $this->db->fetchOne("SELECT * FROM users WHERE id = :id", [':id' => $userId]);
 
-        $result = $this->db->fetchAll($sql, [':id' => $userId]);
-
-        if (empty($result)) {
+        if (!$user) {
             return null;
         }
 
-        $user = $result[0];
-        $user['roles'] = $user['roles'] ? explode(',', $user['roles']) : [];
+        // Get roles separately (cross-database compatible)
+        $roles = $this->db->fetchAll(
+            "SELECT r.slug FROM roles r 
+             INNER JOIN role_user ru ON r.id = ru.role_id 
+             WHERE ru.user_id = :user_id",
+            [':user_id' => $userId]
+        );
+
+        $user['roles'] = array_column($roles, 'slug');
 
         return $user;
     }
@@ -103,21 +104,22 @@ class UserService
      */
     public function getUserByEmailWithRoles(string $email): ?array
     {
-        $sql = "SELECT u.*, GROUP_CONCAT(r.slug) as roles
-                FROM users u
-                LEFT JOIN role_user ru ON u.id = ru.user_id
-                LEFT JOIN roles r ON ru.role_id = r.id
-                WHERE u.email = :email
-                GROUP BY u.id";
+        // Get user data
+        $user = $this->db->fetchOne("SELECT * FROM users WHERE email = :email", [':email' => $email]);
 
-        $result = $this->db->fetchAll($sql, [':email' => $email]);
-
-        if (empty($result)) {
+        if (!$user) {
             return null;
         }
 
-        $user = $result[0];
-        $user['roles'] = $user['roles'] ? explode(',', $user['roles']) : [];
+        // Get roles separately (cross-database compatible)
+        $roles = $this->db->fetchAll(
+            "SELECT r.slug FROM roles r 
+             INNER JOIN role_user ru ON r.id = ru.role_id 
+             WHERE ru.user_id = :user_id",
+            [':user_id' => $user['id']]
+        );
+
+        $user['roles'] = array_column($roles, 'slug');
 
         return $user;
     }
