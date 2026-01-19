@@ -30,8 +30,8 @@ class InstructorController extends Controller
             exit;
         }
 
-        $title = $_POST['title'] ?? '';
-        $description = $_POST['description'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
+        $description = \App\Core\InputSanitizer::text($_POST['description'] ?? '');
         $price = (float) ($_POST['price'] ?? 0);
         $thumbnail = '';
 
@@ -188,8 +188,8 @@ class InstructorController extends Controller
             exit;
         }
 
-        $title = $_POST['title'] ?? $course['title'];
-        $description = $_POST['description'] ?? $course['description'];
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? $course['title']);
+        $description = \App\Core\InputSanitizer::text($_POST['description'] ?? $course['description']);
         $price = isset($_POST['price']) ? (float)$_POST['price'] : $course['price'];
         $thumbnail = $course['thumbnail'];
         $status = $_POST['status'] ?? $course['status'] ?? 'draft';
@@ -461,7 +461,7 @@ class InstructorController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $courseId = (int) ($_POST['course_id'] ?? 0);
 
         if ($title && $courseId) {
@@ -491,7 +491,7 @@ class InstructorController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $moduleId = (int) ($_POST['module_id'] ?? 0);
         $type = $_POST['type'] ?? 'video';
         $contentUrl = $_POST['content_url'] ?? '';
@@ -669,7 +669,7 @@ class InstructorController extends Controller
 
         $lessonId = (int) $id;
         $courseId = (int) ($_POST['course_id'] ?? 0);
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $type = $_POST['type'] ?? 'video'; // Capture new type
         $contentUrl = $_POST['content_url'] ?? '';
         $contentText = $_POST['content_text'] ?? '';
@@ -888,7 +888,7 @@ class InstructorController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
         $moduleId = (int) $id;
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
 
         // Redirect back (need course ID to do it properly, so fetch it)
         $db = \App\Core\Database::getInstance();
@@ -1455,7 +1455,7 @@ class InstructorController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $type = $_POST['type'] ?? 'video';
         $userId = $_SESSION['user_id'];
 

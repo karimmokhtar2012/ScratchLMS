@@ -245,7 +245,7 @@
             <div x-show="show" x-transition class="bg-gradient-to-r from-purple-500/20 via-fuchsia-500/20 to-indigo-500/20 border border-purple-400/60 text-purple-100 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm relative overflow-hidden">
                 <div class="absolute inset-0 pointer-events-none opacity-20"
                     style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
-                <?= $_SESSION['flash_success'] ?>
+                <?= htmlspecialchars($_SESSION['flash_success']) ?>
                 <?php unset($_SESSION['flash_success']); ?>
             </div>
         <?php endif; ?>
@@ -253,7 +253,7 @@
             <div x-show="show" x-transition class="bg-gradient-to-r from-purple-500/20 via-fuchsia-500/20 to-indigo-500/20 border border-purple-400/60 text-purple-100 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm relative overflow-hidden">
                 <div class="absolute inset-0 pointer-events-none opacity-20"
                     style="background-image: linear-gradient(transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px), linear-gradient(90deg, transparent 0, transparent 23px, rgba(255,255,255,0.08) 24px); background-size: 24px 24px;"></div>
-                <?= $_SESSION['flash_error'] ?>
+                <?= htmlspecialchars($_SESSION['flash_error']) ?>
                 <?php unset($_SESSION['flash_error']); ?>
             </div>
         <?php endif; ?>
