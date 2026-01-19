@@ -2,6 +2,27 @@
 
 A high-performance, lightweight Learning Management System (LMS) built from scratch using a custom MVC architecture in PHP. ScratchLMS provides a comprehensive suite of tools for students, instructors, and administrators, focusing on speed, simplicity, and flexibility without the overhead of heavy frameworks.
 
+## 🌟 Version 0.8 Beta Release (January 19, 2026)
+
+**Focus: Security Hardening, Full PostgreSQL Support, and Robust Validation.**
+
+### 🛡️ Security Core Hardening
+We've conducted a comprehensive security audit and patched critical vulnerabilities.
+- **RCE Prevention**: Strict MIME-type and extension allow-listing for all file uploads (Videos, Images, Documents).
+- **Session Security**: Implemented session ID regeneration upon login to prevent Session Fixation attacks.
+- **Data Protection**: Added `ALLOWED_UPDATE_COLUMNS` whitelisting to User models to stop Mass Assignment vulnerabilities.
+- **Traffic Safety**: Enhanced Open Redirect protection and enforced CSRF checks on all authentication endpoints.
+
+### 🐘 Enterprise PostgreSQL Compatibility
+ScratchLMS is now fully battle-tested on PostgreSQL.
+- **Cross-Database Logic**: Refactored SQL queries to support PostgreSQL's boolean handling (`true`/`false` vs `1`/`0`).
+- **Schema Awareness**: Updated migration tools and connection logic to correctly handle PostgreSQL schemas.
+- **Legacy Cleanup**: Removed MySQL-specific functions like `GROUP_CONCAT` in favor of ANSI SQL compliant alternatives.
+
+### ✅ Enhanced Data Integrity
+- **Strict Validation**: Added comprehensive server-side validation for Course creation and Quiz Question logic.
+- **Progression Logic**: Fixed and verified all content flow modes, including the complex `drip_combined` (Time + Prerequisite) rule.
+
 ## 🌟 Version 0.7 Release (January 17-18, 2026)
 
 **Introducing Scracha, Multi-Database Support, and a massive UI/UX overhaul.**
