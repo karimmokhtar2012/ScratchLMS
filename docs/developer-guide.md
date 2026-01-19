@@ -154,11 +154,13 @@ $db->upsert($table, $data, $uniqueColumn); // Insert or update
 When implementing business logic, use or create services:
 
 | Service | Purpose | Methods |
-|---------|---------|---------|
+| ------- | ------- | ------- |
 | `UserService` | User operations | `register()`, `assignRole()`, `getUserWithRoles()` |
 | `RoleService` | Role management | `assignRole()`, `getUserRoles()` (cached) |
 | `NotificationService` | Notifications | `create()`, `markRead()` |
 | `CourseProgressService` | Progress tracking | `updateProgress()`, `isLessonLocked()` |
+| `RateLimiter` | Brute-force protection | `attempt()`, `tooManyAttempts()`, `clear()` |
+| `SecurityLogger` | Security audit trail | `logAuthEvent()`, `logAccessDenied()`, `logCsrfFailure()` |
 
 ---
 
@@ -294,7 +296,21 @@ header("Location: " . $_POST['return']);
 
 ### 4.8 Authorization Checks
 
-**Always verify user permissions:**
+**Use the centralized Middleware class:**
+
+```php
+use App\Core\Middleware;
+
+// In controller constructor or method:
+Middleware::auth();           // Require logged in
+Middleware::guest();          // Require NOT logged in
+Middleware::admin();          // Require admin role
+Middleware::instructor();     // Require instructor or higher
+Middleware::role('student');  // Require specific role
+Middleware::owner($id);       // Require resource ownership
+```
+
+**Manual checks (legacy):**
 
 ```php
 // Check authentication
@@ -308,13 +324,61 @@ if (!in_array('admin', $_SESSION['user_roles'])) {
     http_response_code(403);
     exit('Forbidden');
 }
-
-// Check resource ownership
-if ($course['instructor_id'] !== $_SESSION['user_id']) {
-    http_response_code(403);
-    exit('Forbidden');
-}
 ```
+
+### 4.9 Rate Limiting
+
+**Brute-force protection is automatic on login/register. For custom endpoints:**
+
+```php
+use App\Services\RateLimiter;
+
+$limiter = new RateLimiter();
+$key = RateLimiter::key('action_name');  // Uses IP by default
+
+// Check if blocked
+if ($limiter->tooManyAttempts($key, 5, 15)) {  // 5 attempts / 15 min
+    http_response_code(429);
+    exit('Too many requests');
+}
+
+// Record attempt
+$limiter->attempt($key, 5, 15);
+
+// Clear on success
+$limiter->clear($key);
+```
+
+### 4.10 Security Logging
+
+**All security events are automatically logged. For custom events:**
+
+```php
+use App\Services\SecurityLogger;
+
+$logger = new SecurityLogger();
+
+// Log auth events
+$logger->logAuthEvent('custom_action', $userId, ['context' => 'data']);
+
+// Log access denials
+$logger->logAccessDenied('/admin/resource', $userId);
+
+// Log suspicious activity
+$logger->logSuspiciousActivity('Description', ['ip' => $ip]);
+```
+
+**Logs stored in:** `storage/logs/security-YYYY-MM-DD.log`
+
+### 4.11 CSP Headers
+
+**Security headers are automatically sent via `SecurityHeaders::send()` in `index.php`.**
+
+Current policy:
+
+- Scripts: Self + CDNs (Tailwind, Alpine, FontAwesome)
+- Styles: Self + Google Fonts + inline (for Tailwind)
+- Frames: Same origin only (prevents clickjacking)
 
 ---
 
