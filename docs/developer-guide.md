@@ -177,6 +177,84 @@ $db->insertOrIgnore($table, $data); // Insert without duplicate errors
 $db->upsert($table, $data, $uniqueColumn); // Insert or update
 ```
 
+### Database Compatibility (PostgreSQL)
+
+ScratchLMS supports SQLite, MySQL, and **PostgreSQL**. When writing SQL queries, follow these rules to ensure cross-database compatibility:
+
+#### Boolean Comparisons
+
+PostgreSQL requires boolean literals (`true`/`false`), not integers (`1`/`0`):
+
+```php
+// ✅ CORRECT (works on all databases)
+$sql = "SELECT * FROM courses WHERE is_published = true";
+$sql = "UPDATE enrollments SET is_completed = false WHERE id = :id";
+
+// ❌ WRONG (fails on PostgreSQL)
+$sql = "SELECT * FROM courses WHERE is_published = 1";
+$sql = "UPDATE enrollments SET is_completed = 0 WHERE id = :id";
+```
+
+> **⚠️ Important:** Do NOT bind PHP booleans as parameters. PDO does not correctly convert them for PostgreSQL. Use inline SQL literals instead.
+
+```php
+// ❌ WRONG - PDO binding fails for booleans
+$db->query("UPDATE users SET active = :active", [':active' => true]);
+
+// ✅ CORRECT - Use inline literal
+$db->query("UPDATE users SET active = true WHERE id = :id", [':id' => $userId]);
+```
+
+#### Aggregation Functions
+
+PostgreSQL does not support `GROUP_CONCAT`. Use separate queries instead:
+
+```php
+// ❌ WRONG (SQLite/MySQL only)
+$sql = "SELECT u.*, GROUP_CONCAT(r.slug) as roles FROM users u 
+        LEFT JOIN role_user ru ON u.id = ru.user_id 
+        LEFT JOIN roles r ON ru.role_id = r.id 
+        GROUP BY u.id";
+
+// ✅ CORRECT (cross-database compatible)
+$users = $db->fetchAll("SELECT * FROM users");
+foreach ($users as &$user) {
+    $roles = $db->fetchAll(
+        "SELECT r.slug FROM roles r 
+         INNER JOIN role_user ru ON r.id = ru.role_id 
+         WHERE ru.user_id = :uid",
+        [':uid' => $user['id']]
+    );
+    $user['roles'] = implode(',', array_column($roles, 'slug'));
+}
+```
+
+#### INSERT OR IGNORE
+
+Use the database-agnostic helper method instead of raw SQL:
+
+```php
+// ❌ WRONG (SQLite only)
+$db->query("INSERT OR IGNORE INTO roles (name, slug) VALUES (:n, :s)", [...]);
+
+// ✅ CORRECT (cross-database compatible)
+$db->insertOrIgnore('roles', ['name' => $name, 'slug' => $slug]);
+```
+
+#### Date Functions
+
+Avoid database-specific date functions:
+
+```php
+// ❌ WRONG (SQLite only)
+$sql = "SELECT * FROM users WHERE created_at > date('now', '-7 days')";
+
+// ✅ CORRECT (calculate in PHP)
+$sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
+$sql = "SELECT * FROM users WHERE created_at > :date";
+$db->fetchAll($sql, [':date' => $sevenDaysAgo]);
+```
+
 ### Service Layer Classes
 
 When implementing business logic, use or create services:
@@ -276,7 +354,54 @@ if (!$validation['valid']) {
 | Videos | mp4, webm, mov | video/mp4, video/webm, video/quicktime |
 | Documents | pdf, doc, docx, xls, xlsx | application/pdf, application/msword, etc. |
 
-### 4.4 SQL Injection Prevention
+### 4.4 Input Validation
+
+**ALWAYS validate required fields before database operations:**
+
+```php
+// ✅ CORRECT - Validate before insert/update
+$errors = [];
+
+// Required field check
+if (empty(trim($title))) {
+    $errors[] = 'Title is required.';
+} elseif (strlen($title) < 3 || strlen($title) > 255) {
+    $errors[] = 'Title must be 3-255 characters.';
+}
+
+// Type validation with whitelist
+$validTypes = ['single_choice', 'multi_choice', 'true_false'];
+if (!in_array($type, $validTypes, true)) {
+    $errors[] = 'Invalid type.';
+}
+
+// Numeric validation
+if ($points < 1) {
+    $errors[] = 'Points must be at least 1.';
+}
+
+// Return errors before DB operation
+if (!empty($errors)) {
+    $_SESSION['flash_error'] = implode(' ', $errors);
+    header('Location: /back');
+    exit;
+}
+
+// ❌ NEVER let invalid data reach the database
+$db->query("INSERT INTO table ...", $data);  // Crash!
+```
+
+**Validation patterns by data type:**
+
+| Data Type | Validation |
+|-----------|------------|
+| Required text | `empty(trim($value))` |
+| Min/Max length | `strlen($value) < 3` |
+| Enum/Type | `in_array($value, $whitelist, true)` |
+| Positive number | `$value < 1` |
+| Foreign key | `$id < 1` (before DB lookup) |
+
+### 4.5 SQL Injection Prevention
 
 **ALWAYS use parameterized queries:**
 
@@ -288,7 +413,7 @@ $db->fetchOne("SELECT * FROM users WHERE id = :id", [':id' => $userId]);
 $db->query("SELECT * FROM users WHERE id = $userId");
 ```
 
-### 4.5 Mass Assignment Protection
+### 4.6 Mass Assignment Protection
 
 **Model updates must use whitelists:**
 
@@ -300,7 +425,7 @@ private const ALLOWED_UPDATE_COLUMNS = ['name', 'email', 'bio', 'profile_picture
 $filtered = array_intersect_key($input, array_flip(self::ALLOWED_UPDATE_COLUMNS));
 ```
 
-### 4.6 Session Security
+### 4.7 Session Security
 
 **After login, always regenerate session:**
 
@@ -309,7 +434,7 @@ session_regenerate_id(true);
 $_SESSION['user_id'] = $user['id'];
 ```
 
-### 4.7 Redirect Validation
+### 4.8 Redirect Validation
 
 **NEVER use raw user input for redirects:**
 
@@ -322,7 +447,7 @@ header("Location: $redirect");
 header("Location: " . $_POST['return']);
 ```
 
-### 4.8 Authorization Checks
+### 4.9 Authorization Checks
 
 **Use the centralized Middleware class:**
 
@@ -354,7 +479,7 @@ if (!in_array('admin', $_SESSION['user_roles'])) {
 }
 ```
 
-### 4.9 Rate Limiting
+### 4.10 Rate Limiting
 
 **Brute-force protection is automatic on login/register. For custom endpoints:**
 
@@ -377,7 +502,7 @@ $limiter->attempt($key, 5, 15);
 $limiter->clear($key);
 ```
 
-### 4.10 Security Logging
+### 4.11 Security Logging
 
 **All security events are automatically logged. For custom events:**
 
@@ -398,7 +523,7 @@ $logger->logSuspiciousActivity('Description', ['ip' => $ip]);
 
 **Logs stored in:** `storage/logs/security-YYYY-MM-DD.log`
 
-### 4.11 CSP Headers
+### 4.12 CSP Headers
 
 **Security headers are automatically sent via `SecurityHeaders::send()` in `index.php`.**
 

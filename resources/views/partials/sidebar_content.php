@@ -22,9 +22,9 @@
                             FROM enrollments e
                             JOIN courses c ON e.course_id = c.id
                             WHERE c.instructor_id = :uid
-                            AND c.has_certificate = 1
-                            AND c.certificate_auto_issue = 0
-                            AND e.is_completed = 1
+                            AND c.has_certificate = true
+                            AND c.certificate_auto_issue = false
+                            AND e.is_completed = true
                             AND e.certificate_id IS NULL";
         $resCerts = $db->fetchAll($sqlCerts, [':uid' => $userId]);
         $pendingCertificateCount = (int) ($resCerts[0]['count'] ?? 0);

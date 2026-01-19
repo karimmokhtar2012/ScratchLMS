@@ -131,7 +131,7 @@ class DashboardController extends Controller
         $userId = $_SESSION['user_id'] ?? null;
         if (!$userId) return;
 
-        $this->db->query("UPDATE users SET seen_tutorial = 1 WHERE id = :uid", [':uid' => $userId]);
+        $this->db->query("UPDATE users SET seen_tutorial = true WHERE id = :uid", [':uid' => $userId]);
         echo json_encode(['success' => true]);
         exit;
     }
@@ -179,15 +179,15 @@ class DashboardController extends Controller
 
     private function countEnrollments(int $userId): int
     {
-        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = :is_comp";
-        $res = $this->db->fetchAll($sql, [':uid' => $userId, ':is_comp' => '0']);
+        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = false";
+        $res = $this->db->fetchAll($sql, [':uid' => $userId]);
         return $res[0]['count'] ?? 0;
     }
 
     private function countCompletedEnrollments(int $userId): int
     {
-        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = :is_comp";
-        $res = $this->db->fetchAll($sql, [':uid' => $userId, ':is_comp' => '1']);
+        $sql = "SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid AND is_completed = true";
+        $res = $this->db->fetchAll($sql, [':uid' => $userId]);
         return $res[0]['count'] ?? 0;
     }
 
@@ -204,17 +204,11 @@ class DashboardController extends Controller
                 FROM enrollments e
                 JOIN courses c ON e.course_id = c.id
                 WHERE c.instructor_id = :uid
-                  AND c.has_certificate = :has_cert
-                  AND c.certificate_auto_issue = :auto_issue
-                  AND e.is_completed = :is_comp
+                  AND c.has_certificate = true
+                  AND c.certificate_auto_issue = false
+                  AND e.is_completed = true
                   AND e.certificate_id IS NULL";
-        $params = [
-            ':uid' => $userId,
-            ':has_cert' => '1',
-            ':auto_issue' => '0',
-            ':is_comp' => '1'
-        ];
-        $res = $this->db->fetchAll($sql, $params);
+        $res = $this->db->fetchAll($sql, [':uid' => $userId]);
         return (int) ($res[0]['count'] ?? 0);
     }
 

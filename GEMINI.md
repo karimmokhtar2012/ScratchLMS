@@ -1,36 +1,55 @@
-Gemini role: UI/UX design, layout, styling, motion, and visual polish.
-Codex role: backend logic, security, data integrity, refactors, bug fixes, and reviews.
+# ScratchLMS - AI Guidelines
 
-Task routing:
-- UI screens, layout, animations: Gemini.
-- Bugs, broken flows, data validation, security: Codex.
-- Mixed tasks: Gemini designs first, Codex wires logic and validates.
+> **Welcome!** This file points you to the essential documentation for this project.
 
-Hard rule (GitHub issues):
-- If Gemini finds any issue, Gemini must create a GitHub issue via GitHub CLI and commit the action.
-- If Gemini resolves an issue, after user confirms it is solved, Gemini must close the GitHub issue via GitHub CLI and commit the action.
-- If Gemini resolved an issue in Git, He should mention how he solved the problem in a comment then close the issue.
-- When Gemini comments on GitHub issues/PRs, include a short attribution line stating who handled it (e.g., "Handled by Gemini" or "Handled by Codex; posted by Gemini").
+---
 
-End-of-session report:
-- Gemini must submit a daily professional report at the end of each session detailing accomplishments and problems resolved.
-- Save report to docs/reports/YYYY-MM-DD-Gemini.md.
-- Use docs/daily-report-template.md and include mutual monitoring notes.
-- At end of session, Gemini must push changes to GitHub.
+## 📚 Start Here
 
-Git ownership:
-- Gemini is the only agent who commits/pushes and performs GitHub issue/PR updates for this repo.
+| Document | Purpose |
+|----------|---------|
+| **[AGENTS.md](./AGENTS.md)** | Main guidelines - coding standards, commands, security rules |
+| **[docs/ai/context.md](./docs/ai/context.md)** | Project architecture, key flows, database patterns |
+| **[docs/developer-guide.md](./docs/developer-guide.md)** | Complete development standards |
 
-Handoff format to Codex:
-- Summary of changes.
-- Files changed and why.
-- Any follow-ups or logic gaps.
+---
 
-After completing changes, append a new entry to docs/ai/change-log.md using the standard template:
-- timestamp (Africa/Cairo), goal, list of file changes with rationale, security notes, DB notes, tests run + results, follow-ups.
+## 🎨 Design & UI
 
-Also update docs/ai/context.md if any flow/paths/conventions changed.
+| Document | Purpose |
+|----------|---------|
+| **[docs/design_context.md](./docs/design_context.md)** | Color palette, typography, component patterns |
+| **[docs/security/xss-protection-guidelines.md](./docs/security/xss-protection-guidelines.md)** | XSS protection in views |
 
-If the change includes an architectural decision, add/update an ADR under docs/adr/.
+---
 
-Keep entries concise and actionable.
+## 📝 Documentation Workflow
+
+| Document | Purpose |
+|----------|---------|
+| **[docs/ai/change-log.md](./docs/ai/change-log.md)** | Log changes after each task |
+| **[docs/workflow.md](./docs/workflow.md)** | Git and development workflow |
+| **[docs/daily-report-template.md](./docs/daily-report-template.md)** | End-of-session report template |
+
+---
+
+## ⚡ Quick Reference
+
+### Essential Commands
+
+```bash
+php -S localhost:8000 -t public   # Dev server
+php migrate.php                    # Run migrations
+git push origin main               # Push changes
+```
+
+### Critical Rules
+
+1. **XSS:** Use `e($variable)` in all views
+2. **PostgreSQL:** Use `true`/`false` (not `1`/`0`) for booleans
+3. **CSRF:** Include token in all forms
+4. **Validation:** Validate inputs before database operations
+
+---
+
+*Read `AGENTS.md` first, then reference other docs as needed.*

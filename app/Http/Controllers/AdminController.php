@@ -27,12 +27,14 @@ class AdminController extends Controller
     {
         // 1. User Stats
         $totalUsers = $this->db->fetchAll("SELECT COUNT(*) as count FROM users")[0]['count'];
-        $newUsers = $this->db->fetchAll("SELECT COUNT(*) as count FROM users WHERE created_at > date('now', '-7 days')")[0]['count'];
-        
+        // Use PHP date for cross-database compatibility (SQLite uses date(), PostgreSQL uses NOW() - INTERVAL)
+        $sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
+        $newUsers = $this->db->fetchAll("SELECT COUNT(*) as count FROM users WHERE created_at > :date", [':date' => $sevenDaysAgo])[0]['count'];
+
         // 2. Course Stats
         $totalCourses = $this->db->fetchAll("SELECT COUNT(*) as count FROM courses")[0]['count'];
         $publishedCourses = $this->db->fetchAll("SELECT COUNT(*) as count FROM courses WHERE status = 'published'")[0]['count'];
-        
+
         // 3. Financials
         $totalRevenue = $this->db->fetchAll("SELECT SUM(total_amount) as total FROM orders WHERE status = 'paid'")[0]['total'] ?? 0;
 
@@ -55,16 +57,21 @@ class AdminController extends Controller
      */
     public function users(): void
     {
-        $userModel = new User();
-        // Fetch all users with their roles concatenated
-        $sql = "SELECT u.*, GROUP_CONCAT(r.name) as role_names, GROUP_CONCAT(r.slug) as role_slugs
-                FROM users u
-                LEFT JOIN role_user ru ON u.id = ru.user_id
-                LEFT JOIN roles r ON ru.role_id = r.id
-                GROUP BY u.id
-                ORDER BY u.created_at DESC";
-        
-        $users = $this->db->fetchAll($sql);
+        // Fetch all users (cross-database compatible - no GROUP_CONCAT)
+        $users = $this->db->fetchAll("SELECT * FROM users ORDER BY created_at DESC");
+
+        // Fetch roles for each user separately
+        foreach ($users as &$user) {
+            $roles = $this->db->fetchAll(
+                "SELECT r.name, r.slug FROM roles r 
+                 INNER JOIN role_user ru ON r.id = ru.role_id 
+                 WHERE ru.user_id = :user_id",
+                [':user_id' => $user['id']]
+            );
+            $user['role_names'] = implode(',', array_column($roles, 'name'));
+            $user['role_slugs'] = implode(',', array_column($roles, 'slug'));
+        }
+        unset($user);
 
         // Fetch all available roles for the dropdown
         $roles = $this->db->fetchAll("SELECT * FROM roles ORDER BY id ASC");
@@ -88,7 +95,7 @@ class AdminController extends Controller
                 FROM courses c
                 LEFT JOIN users u ON c.instructor_id = u.id
                 ORDER BY c.created_at DESC";
-        
+
         $courses = $this->db->fetchAll($sql);
 
         $instructors = $this->db->fetchAll("SELECT u.id, u.name
@@ -114,7 +121,7 @@ class AdminController extends Controller
 
         $courseId = (int) $id;
         $this->db->query("DELETE FROM courses WHERE id = :id", [':id' => $courseId]);
-        
+
         $_SESSION['admin_flash_success'] = 'Course deleted by admin.';
         header('Location: /admin/courses');
         exit;
@@ -150,13 +157,13 @@ class AdminController extends Controller
         try {
             // Remove old roles
             $this->db->query("DELETE FROM role_user WHERE user_id = :uid", [':uid' => $userId]);
-            
+
             // Add new role
             $this->db->query("INSERT INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
                 ':uid' => $userId,
                 ':rid' => $role['id']
             ]);
-            
+
             $this->db->getConnection()->commit();
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
@@ -182,7 +189,7 @@ class AdminController extends Controller
         }
 
         $this->db->query("DELETE FROM users WHERE id = :id", [':id' => $userId]);
-        
+
         $_SESSION['admin_flash_success'] = 'User permanently deleted.';
         header('Location: /admin/users');
         exit;
@@ -270,7 +277,7 @@ class AdminController extends Controller
         $this->db->getConnection()->beginTransaction();
         try {
             // 1. Reset Enrollment Record
-            $this->db->query("UPDATE enrollments SET progress_percent = 0, is_completed = 0, certificate_id = NULL, certified_at = NULL WHERE user_id = :uid AND course_id = :cid", [
+            $this->db->query("UPDATE enrollments SET progress_percent = 0, is_completed = false, certificate_id = NULL, certified_at = NULL WHERE user_id = :uid AND course_id = :cid", [
                 ':uid' => $userId,
                 ':cid' => $courseId
             ]);
@@ -474,7 +481,7 @@ class AdminController extends Controller
         $this->db->getConnection()->beginTransaction();
         try {
             foreach ($ids as $uid) {
-                $this->db->query("UPDATE enrollments SET progress_percent = 0, is_completed = 0, certificate_id = NULL, certified_at = NULL WHERE user_id = :uid AND course_id = :cid", [
+                $this->db->query("UPDATE enrollments SET progress_percent = 0, is_completed = false, certificate_id = NULL, certified_at = NULL WHERE user_id = :uid AND course_id = :cid", [
                     ':uid' => $uid,
                     ':cid' => $courseId
                 ]);

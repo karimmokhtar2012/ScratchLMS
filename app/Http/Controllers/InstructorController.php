@@ -35,6 +35,30 @@ class InstructorController extends Controller
         $price = (float) ($_POST['price'] ?? 0);
         $thumbnail = '';
 
+        // --- Required Field Validation ---
+        $errors = [];
+
+        if (empty(trim($title))) {
+            $errors[] = 'Course title is required.';
+        } elseif (strlen($title) < 3) {
+            $errors[] = 'Course title must be at least 3 characters.';
+        } elseif (strlen($title) > 255) {
+            $errors[] = 'Course title must be less than 255 characters.';
+        }
+
+        if ($price < 0) {
+            $errors[] = 'Price cannot be negative.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['flash_error'] = implode(' ', $errors);
+            $_SESSION['old_input'] = $_POST; // Preserve form data
+            header('Location: /instructor/course/new');
+            exit;
+        }
+        // --- End Validation ---
+
+
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
             // Validate thumbnail file
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -1076,36 +1100,6 @@ class InstructorController extends Controller
         $roles = $_SESSION['user_roles'] ?? [];
         $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
 
-        $sqlCerts = "SELECT e.id as enrollment_id,
-                            e.progress_percent,
-                            e.is_completed,
-                            e.created_at as enrolled_at,
-                            u.id as user_id,
-                            u.name,
-                            u.email,
-                            c.id as course_id,
-                            c.title as course_title
-                     FROM enrollments e
-                     JOIN users u ON e.user_id = u.id
-                     JOIN courses c ON e.course_id = c.id
-                     WHERE c.has_certificate = 1
-                       AND c.certificate_auto_issue = 0
-                       AND e.is_completed = 1
-                       AND e.certificate_id IS NULL
-                     ORDER BY e.created_at DESC";
-        if (!$isPrivileged) {
-            $sqlCerts = str_replace("WHERE c.has_certificate = 1", "WHERE c.instructor_id = :uid AND c.has_certificate = 1", $sqlCerts);
-        }
-
-        // Fix for Postgres Boolean Binding
-        // We replace literals with bound params manually because str_replace above relies on literals
-        // So we will just use literals '1' and '0' which work for Postgres if quoted, but better to be consistent.
-        // Actually, the str_replace makes this tricky. 
-        // Let's rewrite the initial query to use correct casting or standard SQL.
-        // Postgres accepts '1'/'0' strings for boolean. 
-        // So we can change integer 1 to string '1' in the SQL if we want, OR use TRUE/FALSE keywords.
-        // Standard SQL: TRUE / FALSE works in Postgres and MySQL (as 1/0 alias). SQLite understands TRUE/FALSE as 1/0.
-        // Let's try replacing 1/0 with TRUE/FALSE.
 
         $sqlCerts = "SELECT u.name as student_name,
                             l.title as quiz_title,
