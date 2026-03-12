@@ -4,25 +4,25 @@ ob_start();
 ?>
 
 <div class="max-w-7xl mx-auto space-y-10">
-    
+
     <!-- Header Section -->
-    <header class="flex flex-col md:flex-row md:items-center justify-between gap-6" data-tour="header">
+    <header class="flex flex-col md:flex-row md:items-end justify-between gap-6" data-tour="header">
         <div>
-            <h1 class="text-4xl font-extrabold tracking-tight text-white">
+            <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-white">
                 <?= $mode === 'student' ? 'Student' : 'Instructor' ?> <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Dashboard</span>
             </h1>
-            <p class="text-zinc-400 mt-1">
+            <p class="text-zinc-400 mt-2 text-sm md:text-base">
                 <?= $mode === 'student' ? 'Continue your learning journey.' : 'Manage your courses and track student performance.' ?>
             </p>
         </div>
-        
-        <div class="flex items-center gap-3" data-tour="actions">
+
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto" data-tour="actions">
             <!-- Mode Switcher (Only if allowed) -->
             <?php if ($can_switch): ?>
-                <form action="/dashboard/switch-mode" method="POST">
-                    <button type="submit" class="px-5 py-2.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-700 transition font-bold text-sm flex items-center gap-2">
+                <form action="/dashboard/switch-mode" method="POST" class="flex-1 md:flex-none">
+                    <button type="submit" class="w-full md:w-auto px-4 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-700 transition font-bold text-xs md:text-sm flex items-center justify-center gap-2">
                         <i class="fa-solid fa-repeat text-indigo-400"></i>
-                        Switch to <?= $mode === 'student' ? 'Instructor' : 'Student' ?> View
+                        <span class="whitespace-nowrap">Switch View</span>
                     </button>
                 </form>
             <?php endif; ?>
@@ -30,13 +30,13 @@ ob_start();
             <!-- Action Buttons -->
             <?php if ($mode === 'student'): ?>
                 <?php if (isset($last_action)): ?>
-                    <a href="/learn/<?= $last_action['course_id'] ?>/lesson/<?= $last_action['lesson_id'] ?>" class="bg-white text-black px-6 py-2.5 rounded-full font-bold transition shadow-lg shadow-white/5 hover:bg-zinc-200 flex items-center text-sm" data-tour="quick-action">
-                        <i class="fa-solid fa-play mr-2"></i> Resume Learning
+                    <a href="/learn/<?= $last_action['course_id'] ?>/lesson/<?= $last_action['lesson_id'] ?>" class="flex-1 md:flex-none bg-white text-black px-5 py-2 rounded-xl font-bold transition shadow-lg shadow-white/5 hover:bg-zinc-200 flex items-center justify-center text-xs md:text-sm" data-tour="quick-action">
+                        <i class="fa-solid fa-play mr-2"></i> Resume
                     </a>
                 <?php endif; ?>
             <?php else: ?>
-                <a href="/instructor/course/new" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-full font-bold transition shadow-lg shadow-indigo-500/25 text-sm flex items-center" data-tour="quick-action">
-                    <i class="fa-solid fa-plus mr-2"></i> Create Course
+                <a href="/instructor/course/new" class="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl font-bold transition shadow-lg shadow-indigo-500/25 text-xs md:text-sm flex items-center justify-center" data-tour="quick-action">
+                    <i class="fa-solid fa-plus mr-2"></i> New Course
                 </a>
             <?php endif; ?>
         </div>
@@ -44,156 +44,181 @@ ob_start();
 
     <!-- Guided Tour (Spotlight) -->
     <?php if ($show_tutorial): ?>
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-    <div x-data="guidedTour()" x-show="show" x-cloak class="fixed inset-0 z-[200]">
-        <div class="fixed inset-0 bg-black/60"></div>
-        <div class="fixed rounded-2xl border border-indigo-500/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] pointer-events-none transition-all duration-300"
-             :style="spotlightStyle">
-            <div class="absolute inset-0 rounded-2xl pointer-events-none ring-2 ring-indigo-400/40 shadow-[0_0_24px_rgba(99,102,241,0.45)]"></div>
-        </div>
-
-        <div class="fixed w-[92%] max-w-xl bg-zinc-900/95 border border-zinc-800 rounded-2xl p-6 shadow-2xl transition-all duration-300"
-             :style="tourCardStyle">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <p class="text-xs uppercase tracking-widest text-indigo-400 font-bold">Guided Tour</p>
-                    <h3 class="text-xl font-bold text-white mt-1" x-text="currentStep.title"></h3>
-                    <p class="text-zinc-400 text-sm mt-2" x-text="currentStep.body"></p>
-                </div>
-                <button @click="finish()" class="text-zinc-500 hover:text-white text-sm">Skip</button>
+        <style>
+            [x-cloak] {
+                display: none !important;
+            }
+        </style>
+        <div x-data="guidedTour()" x-show="show" x-cloak class="fixed inset-0 z-[200]">
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
+            <div class="fixed rounded-2xl border border-indigo-500/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] pointer-events-none transition-all duration-300"
+                :style="spotlightStyle">
+                <div class="absolute inset-0 rounded-2xl pointer-events-none ring-2 ring-indigo-400/40 shadow-[0_0_24px_rgba(99,102,241,0.45)]"></div>
             </div>
 
-            <div class="flex items-center justify-between mt-6">
-                <div class="text-xs text-zinc-500 font-bold" x-text="(stepIndex + 1) + ' / ' + steps.length"></div>
-                <div class="flex items-center gap-3">
-                    <button @click="prev()" :disabled="stepIndex === 0"
-                            class="px-4 py-2 rounded-full text-sm font-bold border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                        Back
-                    </button>
-                    <button @click="next()" class="px-5 py-2 rounded-full text-sm font-bold bg-white text-black hover:bg-zinc-200 transition">
-                        <span x-show="!isLast">Next</span>
-                        <span x-show="isLast">Finish</span>
-                    </button>
+            <div class="fixed w-[90%] md:w-auto max-w-xl bg-zinc-900/95 border border-zinc-800 rounded-2xl p-6 shadow-2xl transition-all duration-300"
+                :style="tourCardStyle">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Guided Tour</p>
+                        <h3 class="text-lg font-bold text-white mt-1" x-text="currentStep.title"></h3>
+                        <p class="text-zinc-400 text-xs md:text-sm mt-2 leading-relaxed" x-text="currentStep.body"></p>
+                    </div>
+                    <button @click="finish()" class="text-zinc-500 hover:text-white text-xs p-1">Skip</button>
+                </div>
+
+                <div class="flex items-center justify-between mt-6">
+                    <div class="text-[10px] text-zinc-500 font-bold font-mono" x-text="(stepIndex + 1) + ' / ' + steps.length"></div>
+                    <div class="flex items-center gap-2">
+                        <button @click="prev()" :disabled="stepIndex === 0"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                            Back
+                        </button>
+                        <button @click="next()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-black hover:bg-zinc-200 transition">
+                            <span x-show="!isLast">Next</span>
+                            <span x-show="isLast">Finish</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <script>
-        function guidedTour() {
-            const steps = [
-                {
-                    selector: '[data-tour=\"header\"]',
-                    title: 'Welcome to Your Dashboard',
-                    body: 'This is your command center for everything you do in ScratchLMS.'
-                },
-                {
-                    selector: '[data-tour=\"quick-action\"]',
-                    title: 'Quick Actions',
-                    body: 'Jump back into learning or start building a new course instantly.'
-                },
-                {
-                    selector: '[data-tour=\"stats\"]',
-                    title: 'Your Progress',
-                    body: 'Key stats help you track momentum at a glance.'
-                },
-                <?php if ($mode === 'student'): ?>
-                {
-                    selector: '[data-tour=\"learning\"]',
-                    title: 'My Learning',
-                    body: 'All your enrolled courses live here. Pick up where you left off.'
-                },
-                {
-                    selector: '[data-tour=\"activity\"]',
-                    title: 'Recent Activity',
-                    body: 'See your latest lessons and quiz actions here.'
-                },
-                {
-                    selector: '[data-tour=\"notifications\"]',
-                    title: 'Notifications',
-                    body: 'Important alerts and updates show up in the bell.'
-                },
-                {
-                    selector: '[data-tour=\"sidebar\"]',
-                    title: 'Sidebar Navigation',
-                    body: 'Use the sidebar to jump between dashboard sections.'
-                }
-                <?php else: ?>
-                {
-                    selector: '[data-tour=\"created\"]',
-                    title: 'Your Courses',
-                    body: 'Manage the courses you have created and keep them updated.'
-                }
-                <?php endif; ?>
-            ];
-
-            return {
-                show: true,
-                stepIndex: 0,
-                steps: steps,
-                spotlightStyle: '',
-                tourCardStyle: '',
-                get currentStep() {
-                    return this.steps[this.stepIndex] || this.steps[0];
-                },
-                get isLast() {
-                    return this.stepIndex === this.steps.length - 1;
-                },
-                init() {
-                    this.updateSpotlight();
-                    window.addEventListener('resize', () => this.updateSpotlight());
-                    window.addEventListener('scroll', () => this.updateSpotlight(), { passive: true });
-                },
-                updateSpotlight() {
-                    const step = this.steps[this.stepIndex];
-                    if (!step) return;
-                    const el = document.querySelector(step.selector);
-                    if (!el) return;
-                    el.scrollIntoView({ behavior: 'auto', block: 'center' });
-                    requestAnimationFrame(() => {
-                        const rect = el.getBoundingClientRect();
-                        const pad = 6;
-                        const top = Math.max(rect.top - pad, 12);
-                        const left = Math.max(rect.left - pad, 12);
-                        const width = Math.max(rect.width + pad * 2, 80);
-                        const height = Math.max(rect.height + pad * 2, 40);
-                        this.spotlightStyle = `top:${top}px; left:${left}px; width:${width}px; height:${height}px;`;
-
-                        const cardWidth = Math.min(520, window.innerWidth - 24);
-                        const preferBelow = rect.bottom + 16 + 220 < window.innerHeight;
-                        const cardTop = preferBelow ? (rect.bottom + 16) : Math.max(rect.top - 16 - 200, 16);
-                        let cardLeft = Math.min(Math.max(rect.left, 12), window.innerWidth - cardWidth - 12);
-                        if (step.selector === '[data-tour=\"sidebar\"]') {
-                            cardLeft = Math.min(rect.right + 16, window.innerWidth - cardWidth - 12);
+        <script>
+            function guidedTour() {
+                const steps = [{
+                        selector: '[data-tour=\"header\"]',
+                        title: 'Welcome to Your Dashboard',
+                        body: 'This is your command center for everything you do in ScratchLMS.'
+                    },
+                    {
+                        selector: '[data-tour=\"quick-action\"]',
+                        title: 'Quick Actions',
+                        body: 'Jump back into learning or start building a new course instantly.'
+                    },
+                    {
+                        selector: '[data-tour=\"stats\"]',
+                        title: 'Your Progress',
+                        body: 'Key stats help you track momentum at a glance.'
+                    },
+                    <?php if ($mode === 'student'): ?> {
+                            selector: '[data-tour=\"learning\"]',
+                            title: 'My Learning',
+                            body: 'All your enrolled courses live here. Pick up where you left off.'
+                        },
+                        {
+                            selector: '[data-tour=\"activity\"]',
+                            title: 'Recent Activity',
+                            body: 'See your latest lessons and quiz actions here.'
+                        },
+                        {
+                            selector: '[data-tour=\"notifications\"]',
+                            title: 'Notifications',
+                            body: 'Important alerts and updates show up in the bell.'
+                        },
+                        {
+                            selector: '[data-tour=\"sidebar\"]',
+                            title: 'Sidebar Navigation',
+                            body: 'Use the sidebar to jump between dashboard sections.'
                         }
-                        this.tourCardStyle = `top:${cardTop}px; left:${cardLeft}px; width:${cardWidth}px;`;
-                    });
-                },
-                next() {
-                    if (this.isLast) {
-                        this.finish();
-                        return;
+                    <?php else: ?> {
+                            selector: '[data-tour=\"created\"]',
+                            title: 'Your Courses',
+                            body: 'Manage the courses you have created and keep them updated.'
+                        }
+                    <?php endif; ?>
+                ];
+
+                return {
+                    show: true,
+                    stepIndex: 0,
+                    steps: steps,
+                    spotlightStyle: '',
+                    tourCardStyle: '',
+                    get currentStep() {
+                        return this.steps[this.stepIndex] || this.steps[0];
+                    },
+                    get isLast() {
+                        return this.stepIndex === this.steps.length - 1;
+                    },
+                    init() {
+                        this.updateSpotlight();
+                        window.addEventListener('resize', () => this.updateSpotlight());
+                        window.addEventListener('scroll', () => this.updateSpotlight(), {
+                            passive: true
+                        });
+                        window.addEventListener('orientationchange', () => setTimeout(() => this.updateSpotlight(), 100)); // Fix gimbal on rotation
+                    },
+                    updateSpotlight() {
+                        const step = this.steps[this.stepIndex];
+                        if (!step) return;
+
+                        // Handle hidden elements (e.g. sidebar on mobile)
+                        let el = document.querySelector(step.selector);
+
+                        // Special handling for sidebar tour on mobile
+                        const sidebar = document.querySelector('[data-tour="sidebar"]');
+                        if (step.selector === '[data-tour="sidebar"]' && window.innerWidth < 768) {
+                            // If sidebar is closed, maybe we shouldn't act, but we can target the toggle button instead?
+                            // Unfortuantely we don't have a selector for the toggle button in the steps.
+                            // We'll skip sidebar step on mobile or target the toggle if sidebar is closed.
+                            // For now, let's just use the toggle if sidebar is hidden/closed.
+                            const toggle = document.querySelector('button[aria-label="Toggle sidebar"]') || document.querySelector('.md\\:hidden .fa-bars')?.closest('button');
+                            if (toggle && sidebar.classList.contains('-translate-x-full')) el = toggle;
+                        }
+
+                        if (!el) return;
+                        el.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                        requestAnimationFrame(() => {
+                            const rect = el.getBoundingClientRect();
+                            const pad = 6;
+                            const top = Math.max(rect.top - pad, 12);
+                            const left = Math.max(rect.left - pad, 12);
+                            const width = Math.max(rect.width + pad * 2, 80);
+                            const height = Math.max(rect.height + pad * 2, 40);
+                            this.spotlightStyle = `top:${top}px; left:${left}px; width:${width}px; height:${height}px;`;
+
+                            const cardWidth = Math.min(480, window.innerWidth - 32); // Responsive width
+                            const preferBelow = rect.bottom + 16 + 220 < window.innerHeight;
+                            const cardTop = preferBelow ? (rect.bottom + 16) : Math.max(rect.top - 16 - 200, 16);
+                            let cardLeft = Math.min(Math.max(rect.left, 16), window.innerWidth - cardWidth - 16);
+
+                            // Adjust for sidebar card position
+                            if (step.selector === '[data-tour=\"sidebar\"]' && window.innerWidth >= 768) {
+                                cardLeft = rect.right + 16;
+                            }
+
+                            this.tourCardStyle = `top:${cardTop}px; left:${cardLeft}px; width:${cardWidth}px;`;
+                        });
+                    },
+                    next() {
+                        // Skip sidebar step on mobile if it feels clunky? No, let's keep it.
+                        if (this.isLast) {
+                            this.finish();
+                            return;
+                        }
+                        this.stepIndex++;
+                        this.updateSpotlight();
+                    },
+                    prev() {
+                        if (this.stepIndex === 0) return;
+                        this.stepIndex--;
+                        this.updateSpotlight();
+                    },
+                    finish() {
+                        this.show = false;
+                        fetch('/dashboard/dismiss-tutorial', {
+                            method: 'POST'
+                        });
                     }
-                    this.stepIndex++;
-                    this.updateSpotlight();
-                },
-                prev() {
-                    if (this.stepIndex === 0) return;
-                    this.stepIndex--;
-                    this.updateSpotlight();
-                },
-                finish() {
-                    this.show = false;
-                    fetch('/dashboard/dismiss-tutorial', { method: 'POST' });
                 }
             }
-        }
-    </script>
+        </script>
     <?php endif; ?>
 
     <!-- Stats Grid (Solid Bento Style) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-tour="stats">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="stats">
         <?php if ($mode === 'student'): ?>
             <!-- Student Stats -->
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-indigo-500/50 transition duration-300">
@@ -347,7 +372,7 @@ ob_start();
 
     <!-- Main Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         <!-- ================= STUDENT VIEW ================= -->
         <?php if ($mode === 'student'): ?>
             <div class="lg:col-span-8 space-y-8" data-tour="learning">
@@ -422,7 +447,7 @@ ob_start();
                 </div>
             </div>
 
-        <!-- ================= INSTRUCTOR VIEW ================= -->
+            <!-- ================= INSTRUCTOR VIEW ================= -->
         <?php else: ?>
             <div class="lg:col-span-8 space-y-8" data-tour="created">
                 <!-- Notifications (Pending Requests) -->
@@ -468,7 +493,7 @@ ob_start();
                         </div>
                     </div>
                 </h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <?php foreach ($created_courses as $course): ?>
                         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition group">
@@ -481,15 +506,15 @@ ob_start();
                             </div>
                             <div class="p-5">
                                 <h3 class="text-white font-bold truncate mb-4 group-hover:text-indigo-400 transition"><?= htmlspecialchars($course['title']) ?></h3>
-                                    <div class="flex gap-2">
-                                        <a href="/instructor/course/<?= $course['id'] ?>/edit" class="flex-1 text-center py-1.5 bg-zinc-800 text-zinc-300 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition border border-zinc-700">Builder</a>
-                                        <a href="/instructor/course/<?= $course['id'] ?>/students" class="flex-1 text-center py-1.5 bg-zinc-800 text-zinc-300 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition border border-zinc-700">Analytics</a>
-                                        <form action="/instructor/course/<?= $course['id'] ?>/delete" method="POST" onsubmit="return confirm('⚠️ DANGER: This will PERMANENTLY DELETE this course, all modules, all lessons, all quizzes, and all student enrollments. This cannot be undone. Type DELETE to confirm?');" class="flex-shrink-0">
-                                            <button type="submit" class="w-8 h-8 flex items-center justify-center bg-red-900/20 text-red-500 rounded-md hover:bg-red-600 hover:text-white transition border border-red-500/30">
-                                                <i class="fa-solid fa-trash-can text-[10px]"></i>
-                                            </button>
-                                        </form>
-                                    </div>
+                                <div class="flex gap-2">
+                                    <a href="/instructor/course/<?= $course['id'] ?>/edit" class="flex-1 text-center py-1.5 bg-zinc-800 text-zinc-300 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition border border-zinc-700">Builder</a>
+                                    <a href="/instructor/course/<?= $course['id'] ?>/students" class="flex-1 text-center py-1.5 bg-zinc-800 text-zinc-300 rounded-md text-[10px] font-bold uppercase tracking-wider hover:bg-zinc-700 hover:text-white transition border border-zinc-700">Analytics</a>
+                                    <form action="/instructor/course/<?= $course['id'] ?>/delete" method="POST" onsubmit="return confirm('⚠️ DANGER: This will PERMANENTLY DELETE this course, all modules, all lessons, all quizzes, and all student enrollments. This cannot be undone. Type DELETE to confirm?');" class="flex-shrink-0">
+                                        <button type="submit" class="w-8 h-8 flex items-center justify-center bg-red-900/20 text-red-500 rounded-md hover:bg-red-600 hover:text-white transition border border-red-500/30">
+                                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                        </button>
+                                    </form>
+                                </div>
 
                             </div>
                         </div>
@@ -526,7 +551,7 @@ ob_start();
     </div>
 </div>
 
-<?php 
-$content = ob_get_clean(); 
-require __DIR__ . '/layouts/app.php'; 
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/layouts/app.php';
 ?>

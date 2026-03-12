@@ -33,15 +33,15 @@ class CourseProgressService
         // Generate Certificate if newly completed and course supports it
         $certSql = "";
         $certParams = [];
-        
+
         if ($isCompleted) {
             // Check Course Settings
             $course = $this->db->fetchAll("SELECT has_certificate, certificate_auto_issue FROM courses WHERE id = :cid", [':cid' => $courseId])[0] ?? null;
-            
+
             if ($course && $course['has_certificate'] && $course['certificate_auto_issue']) {
                 // Check if already certified to avoid overwriting
                 $check = $this->db->fetchAll("SELECT certificate_id FROM enrollments WHERE user_id = :uid AND course_id = :cid", [':uid' => $userId, ':cid' => $courseId])[0];
-                
+
                 if (empty($check['certificate_id'])) {
                     $certId = 'CERT-' . strtoupper(uniqid());
                     $certSql = ", certificate_id = :certId, certified_at = CURRENT_TIMESTAMP";
@@ -52,7 +52,7 @@ class CourseProgressService
 
         $sqlUpdate = "UPDATE enrollments SET progress_percent = :pct, is_completed = :comp $certSql
                       WHERE user_id = :uid AND course_id = :cid";
-        
+
         $params = array_merge([
             ':pct' => $percent,
             ':comp' => $isCompleted,
@@ -94,9 +94,9 @@ class CourseProgressService
             $items = $this->db->fetchAll("SELECT id FROM content_items WHERE course_id = :cid ORDER BY position ASC", [':cid' => $courseId]);
             $itemIds = array_column($items, 'id');
             $idx = array_search($itemId, $itemIds);
-            
+
             if ($idx === 0 || $idx === false) return false;
-            
+
             $prevItemId = $itemIds[$idx - 1];
             $check = $this->db->fetchAll("SELECT id FROM content_progress WHERE user_id = :uid AND item_id = :iid AND status = 'completed'", [
                 ':uid' => $userId,
@@ -225,11 +225,18 @@ class CourseProgressService
     private function hasTable(string $table): bool
     {
         $driver = $this->db->getConnection()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+
         if ($driver === 'sqlite') {
             $tableCheck = $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type='table' AND name = :table", [
                 ':table' => $table
             ]);
+        } elseif ($driver === 'pgsql') {
+            // PostgreSQL uses current_schema() instead of DATABASE()
+            $tableCheck = $this->db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = :table", [
+                ':table' => $table
+            ]);
         } else {
+            // MySQL
             $tableCheck = $this->db->fetchAll("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table", [
                 ':table' => $table
             ]);
@@ -243,7 +250,7 @@ class CourseProgressService
         // Original logic preserved
         $course = $this->db->fetchAll("SELECT content_flow FROM courses WHERE id = :cid", [':cid' => $courseId])[0] ?? null;
         if (!$course || $course['content_flow'] === 'free') return false;
-        
+
         // ... (rest of old logic)
 
         // 2. Linear Flow Logic: Must complete previous lesson
@@ -255,7 +262,7 @@ class CourseProgressService
                            WHERE m.course_id = :cid 
                            ORDER BY m.sort_order ASC, l.sort_order ASC";
             $lessons = $this->db->fetchAll($sqlLessons, [':cid' => $courseId]);
-            
+
             $lessonIds = array_column($lessons, 'id');
             $targetIndex = array_search($lessonId, $lessonIds);
 
@@ -329,6 +336,14 @@ class CourseProgressService
             return $progressLocked;
         }
 
-        return $timeLocked || $progressLocked;
+        // drip_combined: Lesson unlocks only when BOTH conditions are satisfied
+        // If a rule type has no rule defined, it's considered satisfied
+        $hasTimeRule = !empty($rule['unlock_after_days']);
+        $hasProgressRule = !empty($rule['unlock_after_lesson_id']) || !empty($rule['unlock_after_percent']);
+
+        $timeSatisfied = !$hasTimeRule || !$timeLocked;
+        $progressSatisfied = !$hasProgressRule || !$progressLocked;
+
+        return !($timeSatisfied && $progressSatisfied);
     }
 }

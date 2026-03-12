@@ -37,19 +37,19 @@ class Router
     public function dispatch(string $uri, string $method): void
     {
         $uri = parse_url($uri, PHP_URL_PATH);
-        
+
         // Remove query string if present (already handled by parse_url, but just in case of weird server configs)
         // and trimming trailing slash implies normalization
         $uri = rtrim($uri, '/') ?: '/';
 
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && preg_match($route['pattern'], $uri, $matches)) {
-                
+
                 // Remove the full match from the array, leaving only captured groups
                 array_shift($matches);
 
                 // Handle extra args passed in route definition (e.g. ['Controller', 'method', 'arg1'])
-                $extraArgs = array_slice($route['controller'], 2); 
+                $extraArgs = array_slice($route['controller'], 2);
                 $matches = array_merge($matches, $extraArgs);
 
                 [$controllerClass, $action] = $route['controller'];
@@ -68,6 +68,10 @@ class Router
                 if ($method === 'POST') {
                     $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
                     if (!\App\Core\Csrf::verify($token)) {
+                        // Log CSRF failure
+                        $securityLogger = new \App\Services\SecurityLogger();
+                        $securityLogger->logCsrfFailure($uri);
+
                         http_response_code(403);
                         if (file_exists(__DIR__ . '/../../resources/views/errors/403.php')) {
                             require __DIR__ . '/../../resources/views/errors/403.php';

@@ -1,35 +1,64 @@
-# UI + Engineering Workflow (Codex + Gemini)
+# Development Workflow
 
-## Roles
-- Gemini: UI/UX design, layout, styling, motion, and visual polish.
-- Codex: backend logic, security, data integrity, refactors, bug fixes, and reviews.
+> **Last Updated:** 2026-01-19
 
-## Task Routing
-- UI screens, layout, animations: assign to Gemini.
-- Bugs, broken flows, data validation, security: assign to Codex.
-- Mixed tasks: Gemini designs first, Codex wires logic and validates.
+---
+
+## Task Flow
+
+1. **Understand** the request fully
+2. **Research** existing code patterns
+3. **Implement** following project standards
+4. **Validate** with browser testing when applicable
+5. **Document** changes in change log
+
+---
 
 ## GitHub Workflow
-1) Create a GitHub issue for each task.
-2) Add labels:
-   - UI tasks: `ui/ux`.
-   - Logic tasks: `backend`, `bug`, `refactor`.
-3) One branch per issue:
-   - `feat/<short-name>` or `fix/<short-name>`.
-4) Open a PR for each task and link the issue.
 
-## Handoff Format
-When Gemini finishes a task, send Codex:
-- Summary of changes.
-- Files changed and why.
-- Any follow-ups or logic gaps.
+### Branch Naming
 
-When Codex finishes a task, send Gemini:
-- Summary of behavior changes.
-- Any UI points that need polish.
+```
+feat/<short-name>   # New features
+fix/<short-name>    # Bug fixes
+refactor/<name>     # Code refactoring
+docs/<name>         # Documentation
+```
+
+### Commit Messages
+
+- Short, imperative, specific
+- Examples: `Add README`, `Fix CSRF header`, `Update quiz validation`
+
+### Issue Management
+
+1. Create issues for discovered bugs
+2. Link issues in commits/PRs
+3. Close issues with explanatory comment after resolution
+
+---
+
+## Documentation Updates
+
+| When | Update |
+|------|--------|
+| After any code change | `docs/ai/change-log.md` |
+| When flows change | `docs/ai/context.md` |
+| Architectural decisions | `docs/adr/` |
+| End of session | `docs/reports/YYYY-MM-DD.md` |
+
+---
 
 ## Definition of Done
-- UI tasks: layout, spacing, responsiveness, and transitions verified.
-- Backend tasks: inputs validated, errors handled, and no regressions.
-- GitHub: issue closed, PR merged, milestone updated.
 
+- [ ] Feature working as expected
+- [ ] Inputs validated
+- [ ] Errors handled gracefully
+- [ ] Security rules followed
+- [ ] Browser tested (if UI change)
+- [ ] Documentation updated
+- [ ] Changes committed and pushed
+
+---
+
+*Reference `AGENTS.md` for complete project guidelines.*

@@ -16,28 +16,65 @@ class AuthController extends Controller
 
     public function login(): void
     {
+        // Rate limiting: 5 attempts per 15 minutes per IP
+        $rateLimiter = new \App\Services\RateLimiter();
+        $rateLimitKey = \App\Services\RateLimiter::key('login');
+        $maxAttempts = 5;
+        $decayMinutes = 15;
+
+        // Check if already locked out
+        if ($rateLimiter->tooManyAttempts($rateLimitKey, $maxAttempts, $decayMinutes)) {
+            $retryAfter = $rateLimiter->availableIn($rateLimitKey, $decayMinutes);
+            $minutes = ceil($retryAfter / 60);
+
+            // Log blocked attempt
+            $securityLogger = new \App\Services\SecurityLogger();
+            $securityLogger->logAuthEvent('login_blocked', null, [
+                'email' => $_POST['email'] ?? 'unknown',
+                'lockout_minutes' => $minutes
+            ]);
+
+            $this->view('auth.login', [
+                'error' => "Too many login attempts. Please try again in {$minutes} minute(s).",
+                'locked' => true
+            ]);
+            return;
+        }
+
+        // Validate CSRF token
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!hash_equals(\App\Core\Csrf::getToken(), $csrfToken)) {
+            $this->view('auth.login', ['error' => 'Invalid security token. Please try again.']);
+            return;
+        }
+
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
 
-        $userModel = new User();
-        $user = $userModel->findByEmail($email);
+        // Use UserService to get user with roles in single query (eliminates N+1)
+        $userService = new \App\Services\UserService();
+        $user = $userService->getUserByEmailWithRoles($email);
 
         if ($user && password_verify($password, $user['password'])) {
+            // Success - clear rate limit
+            $rateLimiter->clear($rateLimitKey);
+
+            // Log successful login
+            $securityLogger = new \App\Services\SecurityLogger();
+            $securityLogger->logAuthEvent('login_success', $user['id'], ['email' => $email]);
+
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
+
+            // Regenerate session ID to prevent session fixation attacks
+            session_regenerate_id(true);
+
             unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['admin_flash_success'], $_SESSION['admin_flash_error']);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['can_switch_role'] = $user['can_switch_role'] ?? 0;
-            
-            // Fetch and store roles
-            $db = \App\Core\Database::getInstance();
-            $sqlRoles = "SELECT r.slug FROM roles r 
-                         JOIN role_user ru ON r.id = ru.role_id 
-                         WHERE ru.user_id = :uid";
-            $roles = $db->fetchAll($sqlRoles, [':uid' => $user['id']]);
-            $_SESSION['user_roles'] = array_column($roles, 'slug');
+            $_SESSION['user_roles'] = $user['roles']; // Already loaded via single query
 
             // Check Onboarding Status
             $isOnboarded = $user['is_onboarded'] ?? 0;
@@ -50,7 +87,23 @@ class AuthController extends Controller
             exit;
         }
 
-        $this->view('auth.login', ['error' => 'Invalid credentials']);
+        // Failed login - record attempt
+        $rateLimiter->attempt($rateLimitKey, $maxAttempts, $decayMinutes);
+        $remaining = $rateLimiter->remainingAttempts($rateLimitKey, $maxAttempts, $decayMinutes);
+
+        // Log failed login
+        $securityLogger = new \App\Services\SecurityLogger();
+        $securityLogger->logAuthEvent('login_failed', null, [
+            'email' => $email,
+            'attempts_remaining' => $remaining
+        ]);
+
+        $error = 'Invalid credentials';
+        if ($remaining > 0 && $remaining <= 2) {
+            $error .= ". {$remaining} attempt(s) remaining before lockout.";
+        }
+
+        $this->view('auth.login', ['error' => $error]);
     }
 
     public function showRegister(): void
@@ -60,56 +113,52 @@ class AuthController extends Controller
 
     public function register(): void
     {
-        $name = $_POST['name'] ?? '';
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
+        // Rate limiting: 3 attempts per 60 minutes per IP
+        $rateLimiter = new \App\Services\RateLimiter();
+        $rateLimitKey = \App\Services\RateLimiter::key('register');
+        $maxAttempts = 3;
+        $decayMinutes = 60;
 
-        if (empty($name) || empty($email) || empty($password)) {
-            $this->view('auth.register', ['error' => 'All fields are required']);
+        // Check if already locked out
+        if ($rateLimiter->tooManyAttempts($rateLimitKey, $maxAttempts, $decayMinutes)) {
+            $retryAfter = $rateLimiter->availableIn($rateLimitKey, $decayMinutes);
+            $minutes = ceil($retryAfter / 60);
+            $this->view('auth.register', [
+                'error' => "Too many registration attempts. Please try again in {$minutes} minute(s).",
+                'locked' => true
+            ]);
             return;
         }
 
-        $userModel = new User();
-        if ($userModel->findByEmail($email)) {
-             $this->view('auth.register', ['error' => 'Email already registered']);
-             return;
+        // Record attempt
+        $rateLimiter->attempt($rateLimitKey, $maxAttempts, $decayMinutes);
+
+        // Validate CSRF token
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        if (!hash_equals(\App\Core\Csrf::getToken(), $csrfToken)) {
+            $this->view('auth.register', ['error' => 'Invalid security token. Please try again.']);
+            return;
         }
 
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        
-        $userId = $userModel->create(['name' => $name, 'email' => $email, 'password' => $hashedPassword]);
-        
+        // Use UserService for registration (handles validation, role assignment, notifications)
+        $userService = new \App\Services\UserService();
+        $userId = $userService->register([
+            'name' => \App\Core\InputSanitizer::text($_POST['name'] ?? ''),
+            'email' => \App\Core\InputSanitizer::email($_POST['email'] ?? ''),
+            'password' => $_POST['password'] ?? ''
+        ]);
+
         if ($userId) {
-             // Assign 'student' role by default
-             $db = \App\Core\Database::getInstance();
-             $sqlRole = "SELECT id FROM roles WHERE slug = 'student'";
-             $resRole = $db->fetchAll($sqlRole);
-             $studentRoleId = $resRole[0]['id'] ?? 3; // Default to 3 (student) if not found
-
-             $db->query("INSERT INTO role_user (user_id, role_id) VALUES (:uid, :rid)", [
-                 ':uid' => $userId,
-                 ':rid' => $studentRoleId
-             ]);
-
-             // Welcome Notification
-             (new \App\Domain\Notifications\Notification())->create([
-                 'user_id' => $userId,
-                 'type' => 'system',
-                 'title' => 'Welcome to ScratchLMS',
-                 'message' => "We're glad you're here! Start exploring courses now.",
-                 'link' => '/courses'
-             ]);
-
-             header('Location: /login');
-             exit;
+            header('Location: /login');
+            exit;
         }
 
-        $this->view('auth.register', ['error' => 'Registration failed']);
+        $this->view('auth.register', ['error' => 'Registration failed. Please check your input and try again.']);
     }
-    
+
     public function logout(): void
     {
-         if (session_status() === PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['admin_flash_success'], $_SESSION['admin_flash_error']);

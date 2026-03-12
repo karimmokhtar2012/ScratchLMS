@@ -22,6 +22,7 @@ class CreateQuizTables extends Migration
             $table->integer('allowed_attempts')->default(0);  // 0 = unlimited
             $table->boolean('is_randomized')->default(false);
             $table->boolean('show_correct_answers')->default(true);
+            $table->string('status', 20)->default('draft');  // draft, published
             $table->timestamps();
             $table->unique(['lesson_id']);
         });
@@ -41,7 +42,7 @@ class CreateQuizTables extends Migration
             $table->text('ai_rubric')->nullable()->default(null);  // AI grading rubric
             $table->integer('sort_order')->default(0);
             $table->timestamps();
-            $table->check('type', ['single_choice', 'multi_choice', 'true_false', 'short_text']);
+            $table->check('type', ['single_choice', 'multi_choice', 'true_false', 'short_text', 'fill_blank', 'matching', 'essay', 'video_submission']);
         });
 
         // Quiz Attempts Table

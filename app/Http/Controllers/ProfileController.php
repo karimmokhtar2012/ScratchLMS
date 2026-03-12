@@ -29,7 +29,7 @@ class ProfileController extends Controller
         // Fetch some stats for the professional look
         $db = Database::getInstance();
         $userId = $_SESSION['user_id'];
-        
+
         $stats = [
             'enrolled_courses' => $db->fetchAll("SELECT COUNT(*) as count FROM enrollments WHERE user_id = :uid", [':uid' => $userId])[0]['count'] ?? 0,
             'completed_lessons' => $db->fetchAll("SELECT COUNT(*) as count FROM completed_lessons WHERE user_id = :uid", [':uid' => $userId])[0]['count'] ?? 0,
@@ -49,8 +49,8 @@ class ProfileController extends Controller
         $userModel = new User();
         $user = $userModel->find($userId);
 
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $name = \App\Core\InputSanitizer::text($_POST['name'] ?? '');
+        $email = \App\Core\InputSanitizer::email($_POST['email'] ?? '');
         $newPassword = $_POST['new_password'] ?? '';
         $currentPassword = $_POST['current_password'] ?? '';
 

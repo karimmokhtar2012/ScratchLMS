@@ -1,14 +1,14 @@
 <?php ob_start(); ?>
 
 <div class="max-w-7xl mx-auto space-y-8">
-    
+
     <!-- Top Header: Course Overview & Quick Actions -->
     <div class="bg-surface rounded-2xl border border-zinc-700/50 p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center gap-6">
         <!-- Thumbnail -->
         <div class="w-full md:w-48 aspect-video bg-zinc-800 rounded-xl overflow-hidden shrink-0 relative border border-zinc-700">
             <img src="<?= $course['thumbnail'] ?: '/assets/images/course.png' ?>" alt="Course Thumbnail" class="w-full h-full object-cover">
         </div>
-        
+
         <!-- Info -->
         <div class="flex-1 min-w-0">
             <div class="flex items-center gap-3 mb-1">
@@ -16,7 +16,7 @@
                     <?= htmlspecialchars($course['title']) ?>
                 </h1>
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider
-                    <?= match($course['status'] ?? 'draft') {
+                    <?= match ($course['status'] ?? 'draft') {
                         'published' => 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
                         'upcoming' => 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
                         default => 'bg-zinc-700/50 text-zinc-400 border border-zinc-700'
@@ -24,11 +24,11 @@
                     <?= ucfirst($course['status'] ?? 'draft') ?>
                 </span>
             </div>
-            
+
             <p class="text-zinc-400 text-sm mb-4 line-clamp-2 max-w-2xl">
                 <?= htmlspecialchars($course['description']) ?>
             </p>
-            
+
             <div class="flex flex-wrap items-center gap-3">
                 <a href="/instructor/course/<?= $course['id'] ?>/settings" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 transition">
                     <i class="fa-solid fa-gear mr-2"></i> Settings
@@ -52,9 +52,9 @@
     </div>
 
     <!-- Chunked Uploader Script -->
-    <?php 
-        $uploaderJsPath = BASE_PATH . 'public/assets/js/uploader.min.js';
-        $uploaderJsVer = is_file($uploaderJsPath) ? filemtime($uploaderJsPath) : time();
+    <?php
+    $uploaderJsPath = BASE_PATH . 'public/assets/js/uploader.min.js';
+    $uploaderJsVer = is_file($uploaderJsPath) ? filemtime($uploaderJsPath) : time();
     ?>
     <script src="/assets/js/uploader.min.js?v=<?= $uploaderJsVer ?>"></script>
 
@@ -67,17 +67,17 @@
                 </h2>
                 <p class="text-zinc-400 text-sm mt-1">Drag and drop to reorder. Toggle edit mode to manage content.</p>
             </div>
-            
+
             <div class="flex flex-wrap items-center gap-3">
                 <!-- Action Buttons -->
                 <button id="btn-edit-course" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition flex items-center">
                     <i class="fa-solid fa-pen-to-square mr-2"></i> Toggle Edit Mode
                 </button>
-                
+
                 <button id="btn-save-changes" disabled class="hidden bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition flex items-center">
                     <i class="fa-solid fa-floppy-disk mr-2"></i> Save Changes
                 </button>
-                
+
                 <button id="btn-cancel-edit" class="hidden text-zinc-400 hover:text-white px-4 py-2.5 transition font-medium">
                     Cancel
                 </button>
@@ -88,7 +88,7 @@
                         <i class="fa-solid fa-plus"></i>
                         <span>Add Module</span>
                     </button>
-                    
+
                     <!-- Add Module Dropdown Form -->
                     <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-80 bg-zinc-900 rounded-xl shadow-2xl border border-zinc-700 z-20 p-5" style="display: none;">
                         <h3 class="text-sm font-bold text-white mb-3">New Module</h3>
@@ -114,10 +114,15 @@
                     <div class="bg-zinc-800/40 px-6 py-4 flex items-center justify-between border-b border-zinc-700/50 cursor-default group" x-data="{ editingTitle: false }">
                         <div class="flex items-center space-x-4 w-full">
                             <!-- Drag Handle -->
-                            <div class="w-6 flex items-center justify-center edit-mode-only hidden cursor-move text-zinc-600 hover:text-zinc-400">
+                            <div class="w-6 flex items-center justify-center edit-mode-only hidden cursor-move text-zinc-600 hover:text-zinc-400 hidden md:flex">
                                 <i class="fa-solid fa-grip-vertical"></i>
                             </div>
-                            
+                            <!-- Mobile Reorder Buttons -->
+                            <div class="flex flex-col gap-1 mr-2 edit-mode-only hidden md:hidden">
+                                <button type="button" class="move-up-btn p-1 bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
+                                <button type="button" class="move-down-btn p-1 bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Move Down"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
+                            </div>
+
                             <!-- View Mode Title -->
                             <h3 x-show="!editingTitle" class="font-bold text-white text-lg flex items-center gap-3">
                                 <?= htmlspecialchars($module['title']) ?>
@@ -125,7 +130,7 @@
                                     <?= count($module['lessons']) ?> lessons
                                 </span>
                             </h3>
-                            
+
                             <!-- Edit Mode Title Form -->
                             <form x-show="editingTitle" action="/instructor/module/update/<?= $module['id'] ?>" method="POST" class="flex items-center space-x-2 w-full max-w-md protected-form" @click.away="editingTitle = false">
                                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
@@ -156,7 +161,7 @@
                                     <i class="fa-solid fa-file-import"></i>
                                     <span>Import</span>
                                 </button>
-                                
+
                                 <div x-show="showImport" @click.away="showImport = false" class="absolute right-0 top-full mt-2 w-72 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-30 p-2 max-h-60 overflow-y-auto custom-scrollbar" style="display: none;">
                                     <?php if (empty($libraryLessons)): ?>
                                         <div class="p-4 text-center text-zinc-500 text-xs">
@@ -208,7 +213,7 @@
                             <input type="hidden" name="course_id" value="<?= $course['id'] ?>">
                             <input type="hidden" name="module_id" :value="module_id">
                             <input type="hidden" name="type" x-model="lessonType">
-                            
+
                             <div class="flex items-start justify-between">
                                 <h4 class="text-sm font-bold text-white uppercase tracking-wider" x-text="lessonType === 'quiz' ? 'New Quiz' : 'New Lesson'">New Lesson</h4>
                                 <button type="button" @click="openLessonForm = false" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
@@ -219,11 +224,11 @@
                                 <div class="md:col-span-8 space-y-4">
                                     <div>
                                         <label class="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Title</label>
-                                        <input type="text" name="title" required 
-                                            class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" 
+                                        <input type="text" name="title" required
+                                            class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
                                             placeholder="e.g., Understanding the MVC Pattern">
                                     </div>
-                                    
+
                                     <!-- Dynamic Inputs -->
                                     <div class="bg-zinc-900/50 rounded-xl border border-zinc-800 p-4">
                                         <!-- VIDEO -->
@@ -306,8 +311,13 @@
                                 <div class="px-6 py-3 flex items-center justify-between border-t border-zinc-800/50 group hover:bg-zinc-800/40 transition lesson-item" draggable="false" data-id="<?= $lesson['id'] ?>">
                                     <div class="flex items-center space-x-4">
                                         <!-- Drag Handle -->
-                                        <div class="w-6 flex items-center justify-center edit-mode-only hidden cursor-move text-zinc-600 hover:text-zinc-400">
+                                        <div class="w-6 flex items-center justify-center edit-mode-only hidden cursor-move text-zinc-600 hover:text-zinc-400 hidden md:flex">
                                             <i class="fa-solid fa-grip-lines"></i>
+                                        </div>
+                                        <!-- Mobile Reorder Buttons -->
+                                        <div class="flex flex-col gap-1 mr-2 edit-mode-only hidden md:hidden">
+                                            <button type="button" class="move-up-btn p-1 bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Move Up"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
+                                            <button type="button" class="move-down-btn p-1 bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Move Down"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
                                         </div>
 
                                         <!-- Icon -->
@@ -320,7 +330,7 @@
                                                 <i class="fa-solid fa-file-lines text-xs"></i>
                                             </div>
                                         <?php else: ?>
-                                             <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20">
+                                            <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20">
                                                 <i class="fa-solid fa-list-check text-xs"></i>
                                             </div>
                                         <?php endif; ?>
@@ -340,13 +350,13 @@
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
                                         <?php endif; ?>
-                                         
-                                         <form action="/instructor/content-item/delete/<?= $lesson['id'] ?>" method="POST" class="protected-form edit-mode-only hidden" onsubmit="return confirm('Delete this item?');">
+
+                                        <form action="/instructor/content-item/delete/<?= $lesson['id'] ?>" method="POST" class="protected-form edit-mode-only hidden" onsubmit="return confirm('Delete this item?');">
                                             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                                             <button type="submit" class="text-zinc-500 hover:text-red-400 p-2 transition opacity-0 group-hover:opacity-100" title="Delete">
                                                 <i class="fa-solid fa-trash-can"></i>
                                             </button>
-                                         </form>
+                                        </form>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -371,218 +381,285 @@
     </div>
 </div>
 
-<?php 
-$content = ob_get_clean(); 
-require __DIR__ . '/../layouts/app.php'; 
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
 ?>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const modulesList = document.getElementById('modules-list');
-    const btnEdit = document.getElementById('btn-edit-course');
-    const btnSave = document.getElementById('btn-save-changes');
-    const btnCancel = document.getElementById('btn-cancel-edit');
-    
-    let isEditing = false;
-    let hasUnsavedChanges = false;
-    let draggedItem = null;
-    let draggedType = null; // 'module' or 'lesson'
+    document.addEventListener('DOMContentLoaded', () => {
+        const modulesList = document.getElementById('modules-list');
+        const btnEdit = document.getElementById('btn-edit-course');
+        const btnSave = document.getElementById('btn-save-changes');
+        const btnCancel = document.getElementById('btn-cancel-edit');
 
-    // --- Mode Management ---
-    function enableEditMode() {
-        isEditing = true;
-        btnEdit.classList.add('hidden');
-        btnSave.classList.remove('hidden');
-        btnCancel.classList.remove('hidden');
+        let isEditing = false;
+        let hasUnsavedChanges = false;
+        let draggedItem = null;
+        let draggedType = null; // 'module' or 'lesson'
 
-        document.querySelectorAll('.edit-mode-only').forEach(el => el.classList.remove('hidden'));
-        document.querySelectorAll('.module-item').forEach(el => el.setAttribute('draggable', 'true'));
-        document.querySelectorAll('.lesson-item').forEach(el => el.setAttribute('draggable', 'true'));
-    }
+        // --- Mode Management ---
+        function enableEditMode() {
+            isEditing = true;
+            btnEdit.classList.add('hidden');
+            btnSave.classList.remove('hidden');
+            btnCancel.classList.remove('hidden');
 
-    function disableEditMode() {
-        if (hasUnsavedChanges) {
-             if (!confirm('You have unsaved changes. Are you sure you want to exit edit mode? Your changes will be lost.')) return;
-             // If confirmed, reload page to reset state
-             window.location.reload();
-             return;
+            document.querySelectorAll('.edit-mode-only').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.module-item').forEach(el => el.setAttribute('draggable', 'true'));
+            document.querySelectorAll('.lesson-item').forEach(el => el.setAttribute('draggable', 'true'));
         }
 
-        isEditing = false;
-        btnEdit.classList.remove('hidden');
-        btnSave.classList.add('hidden');
-        btnCancel.classList.add('hidden');
-
-        document.querySelectorAll('.edit-mode-only').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.module-item').forEach(el => el.setAttribute('draggable', 'false'));
-        document.querySelectorAll('.lesson-item').forEach(el => el.setAttribute('draggable', 'false'));
-    }
-
-    function markDirty() {
-        hasUnsavedChanges = true;
-        btnSave.disabled = false;
-        window.onbeforeunload = () => "You have unsaved changes. Are you sure you want to leave?";
-    }
-
-    function markClean() {
-        hasUnsavedChanges = false;
-        btnSave.disabled = true;
-        window.onbeforeunload = null;
-    }
-
-    btnEdit.addEventListener('click', enableEditMode);
-    btnCancel.addEventListener('click', disableEditMode);
-    
-    btnSave.addEventListener('click', () => {
-        if (!confirm('Are you sure you want to save these changes?')) return;
-
-        // Collect all data
-        const moduleOrder = [...document.querySelectorAll('.module-item')].map(m => m.dataset.id);
-        const lessonUpdates = [];
-
-        document.querySelectorAll('.lessons-list').forEach(list => {
-            const moduleId = list.dataset.moduleId;
-            const lessonOrder = [...list.querySelectorAll('.lesson-item')].map(l => l.dataset.id);
-            if (lessonOrder.length > 0) {
-                lessonUpdates.push({ moduleId, order: lessonOrder });
-            }
-        });
-
-        // We will chain the promises to save everything
-        const promises = [];
-
-        // Save Modules
-        promises.push(fetch('/instructor/modules/reorder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order: moduleOrder })
-        }));
-
-        // Save Lessons (One request per module for now, as API is structured that way)
-        lessonUpdates.forEach(update => {
-             promises.push(fetch('/instructor/lessons/reorder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order: update.order })
-            }));
-        });
-
-        Promise.all(promises)
-            .then(responses => {
-                const allOk = responses.every(r => r.ok);
-                if (allOk) {
-                    markClean();
-                    alert('Changes saved successfully!');
-                    window.location.reload();
-                } else {
-                    alert('Some changes failed to save. Please refresh and try again.');
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('An error occurred while saving.');
-            });
-    });
-
-    // Protect "Add/Delete" forms from submitting when dirty
-    document.querySelectorAll('.protected-form').forEach(form => {
-        form.addEventListener('submit', (e) => {
+        function disableEditMode() {
             if (hasUnsavedChanges) {
+                if (!confirm('You have unsaved changes. Are you sure you want to exit edit mode? Your changes will be lost.')) return;
+                // If confirmed, reload page to reset state
+                window.location.reload();
+                return;
+            }
+
+            isEditing = false;
+            btnEdit.classList.remove('hidden');
+            btnSave.classList.add('hidden');
+            btnCancel.classList.add('hidden');
+
+            document.querySelectorAll('.edit-mode-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.module-item').forEach(el => el.setAttribute('draggable', 'false'));
+            document.querySelectorAll('.lesson-item').forEach(el => el.setAttribute('draggable', 'false'));
+        }
+
+        function markDirty() {
+            hasUnsavedChanges = true;
+            btnSave.disabled = false;
+            window.onbeforeunload = () => "You have unsaved changes. Are you sure you want to leave?";
+        }
+
+        function markClean() {
+            hasUnsavedChanges = false;
+            btnSave.disabled = true;
+            window.onbeforeunload = null;
+        }
+
+        btnEdit.addEventListener('click', enableEditMode);
+        btnCancel.addEventListener('click', disableEditMode);
+
+        btnSave.addEventListener('click', () => {
+            if (!confirm('Are you sure you want to save these changes?')) return;
+
+            // Collect all data
+            const moduleOrder = [...document.querySelectorAll('.module-item')].map(m => m.dataset.id);
+            const lessonUpdates = [];
+
+            document.querySelectorAll('.lessons-list').forEach(list => {
+                const moduleId = list.dataset.moduleId;
+                const lessonOrder = [...list.querySelectorAll('.lesson-item')].map(l => l.dataset.id);
+                if (lessonOrder.length > 0) {
+                    lessonUpdates.push({
+                        moduleId,
+                        order: lessonOrder
+                    });
+                }
+            });
+
+            // We will chain the promises to save everything
+            const promises = [];
+
+            // Save Modules
+            promises.push(fetch('/instructor/modules/reorder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    order: moduleOrder
+                })
+            }));
+
+            // Save Lessons (One request per module for now, as API is structured that way)
+            lessonUpdates.forEach(update => {
+                promises.push(fetch('/instructor/lessons/reorder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        order: update.order
+                    })
+                }));
+            });
+
+            Promise.all(promises)
+                .then(responses => {
+                    const allOk = responses.every(r => r.ok);
+                    if (allOk) {
+                        markClean();
+                        alert('Changes saved successfully!');
+                        window.location.reload();
+                    } else {
+                        alert('Some changes failed to save. Please refresh and try again.');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred while saving.');
+                });
+        });
+
+        // Protect "Add/Delete" forms from submitting when dirty
+        document.querySelectorAll('.protected-form').forEach(form => {
+            form.addEventListener('submit', (e) => {
+                if (hasUnsavedChanges) {
+                    e.preventDefault();
+                    alert('You have unsaved reorder changes. Please save your changes before adding or deleting items.');
+                }
+            });
+        });
+
+        // --- Drag and Drop Logic (Modified to not auto-save) ---
+
+        // Modules
+        if (modulesList) {
+            modulesList.addEventListener('dragstart', (e) => {
+                if (!isEditing) {
+                    e.preventDefault();
+                    return;
+                }
+                if (!e.target.classList.contains('module-item')) return;
+                draggedItem = e.target;
+                draggedType = 'module';
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.classList.add('opacity-50');
+            });
+
+            modulesList.addEventListener('dragend', (e) => {
+                if (draggedType !== 'module') return;
+                e.target.classList.remove('opacity-50');
+                draggedItem = null;
+                draggedType = null;
+            });
+
+            modulesList.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                alert('You have unsaved reorder changes. Please save your changes before adding or deleting items.');
+                if (draggedType !== 'module') return;
+                const afterElement = getDragAfterElement(modulesList, e.clientY, '.module-item');
+                if (afterElement == null) {
+                    modulesList.appendChild(draggedItem);
+                } else {
+                    modulesList.insertBefore(draggedItem, afterElement);
+                }
+            });
+
+            modulesList.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (draggedType === 'module') {
+                    markDirty();
+                }
+            });
+        }
+
+        // Lessons
+        const lessonLists = document.querySelectorAll('.lessons-list');
+        lessonLists.forEach(list => {
+            list.addEventListener('dragstart', (e) => {
+                if (!isEditing) {
+                    e.preventDefault();
+                    return;
+                }
+                if (!e.target.classList.contains('lesson-item')) return;
+                draggedItem = e.target;
+                draggedType = 'lesson';
+                e.stopPropagation();
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.classList.add('opacity-50');
+            });
+
+            list.addEventListener('dragend', (e) => {
+                if (draggedType !== 'lesson') return;
+                e.target.classList.remove('opacity-50');
+                draggedItem = null;
+                draggedType = null;
+            });
+
+            list.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (draggedType !== 'lesson') return;
+                const afterElement = getDragAfterElement(list, e.clientY, '.lesson-item');
+                if (afterElement == null) {
+                    list.appendChild(draggedItem);
+                } else {
+                    list.insertBefore(draggedItem, afterElement);
+                }
+            });
+
+            list.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (draggedType === 'lesson') {
+                    markDirty();
+                }
+            });
+        });
+
+        function getDragAfterElement(container, y, selector) {
+            const draggableElements = [...container.querySelectorAll(`${selector}:not(.opacity-50)`)];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return {
+                        offset: offset,
+                        element: child
+                    };
+                } else {
+                    return closest;
+                }
+            }, {
+                offset: Number.NEGATIVE_INFINITY
+            }).element;
+        }
+
+        // --- Mobile Reorder Logic ---
+        document.addEventListener('click', (e) => {
+            if (!isEditing) return;
+            const btn = e.target.closest('button');
+            if (!btn) return;
+
+            const isUp = btn.classList.contains('move-up-btn');
+            const isDown = btn.classList.contains('move-down-btn');
+
+            if (!isUp && !isDown) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const item = btn.closest('.module-item') || btn.closest('.lesson-item');
+            if (!item) return;
+
+            const parent = item.parentElement;
+            // Identify selector based on item type
+            const selector = item.classList.contains('module-item') ? '.module-item' : '.lesson-item';
+
+            // Get all siblings of same type
+            const siblings = [...parent.querySelectorAll(':scope > ' + selector)];
+            const index = siblings.indexOf(item);
+
+            if (isUp && index > 0) {
+                parent.insertBefore(item, siblings[index - 1]);
+                markDirty();
+                // Scroll into view if needed
+                item.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            } else if (isDown && index < siblings.length - 1) {
+                // Insert before the element *after* the next sibling (equivalent to insertAfter next sibling)
+                const nextNextSibling = siblings[index + 1].nextElementSibling;
+                parent.insertBefore(item, nextNextSibling);
+                markDirty();
+                item.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
             }
         });
     });
-
-    // --- Drag and Drop Logic (Modified to not auto-save) ---
-    
-    // Modules
-    if (modulesList) {
-        modulesList.addEventListener('dragstart', (e) => {
-            if (!isEditing) { e.preventDefault(); return; }
-            if (!e.target.classList.contains('module-item')) return;
-            draggedItem = e.target;
-            draggedType = 'module';
-            e.dataTransfer.effectAllowed = 'move';
-            e.target.classList.add('opacity-50');
-        });
-
-        modulesList.addEventListener('dragend', (e) => {
-            if (draggedType !== 'module') return;
-            e.target.classList.remove('opacity-50');
-            draggedItem = null;
-            draggedType = null;
-        });
-
-        modulesList.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (draggedType !== 'module') return;
-            const afterElement = getDragAfterElement(modulesList, e.clientY, '.module-item');
-            if (afterElement == null) {
-                modulesList.appendChild(draggedItem);
-            } else {
-                modulesList.insertBefore(draggedItem, afterElement);
-            }
-        });
-
-        modulesList.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (draggedType === 'module') {
-                markDirty();
-            }
-        });
-    }
-
-    // Lessons
-    const lessonLists = document.querySelectorAll('.lessons-list');
-    lessonLists.forEach(list => {
-        list.addEventListener('dragstart', (e) => {
-            if (!isEditing) { e.preventDefault(); return; }
-            if (!e.target.classList.contains('lesson-item')) return;
-            draggedItem = e.target;
-            draggedType = 'lesson';
-            e.stopPropagation(); 
-            e.dataTransfer.effectAllowed = 'move';
-            e.target.classList.add('opacity-50');
-        });
-
-        list.addEventListener('dragend', (e) => {
-             if (draggedType !== 'lesson') return;
-             e.target.classList.remove('opacity-50');
-             draggedItem = null;
-             draggedType = null;
-        });
-
-        list.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (draggedType !== 'lesson') return;
-            const afterElement = getDragAfterElement(list, e.clientY, '.lesson-item');
-            if (afterElement == null) {
-                list.appendChild(draggedItem);
-            } else {
-                list.insertBefore(draggedItem, afterElement);
-            }
-        });
-
-        list.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (draggedType === 'lesson') {
-                markDirty();
-            }
-        });
-    });
-
-    function getDragAfterElement(container, y, selector) {
-        const draggableElements = [...container.querySelectorAll(`${selector}:not(.opacity-50)`)];
-
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-});
 </script>

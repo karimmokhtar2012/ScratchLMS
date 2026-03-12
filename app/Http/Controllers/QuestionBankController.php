@@ -36,8 +36,8 @@ class QuestionBankController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = trim($_POST['title'] ?? '');
-        $description = trim($_POST['description'] ?? '');
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
+        $description = \App\Core\InputSanitizer::text($_POST['description'] ?? '');
 
         if ($title) {
             $bankModel = new QuestionBank();
@@ -90,8 +90,8 @@ class QuestionBankController extends Controller
         }
 
         $type = $_POST['type'] ?? 'single_choice';
-        $text = trim($_POST['question_text'] ?? '');
-        
+        $text = \App\Core\InputSanitizer::text($_POST['question_text'] ?? '');
+
         // Handle Options
         $options = [];
         if (isset($_POST['option_text']) && is_array($_POST['option_text'])) {
@@ -163,7 +163,7 @@ class QuestionBankController extends Controller
             'question_text' => $text,
             'options' => json_encode($options),
             'correct_answers' => json_encode($correctAnswers),
-            'explanation' => trim($_POST['explanation'] ?? '')
+            'explanation' => \App\Core\InputSanitizer::text($_POST['explanation'] ?? '')
         ]);
 
         $_SESSION['flash_success'] = 'Question added to bank.';
@@ -182,10 +182,10 @@ class QuestionBankController extends Controller
         if ($question) {
             $bankModel = new QuestionBank();
             $bank = $bankModel->find($question['bank_id']);
-            
+
             $roles = $_SESSION['user_roles'] ?? [];
             $hasAccess = ($bank['instructor_id'] == $_SESSION['user_id']) || in_array('admin', $roles) || in_array('master_instructor', $roles);
-            
+
             if ($bank && $hasAccess) {
                 $questionModel->delete($questionId);
                 $_SESSION['flash_success'] = 'Question deleted.';
@@ -193,7 +193,7 @@ class QuestionBankController extends Controller
                 exit;
             }
         }
-        
+
         header('Location: /instructor/question-banks');
         exit;
     }

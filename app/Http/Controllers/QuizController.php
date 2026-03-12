@@ -27,7 +27,7 @@ class QuizController extends Controller
     public function build(string $lessonId): void
     {
         $lessonId = (int) $lessonId;
-        
+
         // 1. Fetch or Create Quiz
         try {
             $quiz = $this->getOrCreateQuiz($lessonId);
@@ -49,8 +49,8 @@ class QuizController extends Controller
         try {
             Authorization::requireInstructor($_SESSION['user_id'], $courseId);
         } catch (\Exception $e) {
-             header('Location: /dashboard');
-             exit;
+            header('Location: /dashboard');
+            exit;
         }
 
         // 3. Fetch Questions
@@ -68,7 +68,7 @@ class QuizController extends Controller
         $banks = $bankModel->findAllByInstructor($_SESSION['user_id']);
         // Fetch questions for each bank too (simplified for the modal)
         $bankQuestionModel = new \App\Domain\Quizzes\BankQuestion();
-        foreach($banks as &$bank) {
+        foreach ($banks as &$bank) {
             $bank['questions'] = $bankQuestionModel->findAllByBank($bank['id']);
         }
 
@@ -99,15 +99,17 @@ class QuizController extends Controller
         // Security: Verify Quiz Ownership via Course
         $sqlCheck = "SELECT m.course_id FROM quizzes q JOIN lessons l ON q.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE q.id = :qid";
         $res = $this->db->fetchAll($sqlCheck, [':qid' => $quizId]);
-        
+
         if (empty($res)) {
-             http_response_code(403); exit;
+            http_response_code(403);
+            exit;
         }
-        
+
         try {
             Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']);
         } catch (\Exception $e) {
-             http_response_code(403); exit;
+            http_response_code(403);
+            exit;
         }
 
         $sql = "UPDATE quizzes SET 
@@ -118,7 +120,7 @@ class QuizController extends Controller
                 show_correct_answers = :show,
                 status = :status
                 WHERE id = :id";
-        
+
         $this->db->query($sql, [
             ':time' => (int) $_POST['time_limit'],
             ':score' => (int) $_POST['passing_score'],
@@ -143,17 +145,79 @@ class QuizController extends Controller
 
         $quizId = (int) $_POST['quiz_id'];
         $lessonId = (int) $_POST['lesson_id'];
-        $type = $_POST['type'];
-        $text = $_POST['question_text'];
+        $type = trim($_POST['type'] ?? '');
+        $text = trim($_POST['question_text'] ?? '');
         $points = (int) ($_POST['points'] ?? 1);
         $explanation = $_POST['explanation'] ?? '';
+
+        // --- Required Field Validation ---
+        $errors = [];
+        $validTypes = ['single_choice', 'multi_choice', 'true_false', 'short_text', 'fill_blank', 'matching', 'essay', 'video_submission'];
+
+        if (empty($type)) {
+            $errors[] = 'Question type is required.';
+        } elseif (!in_array($type, $validTypes, true)) {
+            $errors[] = 'Invalid question type: ' . htmlspecialchars($type);
+        }
+
+        if (empty($text) && !in_array($type, ['matching'], true)) {
+            $errors[] = 'Question text is required.';
+        }
+
+        if ($points < 1) {
+            $errors[] = 'Points must be at least 1.';
+        }
+
+        if ($quizId < 1) {
+            $errors[] = 'Invalid quiz ID.';
+        }
+
+        // Type-specific validation
+        if (in_array($type, ['single_choice', 'multi_choice'], true)) {
+            $rawOptions = $_POST['option_text'] ?? [];
+            $validOptions = array_filter($rawOptions, fn($o) => trim($o) !== '');
+            if (count($validOptions) < 2) {
+                $errors[] = 'Choice questions require at least 2 options.';
+            }
+        }
+
+        if ($type === 'fill_blank') {
+            $answers = trim($_POST['fill_blank_answers'] ?? '');
+            if (empty($answers)) {
+                $errors[] = 'Fill-in-the-blank questions require at least one correct answer.';
+            }
+        }
+
+        if ($type === 'matching') {
+            $left = array_filter($_POST['match_left'] ?? [], fn($v) => trim($v) !== '');
+            $right = array_filter($_POST['match_right'] ?? [], fn($v) => trim($v) !== '');
+            if (count($left) < 2 || count($right) < 2) {
+                $errors[] = 'Matching questions require at least 2 pairs.';
+            }
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['flash_error'] = implode(' ', $errors);
+            header("Location: /instructor/lesson/$lessonId/quiz");
+            exit;
+        }
+        // --- End Validation ---
 
         // Security Check
         $sqlCheck = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
         $res = $this->db->fetchAll($sqlCheck, [':lid' => $lessonId]);
-        
-        if (empty($res)) { http_response_code(403); exit; }
-        try { Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']); } catch (\Exception $e) { http_response_code(403); exit; }
+
+        if (empty($res)) {
+            http_response_code(403);
+            exit;
+        }
+        try {
+            Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']);
+        } catch (\Exception $e) {
+            http_response_code(403);
+            exit;
+        }
+
 
         // Process Options & Answers based on Type
         $options = [];
@@ -180,7 +244,7 @@ class QuizController extends Controller
 
             foreach ($rawOptions as $index => $optText) {
                 if (trim($optText) === '') continue;
-                
+
                 $id = $index + 1; // Simple ID generation
                 $options[] = ['id' => $id, 'text' => trim($optText)];
 
@@ -191,7 +255,7 @@ class QuizController extends Controller
                 }
                 // Case 2: Single-choice Radio
                 elseif ($radioCorrectIndex === $index) {
-                     $correctAnswers[] = $id;
+                    $correctAnswers[] = $id;
                 }
             }
         } elseif ($type === 'true_false') {
@@ -231,7 +295,7 @@ class QuizController extends Controller
 
         $sql = "INSERT INTO questions (quiz_id, type, question_text, points, options, correct_answers, explanation, grading_policy, ai_rubric) 
                 VALUES (:qid, :type, :text, :points, :opts, :ans, :exp, :policy, :rubric)";
-        
+
         $this->db->query($sql, [
             ':qid' => $quizId,
             ':type' => $type,
@@ -256,23 +320,54 @@ class QuizController extends Controller
         $questionId = (int) $id;
         $quizId = (int) $_POST['quiz_id'];
         $lessonId = (int) $_POST['lesson_id'];
-        
+
         // Security Check
         $sqlCheck = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
         $res = $this->db->fetchAll($sqlCheck, [':lid' => $lessonId]);
-        if (empty($res)) { http_response_code(403); exit; }
-        try { Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']); } catch (\Exception $e) { http_response_code(403); exit; }
+        if (empty($res)) {
+            http_response_code(403);
+            exit;
+        }
+        try {
+            Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']);
+        } catch (\Exception $e) {
+            http_response_code(403);
+            exit;
+        }
 
-        $type = $_POST['type'];
-        $text = $_POST['question_text'];
+        $type = trim($_POST['type'] ?? '');
+        $text = trim($_POST['question_text'] ?? '');
         $points = (int) ($_POST['points'] ?? 1);
         $explanation = $_POST['explanation'] ?? '';
+
+        // --- Required Field Validation ---
+        $errors = [];
+        $validTypes = ['single_choice', 'multi_choice', 'true_false', 'short_text', 'fill_blank', 'matching', 'essay', 'video_submission'];
+
+        if (empty($type) || !in_array($type, $validTypes, true)) {
+            $errors[] = 'Invalid question type.';
+        }
+
+        if (empty($text) && !in_array($type, ['matching'], true)) {
+            $errors[] = 'Question text is required.';
+        }
+
+        if ($points < 1) {
+            $errors[] = 'Points must be at least 1.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['flash_error'] = implode(' ', $errors);
+            header("Location: /instructor/lesson/$lessonId/quiz");
+            exit;
+        }
+        // --- End Validation ---
 
         // Process Options & Answers based on Type
         $options = [];
         $correctAnswers = [];
         $gradingPolicy = $_POST['grading_policy'] ?? null;
-        
+
         if ($type === 'fill_blank') {
             $gradingPolicy = $gradingPolicy ?: 'both';
         } elseif ($type === 'matching') {
@@ -293,14 +388,14 @@ class QuizController extends Controller
 
             foreach ($rawOptions as $index => $optText) {
                 if (trim($optText) === '') continue;
-                
+
                 $id = $index + 1;
                 $options[] = ['id' => $id, 'text' => trim($optText)];
 
                 if (isset($rawCorrect[$index])) {
                     $correctAnswers[] = $id;
                 } elseif ($radioCorrectIndex === $index) {
-                     $correctAnswers[] = $id;
+                    $correctAnswers[] = $id;
                 }
             }
         } elseif ($type === 'true_false') {
@@ -348,7 +443,7 @@ class QuizController extends Controller
                 grading_policy = :policy, 
                 ai_rubric = :rubric
                 WHERE id = :id";
-        
+
         $this->db->query($sql, [
             ':type' => $type,
             ':text' => $text,
@@ -369,16 +464,16 @@ class QuizController extends Controller
     public function deleteQuestion(string $id): void
     {
         $questionId = (int) $id;
-        
+
         // Fetch lesson ID to redirect back & Check security
         $sql = "SELECT q.lesson_id, m.course_id FROM quizzes q JOIN questions qu ON q.id = qu.quiz_id JOIN lessons l ON q.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE qu.id = :id";
         $res = $this->db->fetchAll($sql, [':id' => $questionId]);
-        
+
         if (empty($res)) {
             header("Location: /dashboard");
             exit;
         }
-        
+
         $lessonId = $res[0]['lesson_id'];
         $courseId = $res[0]['course_id'];
 
@@ -410,8 +505,16 @@ class QuizController extends Controller
         // Security
         $sqlCheck = "SELECT m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid";
         $res = $this->db->fetchAll($sqlCheck, [':lid' => $lessonId]);
-        if (empty($res)) { http_response_code(403); exit; }
-        try { Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']); } catch (\Exception $e) { http_response_code(403); exit; }
+        if (empty($res)) {
+            http_response_code(403);
+            exit;
+        }
+        try {
+            Authorization::requireInstructor($_SESSION['user_id'], (int)$res[0]['course_id']);
+        } catch (\Exception $e) {
+            http_response_code(403);
+            exit;
+        }
 
         if (empty($selectedIds)) {
             header("Location: /instructor/lesson/$lessonId/quiz");
@@ -419,7 +522,7 @@ class QuizController extends Controller
         }
 
         $bankQuestionModel = new \App\Domain\Quizzes\BankQuestion();
-        
+
         foreach ($selectedIds as $bqId) {
             $bq = $bankQuestionModel->find((int)$bqId);
             if ($bq) {
@@ -436,7 +539,7 @@ class QuizController extends Controller
                 }
                 $sql = "INSERT INTO questions (quiz_id, type, question_text, options, correct_answers, explanation, grading_policy) 
                         VALUES (:qid, :type, :text, :opts, :correct, :exp, :policy)";
-                
+
                 $this->db->query($sql, [
                     ':qid' => $quizId,
                     ':type' => $bq['type'],
@@ -465,7 +568,7 @@ class QuizController extends Controller
 
         // Fetch parent lesson context first to fail fast if invalid
         $parentLesson = $this->db->fetchAll("SELECT l.module_id, m.course_id FROM lessons l JOIN modules m ON l.module_id = m.id WHERE l.id = :lid", [':lid' => $lessonId])[0] ?? null;
-        
+
         if (!$parentLesson) {
             // Should theoretically not happen if UI is consistent, but safety check
             throw new \Exception("Cannot create quiz for invalid lesson ID: $lessonId");
@@ -480,14 +583,14 @@ class QuizController extends Controller
 
             // Sync with ContentItems (Structure)
             $parentItem = $this->db->fetchAll("SELECT id, position, display_group_id FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
-            
+
             $pos = ($parentItem['position'] ?? 0) + 1;
             $groupId = $parentItem['id'] ?? null;
-            
+
             if ($parentItem) {
                 if (empty($parentItem['display_group_id'])) {
                     // Create a new group ID based on parent item ID to ensure uniqueness but linkage
-                    $newGroupId = (int) $parentItem['id'] + 900000; 
+                    $newGroupId = (int) $parentItem['id'] + 900000;
                     $this->db->query("UPDATE content_items SET display_group_id = :gid WHERE id = :id", [':gid' => $newGroupId, ':id' => $parentItem['id']]);
                     $groupId = $newGroupId;
                 } else {

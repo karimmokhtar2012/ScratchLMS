@@ -30,16 +30,53 @@ class InstructorController extends Controller
             exit;
         }
 
-        $title = $_POST['title'] ?? '';
-        $description = $_POST['description'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
+        $description = \App\Core\InputSanitizer::text($_POST['description'] ?? '');
         $price = (float) ($_POST['price'] ?? 0);
         $thumbnail = '';
 
+        // --- Required Field Validation ---
+        $errors = [];
+
+        if (empty(trim($title))) {
+            $errors[] = 'Course title is required.';
+        } elseif (strlen($title) < 3) {
+            $errors[] = 'Course title must be at least 3 characters.';
+        } elseif (strlen($title) > 255) {
+            $errors[] = 'Course title must be less than 255 characters.';
+        }
+
+        if ($price < 0) {
+            $errors[] = 'Price cannot be negative.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['flash_error'] = implode(' ', $errors);
+            $_SESSION['old_input'] = $_POST; // Preserve form data
+            header('Location: /instructor/course/new');
+            exit;
+        }
+        // --- End Validation ---
+
+
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            // Validate thumbnail file
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            $validation = validateFileUpload($_FILES['thumbnail'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Thumbnail upload failed: ' . $validation['error'];
+                header('Location: /instructor/course/new');
+                exit;
+            }
+
             $uploadDir = __DIR__ . '/../../public/uploads/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
-            $fileName = uniqid() . '_' . basename($_FILES['thumbnail']['name']);
+            $extension = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $uploadDir . $fileName)) {
                 $thumbnail = '/uploads/' . $fileName;
             }
@@ -48,7 +85,7 @@ class InstructorController extends Controller
         $baseSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)));
         $slug = $baseSlug;
         $counter = 1;
-        
+
         $courseModel = new Course();
         while ($courseModel->findBySlug($slug)) {
             $slug = $baseSlug . '-' . $counter;
@@ -71,9 +108,9 @@ class InstructorController extends Controller
             header('Location: /instructor/course/' . $courseId . '/edit');
             exit;
         } else {
-             $_SESSION['flash_error'] = 'Failed to create course.';
-             header('Location: /instructor/course/new');
-             exit;
+            $_SESSION['flash_error'] = 'Failed to create course.';
+            header('Location: /instructor/course/new');
+            exit;
         }
     }
 
@@ -103,7 +140,7 @@ class InstructorController extends Controller
             $module['items'] = $contentItemModel->getModuleStructure((int)$module['id']);
             // Backwards compatibility for view (alias items to lessons if view expects 'lessons')
             // Ideally, we update the view to iterate 'items'
-            $module['lessons'] = $module['items']; 
+            $module['lessons'] = $module['items'];
         }
 
         // Fetch lessons for import library (all lessons owned by instructor)
@@ -175,22 +212,35 @@ class InstructorController extends Controller
             exit;
         }
 
-        $title = $_POST['title'] ?? $course['title'];
-        $description = $_POST['description'] ?? $course['description'];
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? $course['title']);
+        $description = \App\Core\InputSanitizer::text($_POST['description'] ?? $course['description']);
         $price = isset($_POST['price']) ? (float)$_POST['price'] : $course['price'];
         $thumbnail = $course['thumbnail'];
         $status = $_POST['status'] ?? $course['status'] ?? 'draft';
         $publishedAt = !empty($_POST['published_at']) ? $_POST['published_at'] : ($course['published_at'] ?? null);
         $contentFlow = $_POST['content_flow'] ?? 'free';
-        
+
         $hasCertificate = isset($_POST['has_certificate']) ? 1 : 0;
         $certificateAutoIssue = isset($_POST['certificate_auto_issue']) ? 1 : 0;
 
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            // Validate thumbnail file
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+            $validation = validateFileUpload($_FILES['thumbnail'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Thumbnail upload failed: ' . $validation['error'];
+                header("Location: /instructor/course/$courseId/settings");
+                exit;
+            }
+
             $uploadDir = __DIR__ . '/../../public/uploads/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
-            $fileName = uniqid() . '_' . basename($_FILES['thumbnail']['name']);
+            $extension = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $uploadDir . $fileName)) {
                 $thumbnail = '/uploads/' . $fileName;
             }
@@ -291,7 +341,7 @@ class InstructorController extends Controller
     {
         $courseId = (int) $courseId;
         $studentId = (int) $studentId;
-        
+
         $courseModel = new Course();
         $course = $courseModel->find($courseId);
 
@@ -324,19 +374,23 @@ class InstructorController extends Controller
                         ORDER BY qa.started_at DESC";
         $attempts = $db->fetchAll($sqlAttempts, [':cid' => $courseId, ':uid' => $studentId]);
 
-        $completedCount = $db->fetchAll("SELECT COUNT(*) as count 
+        $completedCount = $db->fetchAll(
+            "SELECT COUNT(*) as count 
                                          FROM completed_lessons cl 
                                          JOIN lessons l ON cl.lesson_id = l.id 
                                          JOIN modules m ON l.module_id = m.id 
-                                         WHERE m.course_id = :cid AND cl.user_id = :uid", 
-                                         [':cid' => $courseId, ':uid' => $studentId])[0]['count'];
+                                         WHERE m.course_id = :cid AND cl.user_id = :uid",
+            [':cid' => $courseId, ':uid' => $studentId]
+        )[0]['count'];
 
-        $requests = $db->fetchAll("SELECT ar.*, l.title as quiz_title 
+        $requests = $db->fetchAll(
+            "SELECT ar.*, l.title as quiz_title 
                                    FROM attempt_requests ar 
                                    JOIN quizzes q ON ar.quiz_id = q.id 
                                    JOIN lessons l ON q.lesson_id = l.id
-                                   WHERE ar.user_id = :uid AND ar.status = 'pending'", 
-                                   [':uid' => $studentId]);
+                                   WHERE ar.user_id = :uid AND ar.status = 'pending'",
+            [':uid' => $studentId]
+        );
 
         $this->view('instructor.student_activity', [
             'course' => $course,
@@ -350,10 +404,10 @@ class InstructorController extends Controller
     public function handleRequest(string $requestId, string $action): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        
+
         $requestId = (int) $requestId;
         $db = \App\Core\Database::getInstance();
-        
+
         $request = $db->fetchAll("SELECT * FROM attempt_requests WHERE id = :id", [':id' => $requestId])[0] ?? null;
         if (!$request) {
             header('Location: /dashboard');
@@ -361,7 +415,7 @@ class InstructorController extends Controller
         }
 
         $courseRes = $db->fetchAll("SELECT m.course_id, l.title as lesson_title FROM quizzes q JOIN lessons l ON q.lesson_id = l.id JOIN modules m ON l.module_id = m.id WHERE q.id = :qid", [':qid' => $request['quiz_id']]);
-        
+
         if (empty($courseRes)) {
             header('Location: /dashboard');
             exit;
@@ -371,7 +425,7 @@ class InstructorController extends Controller
         $quizTitle = $courseRes[0]['lesson_title'] ?? 'Quiz';
         $returnPath = $_POST['return'] ?? '';
         $defaultReturn = "/instructor/course/$courseId/student/" . $request['user_id'];
-        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : $defaultReturn;
+        $returnPath = sanitizeRedirect($returnPath, $defaultReturn);
 
         // Security: Ensure Instructor Owns Course
         try {
@@ -397,7 +451,7 @@ class InstructorController extends Controller
             ]);
             $db->query("UPDATE attempt_requests SET status = 'approved' WHERE id = :id", [':id' => $requestId]);
             $db->getConnection()->commit();
-            
+
             $notifModel->create([
                 'user_id' => $request['user_id'],
                 'type' => 'system',
@@ -409,7 +463,7 @@ class InstructorController extends Controller
             $_SESSION['flash_success'] = 'Request approved. Attempts reset.';
         } elseif ($action === 'reject') {
             $db->query("UPDATE attempt_requests SET status = 'rejected' WHERE id = :id", [':id' => $requestId]);
-            
+
             $notifModel->create([
                 'user_id' => $request['user_id'],
                 'type' => 'system',
@@ -431,13 +485,13 @@ class InstructorController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $courseId = (int) ($_POST['course_id'] ?? 0);
 
         if ($title && $courseId) {
             $courseModel = new Course();
             $course = $courseModel->find($courseId);
-            
+
             if (!$course) {
                 header('Location: /dashboard');
                 exit;
@@ -445,14 +499,14 @@ class InstructorController extends Controller
 
             $roles = $_SESSION['user_roles'] ?? [];
             $hasAccess = ($course['instructor_id'] == $_SESSION['user_id']) || in_array('admin', $roles) || in_array('master_instructor', $roles);
-            
+
             if ($hasAccess) {
                 $moduleModel = new Module();
                 $moduleModel->create(['course_id' => $courseId, 'title' => $title]);
                 $_SESSION['flash_success'] = 'Module added.';
             }
         }
-        
+
         header('Location: /instructor/course/' . $courseId . '/edit');
         exit;
     }
@@ -461,7 +515,7 @@ class InstructorController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $moduleId = (int) ($_POST['module_id'] ?? 0);
         $type = $_POST['type'] ?? 'video';
         $contentUrl = $_POST['content_url'] ?? '';
@@ -472,75 +526,98 @@ class InstructorController extends Controller
         $attachmentUrl = null;
 
         if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            // Validate attachment file
+            $allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'txt'];
+            $allowedMimeTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'text/plain'
+            ];
+
+            $validation = validateFileUpload($_FILES['attachment'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Attachment upload failed: ' . $validation['error'];
+                header('Location: /instructor/course/' . $courseId . '/edit');
+                exit;
+            }
+
             $uploadDir = __DIR__ . '/../../public/uploads/resources/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            
-            $fileName = uniqid() . '_' . basename($_FILES['attachment']['name']);
+
+            $extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $fileName)) {
                 $attachmentUrl = '/uploads/resources/' . $fileName;
             }
         }
 
         if ($title && $moduleId) {
-             $db = \App\Core\Database::getInstance();
-             
-             // Verify module ownership
-             $moduleCheck = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :mid", [':mid' => $moduleId])[0] ?? null;
-             
-             if (!$moduleCheck || $moduleCheck['instructor_id'] != $_SESSION['user_id']) {
-                 $roles = $_SESSION['user_roles'] ?? [];
-                 if (!in_array('admin', $roles)) {
-                     $_SESSION['flash_error'] = 'Access denied to this module.';
-                     header('Location: /dashboard');
-                     exit;
-                 }
-             }
+            $db = \App\Core\Database::getInstance();
 
-             // 1. Insert Payload (Lesson)
-             // NOTE: module_id and sort_order here are legacy/deprecated but kept for fallback or unique constraints if any.
-             $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order) 
+            // Verify module ownership
+            $moduleCheck = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :mid", [':mid' => $moduleId])[0] ?? null;
+
+            if (!$moduleCheck || $moduleCheck['instructor_id'] != $_SESSION['user_id']) {
+                $roles = $_SESSION['user_roles'] ?? [];
+                if (!in_array('admin', $roles)) {
+                    $_SESSION['flash_error'] = 'Access denied to this module.';
+                    header('Location: /dashboard');
+                    exit;
+                }
+            }
+
+            // 1. Insert Payload (Lesson)
+            // NOTE: module_id and sort_order here are legacy/deprecated but kept for fallback or unique constraints if any.
+            $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order) 
                      VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur, 999)";
-             
-             $db->query($sql, [
-                 ':mid' => $moduleId,
-                 ':uid' => $_SESSION['user_id'],
-                 ':title' => $title,
-                 ':type' => $type,
-                 ':url' => $contentUrl,
-                 ':text' => $contentText,
-                 ':att' => $attachmentUrl,
-                 ':dur' => $durationSeconds
-             ]);
-             $lessonId = $db->getConnection()->lastInsertId();
 
-             // 2. Insert Structure (ContentItem)
-             $contentItemModel = new \App\Domain\Courses\ContentItem();
-             
-             if ($type === 'quiz') {
-                 // Create Quiz Entity
-                 $db->query("INSERT INTO quizzes (lesson_id) VALUES (:lid)", [':lid' => $lessonId]);
-                 $quizId = $db->getConnection()->lastInsertId();
+            $db->query($sql, [
+                ':mid' => $moduleId,
+                ':uid' => $_SESSION['user_id'],
+                ':title' => $title,
+                ':type' => $type,
+                ':url' => $contentUrl,
+                ':text' => $contentText,
+                ':att' => $attachmentUrl,
+                ':dur' => $durationSeconds
+            ]);
+            $lessonId = $db->getConnection()->lastInsertId();
 
-                 // Content Item points to Quiz
-                 $contentItemModel->createItem([
-                     'course_id' => (int)$moduleCheck['course_id'],
-                     'module_id' => $moduleId,
-                     'item_type' => 'quiz',
-                     'item_id' => $quizId,
-                     'display_group_id' => null
-                 ]);
-             } else {
-                 // Standard Lesson
-                 $contentItemModel->createItem([
-                     'course_id' => (int)$moduleCheck['course_id'],
-                     'module_id' => $moduleId,
-                     'item_type' => 'lesson',
-                     'item_id' => $lessonId,
-                     'display_group_id' => null
-                 ]);
-             }
-             
-             $_SESSION['flash_success'] = 'Lesson added.';
+            // 2. Insert Structure (ContentItem)
+            $contentItemModel = new \App\Domain\Courses\ContentItem();
+
+            if ($type === 'quiz') {
+                // Create Quiz Entity
+                $db->query("INSERT INTO quizzes (lesson_id) VALUES (:lid)", [':lid' => $lessonId]);
+                $quizId = $db->getConnection()->lastInsertId();
+
+                // Content Item points to Quiz
+                $contentItemModel->createItem([
+                    'course_id' => (int)$moduleCheck['course_id'],
+                    'module_id' => $moduleId,
+                    'item_type' => 'quiz',
+                    'item_id' => $quizId,
+                    'display_group_id' => null
+                ]);
+            } else {
+                // Standard Lesson
+                $contentItemModel->createItem([
+                    'course_id' => (int)$moduleCheck['course_id'],
+                    'module_id' => $moduleId,
+                    'item_type' => 'lesson',
+                    'item_id' => $lessonId,
+                    'display_group_id' => null
+                ]);
+            }
+
+            $_SESSION['flash_success'] = 'Lesson added.';
         }
 
         header('Location: /instructor/course/' . $courseId . '/edit');
@@ -551,7 +628,7 @@ class InstructorController extends Controller
     {
         $lessonId = (int) $id;
         $db = \App\Core\Database::getInstance();
-        
+
         // Use LEFT JOIN because library lessons have no module_id
         $sql = "SELECT l.*, m.course_id 
                 FROM lessons l 
@@ -574,7 +651,7 @@ class InstructorController extends Controller
             // It's part of a course
             $courseModel = new Course();
             $course = $courseModel->find($lesson['course_id']);
-            
+
             if (!$course) {
                 header('Location: /dashboard');
                 exit;
@@ -602,7 +679,7 @@ class InstructorController extends Controller
         }
 
         $this->view('instructor.edit_lesson', [
-            'lesson' => $lesson, 
+            'lesson' => $lesson,
             'course_id' => $lesson['course_id'] ?? null, // Pass null if library lesson
             'course_flow' => $courseFlow,
             'course_lessons' => $courseLessons,
@@ -616,20 +693,34 @@ class InstructorController extends Controller
 
         $lessonId = (int) $id;
         $courseId = (int) ($_POST['course_id'] ?? 0);
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $type = $_POST['type'] ?? 'video'; // Capture new type
-        $contentUrl = $_POST['content_url'] ?? ''; 
+        $contentUrl = $_POST['content_url'] ?? '';
         $contentText = $_POST['content_text'] ?? '';
         $duration = (int) ($_POST['duration'] ?? 0) * 60;
 
         // File Uploads
         $uploadDir = __DIR__ . '/../../public/uploads/';
-        
+
         // Video File (If uploaded, overrides content_url)
         if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] === UPLOAD_ERR_OK) {
+            // Validate video file
+            $allowedExtensions = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'];
+            $allowedMimeTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+
+            $validation = validateFileUpload($_FILES['video_file'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Video upload failed: ' . $validation['error'];
+                header("Location: /instructor/lesson/$lessonId/edit");
+                exit;
+            }
+
             $videoDir = $uploadDir . 'videos/';
             if (!is_dir($videoDir)) mkdir($videoDir, 0755, true);
-            $fileName = uniqid() . '_' . basename($_FILES['video_file']['name']);
+
+            $extension = strtolower(pathinfo($_FILES['video_file']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['video_file']['tmp_name'], $videoDir . $fileName)) {
                 $contentUrl = '/uploads/videos/' . $fileName;
             }
@@ -640,7 +731,7 @@ class InstructorController extends Controller
                                         FROM lessons l 
                                         LEFT JOIN modules m ON l.module_id = m.id 
                                         WHERE l.id = :id", [':id' => $lessonId])[0] ?? null;
-        
+
         if (!$currentLesson) {
             header('Location: /dashboard');
             exit;
@@ -652,7 +743,8 @@ class InstructorController extends Controller
             try {
                 Authorization::requireInstructor($_SESSION['user_id'], $currentLesson['course_id']);
                 $hasAccess = true;
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         } elseif ($currentLesson['instructor_id'] == $_SESSION['user_id']) {
             // Library lesson
             $hasAccess = true;
@@ -663,14 +755,38 @@ class InstructorController extends Controller
             header('Location: /dashboard');
             exit;
         }
-        
+
         if (empty($contentUrl) && $type === 'video') $contentUrl = $currentLesson['content_url']; // Keep old if empty and no file
 
         $attachmentUrl = null;
         if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            // Validate attachment file
+            $allowedExtensions = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'zip', 'txt'];
+            $allowedMimeTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'text/plain'
+            ];
+
+            $validation = validateFileUpload($_FILES['attachment'], $allowedExtensions, $allowedMimeTypes);
+
+            if (!$validation['valid']) {
+                $_SESSION['flash_error'] = 'Attachment upload failed: ' . $validation['error'];
+                header("Location: /instructor/lesson/$lessonId/edit");
+                exit;
+            }
+
             $resDir = $uploadDir . 'resources/';
             if (!is_dir($resDir)) mkdir($resDir, 0755, true);
-            $fileName = uniqid() . '_' . basename($_FILES['attachment']['name']);
+
+            $extension = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+            $fileName = uniqid() . '_' . time() . '.' . $extension;
             if (move_uploaded_file($_FILES['attachment']['tmp_name'], $resDir . $fileName)) {
                 $attachmentUrl = '/uploads/resources/' . $fileName;
             }
@@ -715,8 +831,8 @@ class InstructorController extends Controller
                         [
                             'lesson_id' => $lessonId,
                             'unlock_after_days' => $unlockDays,
-                            'unlock_after_lesson_id' => $prev ?: null,
-                            'unlock_after_percent' => $pct
+                            'unlock_after_lesson_id' => $unlockLesson ?: null,
+                            'unlock_after_percent' => $unlockPercent
                         ],
                         ['lesson_id']
                     );
@@ -727,9 +843,9 @@ class InstructorController extends Controller
         }
 
         $_SESSION['flash_success'] = 'Lesson updated successfully.';
-        
+
         if ($courseId) {
-            header("Location: /learn/$courseId/lesson/$lessonId"); 
+            header("Location: /learn/$courseId/lesson/$lessonId");
         } else {
             header("Location: /instructor/lessons");
         }
@@ -768,10 +884,10 @@ class InstructorController extends Controller
     public function deleteModule(string $id): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        
+
         $moduleId = (int) $id;
         $db = \App\Core\Database::getInstance();
-        
+
         $sql = "SELECT course_id FROM modules WHERE id = :id";
         $res = $db->fetchAll($sql, [':id' => $moduleId]);
         $courseId = $res[0]['course_id'] ?? 0;
@@ -794,33 +910,33 @@ class InstructorController extends Controller
     public function updateModule(string $id): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        
+
         $moduleId = (int) $id;
-        $title = $_POST['title'] ?? '';
-        
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
+
         // Redirect back (need course ID to do it properly, so fetch it)
         $db = \App\Core\Database::getInstance();
         $res = $db->fetchAll("SELECT course_id FROM modules WHERE id = :id", [':id' => $moduleId]);
         $courseId = $res[0]['course_id'] ?? 0;
-        
+
         if ($courseId) {
             try {
                 Authorization::requireInstructor($_SESSION['user_id'], $courseId);
-                
+
                 if (empty($title)) {
                     $_SESSION['flash_error'] = 'Module title cannot be empty.';
                 } else {
-                     $sql = "UPDATE modules SET title = :title WHERE id = :id";
-                     $db->query($sql, [':title' => $title, ':id' => $moduleId]);
-                     $_SESSION['flash_success'] = 'Module renamed successfully.';
+                    $sql = "UPDATE modules SET title = :title WHERE id = :id";
+                    $db->query($sql, [':title' => $title, ':id' => $moduleId]);
+                    $_SESSION['flash_success'] = 'Module renamed successfully.';
                 }
-                
+
                 header("Location: /instructor/course/$courseId/edit");
             } catch (\Exception $e) {
                 header('Location: /dashboard');
             }
         } else {
-             header("Location: /dashboard");
+            header("Location: /dashboard");
         }
         exit;
     }
@@ -830,7 +946,7 @@ class InstructorController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
         $courseId = (int) $courseId;
-        
+
         // Access Check
         try {
             Authorization::requireInstructor($_SESSION['user_id'], $courseId);
@@ -848,26 +964,30 @@ class InstructorController extends Controller
         }
 
         $db = \App\Core\Database::getInstance();
-        
+
         // 1. Find User
         $user = $db->fetchAll("SELECT id FROM users WHERE email = :email", [':email' => $email]);
         if (empty($user)) {
-             $_SESSION['flash_error'] = "User with email '$email' not found.";
-             header("Location: /instructor/course/$courseId/students");
-             exit;
+            $_SESSION['flash_error'] = "User with email '$email' not found.";
+            header("Location: /instructor/course/$courseId/students");
+            exit;
         }
         $userId = $user[0]['id'];
 
         // 2. Check if already enrolled
-        $exists = $db->fetchAll("SELECT id FROM enrollments WHERE user_id = :uid AND course_id = :cid", 
-                                [':uid' => $userId, ':cid' => $courseId]);
-        
+        $exists = $db->fetchAll(
+            "SELECT id FROM enrollments WHERE user_id = :uid AND course_id = :cid",
+            [':uid' => $userId, ':cid' => $courseId]
+        );
+
         if ($exists) {
             $_SESSION['flash_error'] = "User is already enrolled in this course.";
         } else {
             // 3. Enroll
-            $db->query("INSERT INTO enrollments (user_id, course_id) VALUES (:uid, :cid)", 
-                       [':uid' => $userId, ':cid' => $courseId]);
+            $db->query(
+                "INSERT INTO enrollments (user_id, course_id) VALUES (:uid, :cid)",
+                [':uid' => $userId, ':cid' => $courseId]
+            );
             $_SESSION['flash_success'] = "Student enrolled successfully.";
         }
 
@@ -886,7 +1006,7 @@ class InstructorController extends Controller
         $db = \App\Core\Database::getInstance();
         $roles = $_SESSION['user_roles'] ?? [];
         $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
-        
+
         $sqlAttempts = "SELECT ar.id,
                                ar.created_at,
                                u.id as user_id,
@@ -980,26 +1100,27 @@ class InstructorController extends Controller
         $roles = $_SESSION['user_roles'] ?? [];
         $isPrivileged = in_array('admin', $roles, true) || in_array('master_instructor', $roles, true);
 
-        $sqlCerts = "SELECT e.id as enrollment_id,
+
+        $sqlCerts = "SELECT u.name as student_name,
+                            l.title as quiz_title,
+                            e.id as enrollment_id,
+                            e.created_at,
                             e.progress_percent,
-                            e.is_completed,
-                            e.created_at as enrolled_at,
-                            u.id as user_id,
-                            u.name,
-                            u.email,
                             c.id as course_id,
                             c.title as course_title
                      FROM enrollments e
                      JOIN users u ON e.user_id = u.id
                      JOIN courses c ON e.course_id = c.id
-                     WHERE c.has_certificate = 1
-                       AND c.certificate_auto_issue = 0
-                       AND e.is_completed = 1
+                     WHERE c.has_certificate = TRUE
+                       AND c.certificate_auto_issue = FALSE
+                       AND e.is_completed = TRUE
                        AND e.certificate_id IS NULL
                      ORDER BY e.created_at DESC";
+
         if (!$isPrivileged) {
-            $sqlCerts = str_replace("WHERE c.has_certificate = 1", "WHERE c.instructor_id = :uid AND c.has_certificate = 1", $sqlCerts);
+            $sqlCerts = str_replace("WHERE c.has_certificate = TRUE", "WHERE c.instructor_id = :uid AND c.has_certificate = TRUE", $sqlCerts);
         }
+
         $certificateApprovals = $db->fetchAll($sqlCerts, $isPrivileged ? [] : [':uid' => $userId]);
 
         $this->view('instructor.certificate_approvals', [
@@ -1017,7 +1138,7 @@ class InstructorController extends Controller
         $enrollmentId = (int) ($_POST['enrollment_id'] ?? 0);
         $userId = $_SESSION['user_id'] ?? null;
         $returnPath = $_POST['return'] ?? '';
-        $returnPath = (is_string($returnPath) && str_starts_with($returnPath, '/')) ? $returnPath : '/instructor/requests#certificates';
+        $returnPath = sanitizeRedirect($returnPath, '/instructor/requests#certificates');
 
         if (!$enrollmentId || !$userId) {
             $_SESSION['flash_error'] = 'Invalid certificate approval request.';
@@ -1168,7 +1289,7 @@ class InstructorController extends Controller
     {
         $userId = $_SESSION['user_id'];
         $db = \App\Core\Database::getInstance();
-        
+
         // Filters
         $filterType = $_GET['filter'] ?? 'all';
         $sort = $_GET['sort'] ?? 'date_desc';
@@ -1180,7 +1301,7 @@ class InstructorController extends Controller
                 LEFT JOIN modules m ON l.module_id = m.id 
                 LEFT JOIN courses c ON m.course_id = c.id
                 WHERE l.instructor_id = :uid";
-        
+
         $params = [':uid' => $userId];
 
         // Apply Search
@@ -1198,10 +1319,17 @@ class InstructorController extends Controller
 
         // Apply Sorting
         switch ($sort) {
-            case 'date_asc': $sql .= " ORDER BY l.created_at ASC"; break;
-            case 'name_asc': $sql .= " ORDER BY l.title ASC"; break;
-            case 'name_desc': $sql .= " ORDER BY l.title DESC"; break;
-            default: $sql .= " ORDER BY l.id DESC"; // date_desc (using ID as proxy for simplicity or created_at if reliable)
+            case 'date_asc':
+                $sql .= " ORDER BY l.created_at ASC";
+                break;
+            case 'name_asc':
+                $sql .= " ORDER BY l.title ASC";
+                break;
+            case 'name_desc':
+                $sql .= " ORDER BY l.title DESC";
+                break;
+            default:
+                $sql .= " ORDER BY l.id DESC"; // date_desc (using ID as proxy for simplicity or created_at if reliable)
         }
 
         $lessons = $db->fetchAll($sql, $params);
@@ -1209,7 +1337,7 @@ class InstructorController extends Controller
         // Fetch Courses & Modules for "Add to Course" Modal
         $sqlCourses = "SELECT c.id, c.title FROM courses c WHERE c.instructor_id = :uid ORDER BY c.title ASC";
         $courses = $db->fetchAll($sqlCourses, [':uid' => $userId]);
-        
+
         foreach ($courses as &$course) {
             $course['modules'] = $db->fetchAll("SELECT id, title FROM modules WHERE course_id = :cid ORDER BY sort_order ASC", [':cid' => $course['id']]);
         }
@@ -1231,7 +1359,7 @@ class InstructorController extends Controller
 
         if ($lessonId && $moduleId) {
             $db = \App\Core\Database::getInstance();
-            
+
             // Verify ownership of both lesson and target module
             $lesson = $db->fetchAll("SELECT instructor_id FROM lessons WHERE id = :id", [':id' => $lessonId])[0] ?? null;
             $module = $db->fetchAll("SELECT c.instructor_id, c.id as course_id FROM modules m JOIN courses c ON m.course_id = c.id WHERE m.id = :id", [':id' => $moduleId])[0] ?? null;
@@ -1246,7 +1374,7 @@ class InstructorController extends Controller
                 // 2. Move Content Items (Structure)
                 // We need to move the lesson item AND any grouped items (like attached quizzes)
                 $contentItemModel = new \App\Domain\Courses\ContentItem();
-                
+
                 // Find the main lesson item
                 $lessonItem = $db->fetchAll("SELECT id, display_group_id FROM content_items WHERE item_type = 'lesson' AND item_id = :lid", [':lid' => $lessonId])[0] ?? null;
 
@@ -1270,7 +1398,7 @@ class InstructorController extends Controller
                             ':gid' => $lessonItem['display_group_id'],
                             ':lid' => $lessonItem['id']
                         ]);
-                        
+
                         foreach ($peers as $index => $peer) {
                             $db->query("UPDATE content_items SET module_id = :mid, course_id = :cid, position = :pos WHERE id = :id", [
                                 ':mid' => $moduleId,
@@ -1296,7 +1424,7 @@ class InstructorController extends Controller
                         // Generate a group ID and update both
                         $groupId = (int)$newLessonItemId + 900000;
                         $db->query("UPDATE content_items SET display_group_id = :gid WHERE id = :id", [':gid' => $groupId, ':id' => $newLessonItemId]);
-                        
+
                         $contentItemModel->createItem([
                             'course_id' => (int)$module['course_id'],
                             'module_id' => $moduleId,
@@ -1321,7 +1449,7 @@ class InstructorController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
-        $title = $_POST['title'] ?? '';
+        $title = \App\Core\InputSanitizer::text($_POST['title'] ?? '');
         $type = $_POST['type'] ?? 'video';
         $userId = $_SESSION['user_id'];
 
@@ -1329,18 +1457,18 @@ class InstructorController extends Controller
             $db = \App\Core\Database::getInstance();
             $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, sort_order) 
                     VALUES (NULL, :uid, :title, :type, 0)";
-            
+
             $db->query($sql, [
                 ':uid' => $userId,
                 ':title' => $title,
                 ':type' => $type
             ]);
-            
+
             $lessonId = $db->getConnection()->lastInsertId();
             header("Location: /instructor/lesson/$lessonId/edit?source=library");
             exit;
         }
-        
+
         header('Location: /instructor/lessons');
         exit;
     }
@@ -1348,22 +1476,22 @@ class InstructorController extends Controller
     public function importLesson(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        
+
         $sourceLessonId = (int) ($_POST['lesson_id'] ?? 0);
         $targetModuleId = (int) ($_POST['module_id'] ?? 0);
         $courseId = (int) ($_POST['course_id'] ?? 0);
 
         if ($sourceLessonId && $targetModuleId) {
             $db = \App\Core\Database::getInstance();
-            
+
             // 1. Get Source Data
             $src = $db->fetchAll("SELECT * FROM lessons WHERE id = :id", [':id' => $sourceLessonId])[0] ?? null;
-            
+
             if ($src) {
                 // 2. Duplicate Payload
                 $sql = "INSERT INTO lessons (module_id, instructor_id, title, type, content_url, content_text, attachment_url, duration, sort_order)
                         VALUES (:mid, :uid, :title, :type, :url, :text, :att, :dur, 999)";
-                
+
                 $db->query($sql, [
                     ':mid' => $targetModuleId,
                     ':uid' => $_SESSION['user_id'],
@@ -1375,7 +1503,7 @@ class InstructorController extends Controller
                     ':dur' => $src['duration']
                 ]);
                 $newLessonId = $db->getConnection()->lastInsertId();
-                
+
                 // 3. Create Content Item
                 $contentItemModel = new \App\Domain\Courses\ContentItem();
                 $contentItemModel->createItem([
@@ -1423,7 +1551,7 @@ class InstructorController extends Controller
             // Delete Lesson Payload (which deletes the content item too via my previous fix, or we delete here)
             // Ideally re-use deleteLesson logic but by ID.
             // Let's call deleteLesson with the payload ID.
-            $this->deleteLesson((string)$item['item_id']); 
+            $this->deleteLesson((string)$item['item_id']);
             return;
         } elseif ($item['item_type'] === 'quiz') {
             // Quizzes might be attached to lessons or standalone.
@@ -1459,7 +1587,8 @@ class InstructorController extends Controller
             try {
                 Authorization::requireInstructor($_SESSION['user_id'], $courseId);
                 $hasAccess = true;
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         } elseif ($ownerId && $ownerId == $_SESSION['user_id']) {
             $hasAccess = true;
         }
@@ -1475,11 +1604,11 @@ class InstructorController extends Controller
 
             // 2. Delete Lesson Content Item (Structure)
             $db->query("DELETE FROM content_items WHERE item_type = 'lesson' AND item_id = :id", [':id' => $lessonId]);
-            
+
             // 3. Delete Lesson Payload (Content)
             // This triggers ON DELETE CASCADE for the `quizzes` table rows, ensuring data integrity.
             $db->query("DELETE FROM lessons WHERE id = :id", [':id' => $lessonId]);
-            
+
             $_SESSION['flash_success'] = 'Lesson deleted.';
         } else {
             $_SESSION['flash_error'] = 'Access denied.';
@@ -1543,12 +1672,12 @@ class InstructorController extends Controller
             // Let's assume the frontend sends ITEM IDs now because edit() passes 'items'.
             // Wait, standard SortableJS sends whatever ID is on the element.
             // If edit() passes 'items', the view likely renders <li data-id="item.id">.
-            
+
             // However, to be safe and compatible with legacy frontend JS which might send lesson IDs if the view wasn't fully updated,
             // we should handle both or update the view. 
             // In Phase 2.1 we updated edit(), so the view receives ContentItems.
             // We need to check resources/views/instructor/course_builder.php to see what ID it puts in data-id.
-            
+
             // Assuming we are receiving CONTENT_ITEM IDs now:
             $contentItemModel = new \App\Domain\Courses\ContentItem();
             foreach ($order as $position => $itemId) {
@@ -1556,7 +1685,7 @@ class InstructorController extends Controller
                 // But let's enforce ContentItem ID usage.
                 $contentItemModel->updatePosition((int)$itemId, $position);
             }
-            
+
             $db->getConnection()->commit();
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
@@ -1582,7 +1711,7 @@ class InstructorController extends Controller
             FROM courses c
             LEFT JOIN enrollments e ON c.id = e.course_id
             WHERE c.instructor_id = :uid";
-        
+
         $overview = $db->fetchAll($sqlOverview, [':uid' => $userId])[0];
 
         // 2. Recent Enrollments (Last 5)

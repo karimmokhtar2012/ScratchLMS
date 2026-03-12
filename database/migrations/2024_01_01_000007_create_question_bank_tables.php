@@ -32,7 +32,7 @@ class CreateQuestionBankTables extends Migration
             $table->text('correct_answers')->nullable();  // JSON Array
             $table->text('explanation')->nullable()->default(null);
             $table->timestamps();
-            $table->check('type', ['single_choice', 'multi_choice', 'true_false', 'short_text']);
+            $table->check('type', ['single_choice', 'multi_choice', 'true_false', 'short_text', 'fill_blank', 'matching', 'essay', 'video_submission']);
         });
     }
 

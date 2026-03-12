@@ -1,52 +1,185 @@
-# Repository Guidelines
+# AI Agent Guidelines
 
-## Project Structure & Module Organization
-- `app/`: Core PHP application code (controllers, services, core helpers).
-- `routes/`: Route definitions (`routes/web.php`).
-- `resources/views/`: PHP view templates.
-- `public/`: Web root, assets, and entry point.
-- `database/`: Migrations and one-off fix scripts.
-- `tests/`: PHPUnit tests.
-- `docs/`: Architecture notes and workflow docs.
+> **Purpose:** Unified guidelines for AI agents working on ScratchLMS  
+> **Last Updated:** 2026-01-19
 
-## Build, Test, and Development Commands
-- `composer install`: Install PHP dependencies.
-- `php setup_db.php`: Initialize SQLite database.
-- `php -S localhost:8000 -t public`: Run the app locally.
-- `php vendor/bin/phpunit`: Run tests (if configured).
+---
 
-## Coding Style & Naming Conventions
-- Indentation: 4 spaces in PHP; keep consistent in views.
-- Classes: `StudlyCaps` (e.g., `CourseProgressService`).
-- Methods/variables: `camelCase`.
-- Files: match class names when applicable.
-- Favor explicit guards and early returns for security checks.
+## 1. Project Overview
 
-## Testing Guidelines
-- Framework: PHPUnit (see `tests/`).
-- Name tests descriptively (e.g., `CourseProgressTest`).
-- Run the full suite with `php vendor/bin/phpunit` before pushing.
+ScratchLMS is a learning management system built with PHP, supporting SQLite, MySQL, and PostgreSQL.
 
-## Commit & Pull Request Guidelines
-- Commit messages: short, imperative, and specific (e.g., "Add README", "Fix CSRF header").
-- PRs should include: summary, testing notes, and screenshots for UI changes.
-- Link relevant GitHub issues (see project board).
+| Component | Technology |
+|-----------|------------|
+| Backend | PHP 8.1+ |
+| Frontend | Tailwind CSS, Alpine.js |
+| Database | SQLite / MySQL / PostgreSQL |
+| Icons | FontAwesome 6 |
 
-## Security & Configuration Tips
-- CSRF is enforced on all POST requests; ensure JS requests include `X-CSRF-TOKEN`.
-- SQLite foreign keys matter; use migration/fix scripts in `database/` when needed.
+---
 
-## Agent-Specific Instructions
-- Codex role: backend logic, security, data integrity, refactors, bug fixes, and reviews.
-- Task routing:
-  - Bugs, broken flows, data validation, security: Codex.
-  - UI screens, layout, animations: Gemini.
-  - Mixed tasks: Gemini designs first, Codex wires logic and validates.
-- Handoff to Gemini: summary of behavior changes, files changed, tests run, and any UI points needing polish.
-- GitHub ownership: Gemini is the only agent who commits/pushes and comments on GitHub issues/PRs. Codex must not commit/push.
-- Issue comment attribution: When Gemini updates GitHub issues, include a short line stating who handled it (e.g., "Handled by Gemini" or "Handled by Codex; posted by Gemini").
-- Change log: append to `docs/ai/change-log.md` after completing changes (timestamp, goal, files, rationale, security, DB notes, tests, follow-ups).
-- Update `docs/ai/context.md` when flows/paths/conventions change.
-- ADRs: add/update in `docs/adr/` for architectural decisions.
-- End-of-session: Codex submits daily report in `docs/reports/daily/` using `docs/daily-report-template.md`; Gemini handles the push.
-- See `docs/workflow.md` and `GEMINI.md` for the full collaboration rules.
+## 2. Directory Structure
+
+```
+LMS/
+├── app/
+│   ├── Core/              # Framework core (Router, Database, Csrf)
+│   ├── Domain/            # Domain models
+│   ├── Http/Controllers/  # Request handlers
+│   ├── Services/          # Business logic
+│   └── helpers.php        # Global helpers
+├── config/                # Configuration
+├── database/migrations/   # Schema migrations
+├── public/                # Web root
+├── resources/views/       # View templates
+├── routes/web.php         # Route definitions
+└── docs/                  # Documentation
+    ├── ai/                # Context and logs
+    ├── adr/               # Architectural decisions
+    └── security/          # Security guidelines
+```
+
+---
+
+## 3. Essential Commands
+
+```bash
+# Development
+php -S localhost:8000 -t public   # Run dev server
+php migrate.php                    # Run migrations
+
+# Git
+git add . && git commit -m "..."   # Commit changes
+git push origin main               # Push to remote
+
+# GitHub CLI
+gh issue create --title "..."      # Create issue
+gh issue close <number>            # Close issue
+```
+
+---
+
+## 4. Coding Standards
+
+### Style
+
+- **Indentation:** 4 spaces (PHP), 2 spaces (JS)
+- **Classes:** `StudlyCaps` (e.g., `CourseProgressService`)
+- **Methods/Variables:** `camelCase`
+
+### Security Rules (MANDATORY)
+
+| Rule | How |
+|------|-----|
+| XSS Protection | Use `e($variable)` in all views |
+| CSRF | Include `<input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">` |
+| SQL Injection | Use parameterized queries only |
+| File Uploads | Validate with `validateFileUpload()` |
+| Redirects | Use `sanitizeRedirect()` |
+
+### Input Validation
+
+Always validate before database operations:
+
+```php
+$errors = [];
+if (empty(trim($title))) {
+    $errors[] = 'Title is required.';
+}
+if (!in_array($type, $validTypes, true)) {
+    $errors[] = 'Invalid type.';
+}
+if (!empty($errors)) {
+    $_SESSION['flash_error'] = implode(' ', $errors);
+    header('Location: /back');
+    exit;
+}
+```
+
+---
+
+## 5. PostgreSQL Compatibility
+
+**Critical:** This project supports multiple databases. Follow these rules:
+
+| Pattern | ❌ Wrong | ✅ Correct |
+|---------|---------|-----------|
+| Boolean comparison | `= 1` / `= 0` | `= true` / `= false` |
+| Boolean binding | `[':active' => true]` | Inline: `SET active = true` |
+| Aggregation | `GROUP_CONCAT()` | Separate queries |
+| Upsert | `INSERT OR IGNORE` | `$db->insertOrIgnore()` |
+| Date functions | `date('now', '-7 days')` | Calculate in PHP |
+
+---
+
+## 6. UI Design Standards
+
+### Color Palette
+
+| Purpose | Value/Class |
+|---------|-------------|
+| Background | `#0a0a0a` |
+| Surface | `bg-zinc-900` |
+| Card | `bg-zinc-800` |
+| Primary | `from-indigo-500 to-violet-600` |
+| Text | `text-zinc-200` |
+| Muted | `text-zinc-400` |
+
+### Components
+
+- Buttons: `bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl`
+- Cards: `bg-zinc-900 border border-zinc-800 rounded-2xl`
+- Inputs: `bg-zinc-900 border border-zinc-700 rounded-xl`
+
+---
+
+## 7. Documentation Workflow
+
+### After Making Changes
+
+1. **Change Log** (`docs/ai/change-log.md`)
+   - Timestamp (Africa/Cairo), goal, files changed, tests run
+
+2. **Context** (`docs/ai/context.md`)
+   - Update if flows or conventions changed
+
+3. **ADR** (`docs/adr/`)
+   - Create for architectural decisions
+
+### End of Session
+
+- Create report: `docs/reports/YYYY-MM-DD.md`
+- Push all changes to GitHub
+
+---
+
+## 8. Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `docs/developer-guide.md` | Full development standards |
+| `docs/design_context.md` | UI design system |
+| `docs/ai/context.md` | Project architecture & flows |
+| `docs/ai/change-log.md` | Change history |
+| `docs/security/xss-protection-guidelines.md` | XSS rules |
+
+---
+
+## 9. Quick Checklist
+
+### Before Committing
+
+- [ ] User output escaped with `e()` in views
+- [ ] Forms include CSRF token
+- [ ] SQL uses parameterized queries
+- [ ] Booleans use `true`/`false` literals (not `1`/`0`)
+- [ ] File uploads validated
+
+### After Session
+
+- [ ] Change log updated
+- [ ] Changes pushed to GitHub
+
+---
+
+*Keep work focused and actionable. Reference `docs/developer-guide.md` for complete standards.*

@@ -11,6 +11,17 @@ use App\Core\Router;
 // Define Base Path
 const BASE_PATH = __DIR__ . '/../';
 
+// Load Global Helpers
+if (file_exists(BASE_PATH . 'app/helpers.php')) {
+    require_once BASE_PATH . 'app/helpers.php';
+}
+
+// Load Security Helpers
+require_once BASE_PATH . 'app/Core/helpers.php';
+
+// Send Security Headers (CSP, X-Frame-Options, etc.)
+\App\Core\SecurityHeaders::send();
+
 // Load Composer Autoloader
 if (file_exists(BASE_PATH . 'vendor/autoload.php')) {
     require_once BASE_PATH . 'vendor/autoload.php';
@@ -20,7 +31,8 @@ if (file_exists(BASE_PATH . 'vendor/autoload.php')) {
 }
 
 // Global Translation Helper
-function __(string $key): string {
+function __(string $key): string
+{
     return \App\Core\Lang::getInstance()->get($key);
 }
 
@@ -29,7 +41,7 @@ if (file_exists(BASE_PATH . '.env')) {
     $envLines = file(BASE_PATH . '.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($envLines as $line) {
         if (str_starts_with(trim($line), '#')) continue;
-        
+
         $parts = explode('=', $line, 2);
         if (count($parts) === 2) {
             $key = trim($parts[0]);
